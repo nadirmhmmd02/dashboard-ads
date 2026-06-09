@@ -1,26 +1,62 @@
-@import "tailwindcss";
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --pg: #FBF3E8;
+  --cd: #FFFFFF;
+  --sf: #FFF2DC;
+  --s2: #FFE8C0;
+  --br: rgba(94,49,23,0.12);
+  --bs: rgba(94,49,23,0.28);
+  --ac: #7A3E10;
+  --t1: #2A0E00;
+  --t2: #5A2E10;
+  --t3: #8A5830;
+  --pos: #2A7D32;
+  --neg: #C62828;
+  --nav: #FFFFFF;
+  --pr-bg: #E8F5E9;
+  --pr-tx: #2E7D32;
+  --pd-bg: #EDE8E4;
+  --pd-tx: #7A5040;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html[data-theme="dark"] {
+  --pg: #0F0803;
+  --cd: #1C1007;
+  --sf: #271408;
+  --s2: #341C0A;
+  --br: rgba(249,194,0,0.1);
+  --bs: rgba(249,194,0,0.28);
+  --ac: #F9C200;
+  --t1: #FFF2DC;
+  --t2: #C49060;
+  --t3: #7A5030;
+  --pos: #66BB6A;
+  --neg: #EF5350;
+  --nav: #180D04;
+  --pr-bg: rgba(102,187,106,0.14);
+  --pr-tx: #66BB6A;
+  --pd-bg: rgba(255,255,255,0.07);
+  --pd-tx: #8A6040;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--pg);
+  color: var(--t1);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
 }
