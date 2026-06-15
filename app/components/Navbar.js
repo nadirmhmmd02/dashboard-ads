@@ -50,7 +50,7 @@ export default function Navbar() {
             <rect x="14" y="14" width="7" height="7" rx="1"/>
           </svg>
         </div>
-        Dashboard Ads
+        Ads Dashboard
       </Link>
 
       <Link href="/calendar" style={{

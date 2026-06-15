@@ -2,12 +2,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 
-const MONTHS=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-const OBJ_ORDER=['Awareness','Traffic','Konversi'];
-const OBJ_STYLE={
-  Awareness:{bg:'rgba(91,127,212,0.14)',color:'#3A5FAD',bar:'rgba(91,127,212,0.72)'},
-  Traffic:{bg:'rgba(242,168,48,0.14)',color:'#9A6800',bar:'rgba(242,168,48,0.78)'},
-  Konversi:{bg:'rgba(61,170,106,0.14)',color:'#1E7A45',bar:'rgba(61,170,106,0.72)'},
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const OBJ_ORDER = ['Awareness','Traffic','Conversion'];
+const OBJ_STYLE = {
+  Awareness: { bg:'rgba(91,127,212,0.14)', color:'#3A5FAD', bar:'rgba(91,127,212,0.72)' },
+  Traffic:   { bg:'rgba(242,168,48,0.14)',  color:'#9A6800', bar:'rgba(242,168,48,0.78)' },
+  Conversion:{ bg:'rgba(61,170,106,0.14)',  color:'#1E7A45', bar:'rgba(61,170,106,0.72)' },
 };
 
 function daysInMonth(y,m){return new Date(y,m+1,0).getDate()}
@@ -57,7 +57,7 @@ export default function CalendarPage(){
   }
 
   async function handleDelete(id){
-    if(!confirm('Hapus campaign ini?'))return;
+    if(!confirm('Delete this campaign?'))return;
     await supabase.from('campaigns').delete().eq('id',id);
     loadCampaigns();
   }
@@ -79,26 +79,25 @@ export default function CalendarPage(){
   function nextMonth(){if(month===11){setMonth(0);setYear(y=>y+1)}else setMonth(m=>m+1)}
 
   const inp={width:'100%',padding:'8px 12px',fontSize:'13px',border:'1px solid var(--bs)',borderRadius:'10px',background:'var(--sf)',color:'var(--t1)',fontFamily:'inherit',outline:'none'};
-
   const thBase={padding:'8px 6px',fontSize:'10px',fontWeight:'600',color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.4px',background:'var(--sf)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'};
 
   return(
     <div style={{position:'relative'}}>
       {reminders.length>0&&(
         <div style={{display:'flex',alignItems:'center',gap:'8px',padding:'10px 14px',background:'var(--s2)',border:'0.5px solid var(--bs)',borderRadius:'12px',marginBottom:'16px',fontSize:'12px',color:'var(--t2)'}}>
-          🔔 <span><strong>{reminders.length} campaign</strong> mulai dalam 3 hari — <strong>{reminders[0].name}</strong></span>
+          🔔 <span><strong>{reminders.length} campaign{reminders.length>1?'s':''}</strong> starting within 3 days — <strong>{reminders[0].name}</strong></span>
         </div>
       )}
 
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'12px'}}>
         <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
           <button onClick={prevMonth} style={{width:'32px',height:'32px',borderRadius:'9px',border:'1.5px solid var(--bs)',background:'var(--cd)',cursor:'pointer',color:'var(--t1)',fontSize:'14px'}}>‹</button>
-          <span style={{fontSize:'16px',fontWeight:'500',color:'var(--t1)',minWidth:'130px',textAlign:'center'}}>{MONTHS[month]} {year}</span>
+          <span style={{fontSize:'16px',fontWeight:'500',color:'var(--t1)',minWidth:'150px',textAlign:'center'}}>{MONTHS[month]} {year}</span>
           <button onClick={nextMonth} style={{width:'32px',height:'32px',borderRadius:'9px',border:'1.5px solid var(--bs)',background:'var(--cd)',cursor:'pointer',color:'var(--t1)',fontSize:'14px'}}>›</button>
         </div>
         <div style={{display:'flex',gap:'8px'}}>
           <button style={{display:'flex',alignItems:'center',gap:'6px',padding:'8px 14px',fontSize:'13px',border:'1.5px solid var(--bs)',borderRadius:'12px',background:'var(--cd)',color:'var(--t1)',cursor:'pointer',fontWeight:'500'}}>↓ Export</button>
-          <button onClick={openAdd} style={{display:'flex',alignItems:'center',gap:'6px',padding:'8px 16px',fontSize:'13px',border:'none',borderRadius:'12px',background:'var(--ac)',color:'#fff',cursor:'pointer',fontWeight:'500'}}>+ Tambah Campaign</button>
+          <button onClick={openAdd} style={{display:'flex',alignItems:'center',gap:'6px',padding:'8px 16px',fontSize:'13px',border:'none',borderRadius:'12px',background:'var(--ac)',color:'#fff',cursor:'pointer',fontWeight:'500'}}>+ Add Campaign</button>
         </div>
       </div>
 
@@ -111,7 +110,7 @@ export default function CalendarPage(){
       </div>
 
       {loading?(
-        <div style={{textAlign:'center',padding:'40px',color:'var(--t3)',fontSize:'13px'}}>Memuat data...</div>
+        <div style={{textAlign:'center',padding:'40px',color:'var(--t3)',fontSize:'13px'}}>Loading...</div>
       ):(
         <div style={{border:'0.5px solid var(--br)',borderRadius:'16px',overflow:'hidden',marginBottom:'16px'}}>
           <table style={{borderCollapse:'collapse',width:'100%',tableLayout:'fixed'}}>
@@ -125,19 +124,19 @@ export default function CalendarPage(){
               <col style={{width:'7%'}}/>
               <col style={{width:'6%'}}/>
               {Array.from({length:days}).map((_,i)=>(
-                <col key={i} style={{width:`${(34/(days))}%`}}/>
+                <col key={i} style={{width:`${(34/days)}%`}}/>
               ))}
             </colgroup>
             <thead>
               <tr style={{background:'var(--sf)'}}>
                 <th style={{...thBase,textAlign:'left',position:'sticky',left:0,background:'var(--sf)',zIndex:2}}>Campaign</th>
-                <th style={{...thBase,textAlign:'left',position:'sticky',left:'18%',background:'var(--sf)',zIndex:2}}>Objektif</th>
-                <th style={{...thBase,textAlign:'right'}}>Bgt/Hari</th>
-                <th style={{...thBase,textAlign:'right'}}>Mulai</th>
-                <th style={{...thBase,textAlign:'right'}}>Selesai</th>
-                <th style={{...thBase,textAlign:'right'}}>Bgt Total</th>
+                <th style={{...thBase,textAlign:'left',position:'sticky',left:'18%',background:'var(--sf)',zIndex:2}}>Objective</th>
+                <th style={{...thBase,textAlign:'right'}}>Bgt/Day</th>
+                <th style={{...thBase,textAlign:'right'}}>Start</th>
+                <th style={{...thBase,textAlign:'right'}}>End</th>
+                <th style={{...thBase,textAlign:'right'}}>Total Bgt</th>
                 <th style={{...thBase,textAlign:'left'}}>Status</th>
-                <th style={{...thBase,textAlign:'left'}}>Aksi</th>
+                <th style={{...thBase,textAlign:'left'}}>Action</th>
                 {Array.from({length:days},(_,i)=>i+1).map(d=>{
                   const isToday=year===today.y&&month===today.m&&d===today.d;
                   return <th key={d} style={{...thBase,textAlign:'center',padding:'8px 0',fontWeight:isToday?'700':'500',color:isToday?'var(--ac)':'var(--t3)'}}>{d}</th>;
@@ -146,7 +145,7 @@ export default function CalendarPage(){
             </thead>
             <tbody>
               {sorted.length===0?(
-                <tr><td colSpan={8+days} style={{textAlign:'center',padding:'32px',color:'var(--t3)',fontSize:'13px'}}>Belum ada campaign di bulan ini.</td></tr>
+                <tr><td colSpan={8+days} style={{textAlign:'center',padding:'32px',color:'var(--t3)',fontSize:'13px'}}>No campaigns this month.</td></tr>
               ):sorted.map(c=>{
                 const bt=budgetForMonth(c,year,month);
                 const st=c.status;
@@ -157,12 +156,12 @@ export default function CalendarPage(){
                       <span style={{padding:'2px 6px',borderRadius:'20px',fontSize:'9px',fontWeight:'500',background:OBJ_STYLE[c.obj]?.bg,color:OBJ_STYLE[c.obj]?.color,whiteSpace:'nowrap'}}>{c.obj}</span>
                     </td>
                     <td style={{padding:'6px 6px',fontSize:'11px',color:'var(--t2)',textAlign:'right',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.bh?fmtRp(c.bh):'—'}</td>
-                    <td style={{padding:'6px 6px',fontSize:'11px',color:'var(--t2)',textAlign:'right',whiteSpace:'nowrap'}}>{c.mulai?new Date(c.mulai).toLocaleDateString('id-ID',{day:'numeric',month:'short'}):'—'}</td>
-                    <td style={{padding:'6px 6px',fontSize:'11px',color:'var(--t2)',textAlign:'right',whiteSpace:'nowrap'}}>{c.selesai?new Date(c.selesai).toLocaleDateString('id-ID',{day:'numeric',month:'short'}):'—'}</td>
+                    <td style={{padding:'6px 6px',fontSize:'11px',color:'var(--t2)',textAlign:'right',whiteSpace:'nowrap'}}>{c.mulai?new Date(c.mulai).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'—'}</td>
+                    <td style={{padding:'6px 6px',fontSize:'11px',color:'var(--t2)',textAlign:'right',whiteSpace:'nowrap'}}>{c.selesai?new Date(c.selesai).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'—'}</td>
                     <td style={{padding:'6px 6px',fontSize:'11px',fontWeight:'500',color:'var(--t2)',textAlign:'right',whiteSpace:'nowrap'}}>{fmtRp(bt)}</td>
                     <td style={{padding:'6px 6px'}}>
                       <span style={{display:'inline-flex',alignItems:'center',gap:'2px',padding:'2px 6px',borderRadius:'20px',fontSize:'9px',fontWeight:'500',background:st==='Running'?'var(--pr-bg)':st==='Done'?'var(--pd-bg)':'var(--s2)',color:st==='Running'?'var(--pr-tx)':st==='Done'?'var(--pd-tx)':'var(--t3)',whiteSpace:'nowrap'}}>
-                        {st==='Running'?'▶ ':st==='Done'?'':'✏ '}{st}
+                        {st==='Running'?'▶ ':st==='Done'?'✓ ':'✏ '}{st}
                       </span>
                     </td>
                     <td style={{padding:'6px 4px',whiteSpace:'nowrap'}}>
@@ -190,7 +189,7 @@ export default function CalendarPage(){
 
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--cd)',border:'0.5px solid var(--br)',borderRadius:'16px',padding:'16px 20px'}}>
         <div>
-          <div style={{fontSize:'13px',color:'var(--t3)',fontWeight:'500',marginBottom:'4px'}}>💰 Total Budget Iklan <span style={{color:'var(--ac)'}}>{MONTHS[month]} {year}</span></div>
+          <div style={{fontSize:'13px',color:'var(--t3)',fontWeight:'500',marginBottom:'4px'}}>💰 Total Ad Budget <span style={{color:'var(--ac)'}}>{MONTHS[month]} {year}</span></div>
           <div style={{fontSize:'20px',fontWeight:'500',color:'var(--t1)'}}>{fmtRp(totalBudget)}</div>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:'16px'}}>
@@ -207,10 +206,10 @@ export default function CalendarPage(){
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:50,display:'flex',alignItems:'center',justifyContent:'center'}}>
           <div style={{background:'var(--cd)',borderRadius:'18px',padding:'24px',width:'400px',border:'0.5px solid var(--bs)'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'18px'}}>
-              <span style={{fontSize:'15px',fontWeight:'500',color:'var(--t1)'}}>{editId?'Edit Campaign':'Tambah Campaign'}</span>
+              <span style={{fontSize:'15px',fontWeight:'500',color:'var(--t1)'}}>{editId?'Edit Campaign':'Add Campaign'}</span>
               <button onClick={()=>setShowModal(false)} style={{background:'none',border:'none',fontSize:'18px',cursor:'pointer',color:'var(--t3)'}}>✕</button>
             </div>
-            {[['Nama Campaign','text','name','Masukkan nama campaign...'],['Konten Iklan','text','konten','Post Instagram, Video, dll...']].map(([lbl,type,key,ph])=>(
+            {[['Campaign Name','text','name','Enter campaign name...'],['Ad Content','text','konten','Instagram post, video, etc...']].map(([lbl,type,key,ph])=>(
               <div key={key} style={{marginBottom:'12px'}}>
                 <div style={{fontSize:'11px',color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:'5px',fontWeight:'500'}}>{lbl}</div>
                 <input style={inp} type={type} placeholder={ph} value={form[key]} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))}/>
@@ -218,7 +217,7 @@ export default function CalendarPage(){
             ))}
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'12px'}}>
               <div>
-                <div style={{fontSize:'11px',color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:'5px',fontWeight:'500'}}>Objektif</div>
+                <div style={{fontSize:'11px',color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:'5px',fontWeight:'500'}}>Objective</div>
                 <select style={inp} value={form.obj} onChange={e=>setForm(f=>({...f,obj:e.target.value}))}>
                   {OBJ_ORDER.map(o=><option key={o}>{o}</option>)}
                 </select>
@@ -232,21 +231,21 @@ export default function CalendarPage(){
             </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'12px'}}>
               <div>
-                <div style={{fontSize:'11px',color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:'5px',fontWeight:'500'}}>Tanggal Mulai</div>
+                <div style={{fontSize:'11px',color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:'5px',fontWeight:'500'}}>Start Date</div>
                 <input style={inp} type="date" value={form.mulai} onChange={e=>setForm(f=>({...f,mulai:e.target.value}))}/>
               </div>
               <div>
-                <div style={{fontSize:'11px',color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:'5px',fontWeight:'500'}}>Tanggal Selesai</div>
+                <div style={{fontSize:'11px',color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:'5px',fontWeight:'500'}}>End Date</div>
                 <input style={inp} type="date" value={form.selesai} onChange={e=>setForm(f=>({...f,selesai:e.target.value}))}/>
               </div>
             </div>
             <div style={{marginBottom:'12px'}}>
-              <div style={{fontSize:'11px',color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:'5px',fontWeight:'500'}}>Budget Harian (Rp)</div>
+              <div style={{fontSize:'11px',color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:'5px',fontWeight:'500'}}>Daily Budget (Rp)</div>
               <input style={inp} type="number" placeholder="100000" value={form.bh} onChange={e=>setForm(f=>({...f,bh:e.target.value}))}/>
             </div>
             <div style={{display:'flex',justifyContent:'flex-end',gap:'8px',marginTop:'18px',paddingTop:'14px',borderTop:'0.5px solid var(--br)'}}>
-              <button onClick={()=>setShowModal(false)} style={{padding:'8px 16px',fontSize:'13px',border:'1px solid var(--br)',borderRadius:'10px',background:'transparent',color:'var(--t2)',cursor:'pointer'}}>Batal</button>
-              <button onClick={handleSave} style={{padding:'8px 18px',fontSize:'13px',border:'none',borderRadius:'10px',background:'var(--ac)',color:'#fff',cursor:'pointer',fontWeight:'500'}}>{editId?'Update':'Simpan'}</button>
+              <button onClick={()=>setShowModal(false)} style={{padding:'8px 16px',fontSize:'13px',border:'1px solid var(--br)',borderRadius:'10px',background:'transparent',color:'var(--t2)',cursor:'pointer'}}>Cancel</button>
+              <button onClick={handleSave} style={{padding:'8px 18px',fontSize:'13px',border:'none',borderRadius:'10px',background:'var(--ac)',color:'#fff',cursor:'pointer',fontWeight:'500'}}>{editId?'Update':'Save'}</button>
             </div>
           </div>
         </div>
