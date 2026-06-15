@@ -30,15 +30,39 @@ function fmtPct(v) {
   return parseFloat(v).toFixed(2) + '%';
 }
 
-function getLeads(actions) {
+function getActionValue(actions, types) {
   if (!actions) return null;
-  const a = actions.find(x => x.action_type === 'lead' || x.action_type === 'onsite_conversion.lead_grouped');
-  return a ? parseInt(a.value) : null;
+  for (const type of types) {
+    const a = actions.find(x => x.action_type === type);
+    if (a) return parseInt(a.value);
+  }
+  return null;
 }
 
-function getCPL(spend, leads) {
-  if (!spend || !leads) return null;
-  return parseFloat(spend) / leads;
+function getLeads(actions) {
+  return getActionValue(actions, ['lead', 'onsite_conversion.lead_grouped']);
+}
+
+function getLinkClicks(actions) {
+  return getActionValue(actions, ['link_click']);
+}
+
+function getResult(campaign, insights) {
+  const name = campaign.name?.toUpperCase() || '';
+  const actions = insights?.actions || [];
+  if (name.includes('AWR REACH')) return { label: 'Reach', value: fmtNum(insights?.reach) };
+  if (name.includes('AWR IMPR')) return { label: 'Impressions', value: fmtNum(insights?.impressions) };
+  if (name.includes('AWR')) return { label: 'Impressions', value: fmtNum(insights?.impressions) };
+  if (name.includes('TRAFFIC')) return { label: 'Link Clicks', value: fmtNum(getLinkClicks(actions)) };
+  if (name.includes('PROSPEK') || name.includes('KONVERSI')) return { label: 'Leads', value: fmtNum(getLeads(actions)) };
+  return { label: '—', value: '—' };
+}
+
+function getCampaignType(name) {
+  const n = name?.toUpperCase() || '';
+  if (n.includes('TRAFFIC')) return 'TRAFFIC';
+  if (n.includes('PROSPEK') || n.includes('KONVERSI')) return 'CONVERSION';
+  return 'AWARENESS';
 }
 
 const OBJ_GROUP = {
@@ -73,6 +97,7 @@ export default function DashboardPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showSubtotal, setShowSubtotal] = useState(true);
 
   useEffect(() => { fetchData(); }, [selectedDate]);
 
@@ -91,10 +116,42 @@ export default function DashboardPage() {
   }
 
   const activeCampaigns = data?.campaigns?.filter(c => c.status === 'ACTIVE') || [];
-  const insights = data?.insights?.[0] || {};
 
-  const totalLeads = getLeads(insights.actions);
-  const totalCPL = getCPL(insights.spend, totalLeads);
+  // Calculate metrics by campaign type
+  const trafficCampaigns = activeCampaigns.filter(c => getCampaignType(c.name) === 'TRAFFIC');
+  const conversionCampaigns = activeCampaigns.filter(c => getCampaignType(c.name) === 'CONVERSION');
+
+  // Overall insights from API
+  const apiInsights = data?.insights?.[0] || {};
+
+  // Total spend all campaigns
+  const totalSpend = parseFloat(apiInsights.spend || 0);
+
+  // Reach & Impressions from all campaigns
+  const totalReach = parseFloat(apiInsights.reach || 0);
+  const totalImpressions = parseFloat(apiInsights.impressions || 0);
+
+  // Traffic metrics - from traffic campaigns only
+  const trafficSpend = trafficCampaigns.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
+  const trafficClicks = trafficCampaigns.reduce((s, c) => {
+    const clicks = getLinkClicks(c.insights?.data?.[0]?.actions);
+    return s + (clicks || 0);
+  }, 0);
+
+  // Conversion metrics - from conversion campaigns only
+  const conversionSpend = conversionCampaigns.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
+  const conversionLeads = conversionCampaigns.reduce((s, c) => {
+    const leads = getLeads(c.insights?.data?.[0]?.actions);
+    return s + (leads || 0);
+  }, 0);
+  const conversionImpressions = conversionCampaigns.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.impressions || 0), 0);
+  const conversionClicks = conversionCampaigns.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.clicks || 0), 0);
+
+  // Calculated metrics
+  const calcCPM = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : null;
+  const calcCPC = trafficClicks > 0 ? trafficSpend / trafficClicks : null;
+  const calcCPL = conversionLeads > 0 ? conversionSpend / conversionLeads : null;
+  const calcCTR = conversionImpressions > 0 ? (conversionClicks / conversionImpressions) * 100 : null;
 
   const grouped = activeCampaigns.reduce((acc, c) => {
     const grp = OBJ_GROUP[c.objective] || 'Other';
@@ -173,17 +230,17 @@ export default function DashboardPage() {
                 </span>
               </div>
               <div style={{ fontSize: '30px', fontWeight: '500', color: 'var(--t1)', lineHeight: 1, marginBottom: '3px' }}>
-                {fmtRp(insights.spend)}
+                {fmtRp(totalSpend)}
               </div>
               <div style={{ fontSize: '11px', color: 'var(--t3)', marginBottom: '14px' }}>
                 Total budget spent · {selectedDate.label}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', borderTop: '0.5px solid var(--br)', paddingTop: '13px' }}>
                 {[
-                  ['CPM', fmtRp(insights.cpm)],
-                  ['CPC', fmtRp(insights.cpc)],
-                  ['CPL', fmtRp(totalCPL)],
-                  ['Leads', totalLeads ?? '—'],
+                  ['CPM', fmtRp(calcCPM)],
+                  ['CPC', fmtRp(calcCPC)],
+                  ['CPL', fmtRp(calcCPL)],
+                  ['Leads', conversionLeads || '—'],
                 ].map(([label, val], i) => (
                   <div key={label} style={{ textAlign: 'center', borderRight: i < 3 ? '0.5px solid var(--br)' : 'none' }}>
                     <div style={{ fontSize: '10px', color: 'var(--t3)', marginBottom: '3px', textTransform: 'uppercase' }}>{label}</div>
@@ -193,7 +250,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Google Ads Card - placeholder */}
+            {/* Google Ads Card */}
             <div style={{ background: 'var(--cd)', border: '0.5px solid var(--br)', borderRadius: '18px', padding: '18px 20px', opacity: 0.6 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '13px', fontWeight: '500', color: 'var(--t1)' }}>
@@ -223,20 +280,21 @@ export default function DashboardPage() {
           <SectionLabel color="#1877F2" text={`Meta Ads overall metrics · ${selectedDate.label}`} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '10px', marginBottom: '24px' }}>
             {[
-              ['Total Spend', fmtRp(insights.spend)],
-              ['Reach', fmtNum(insights.reach)],
-              ['Impressions', fmtNum(insights.impressions)],
-              ['Traffic (Clicks)', fmtNum(insights.clicks)],
-              ['Leads', totalLeads ?? '—'],
-              ['CPM', fmtRp(insights.cpm)],
-              ['CPC', fmtRp(insights.cpc)],
-              ['CPL', fmtRp(totalCPL)],
-              ['CTR', fmtPct(insights.ctr)],
-              ['Total Leads', totalLeads ?? '—'],
-            ].map(([label, val]) => (
+              ['Total Spend', fmtRp(totalSpend), 'All campaigns'],
+              ['Reach', fmtNum(totalReach), 'All campaigns'],
+              ['Impressions', fmtNum(totalImpressions), 'All campaigns'],
+              ['Traffic', fmtNum(trafficClicks), 'Traffic campaigns only'],
+              ['Leads', conversionLeads || '—', 'Conversion campaigns only'],
+              ['CPM', fmtRp(calcCPM), 'Total spend / impressions'],
+              ['CPC', fmtRp(calcCPC), 'Traffic spend / clicks'],
+              ['CPL', fmtRp(calcCPL), 'Conversion spend / leads'],
+              ['CTR', calcCTR ? fmtPct(calcCTR) : '—', 'Conversion campaigns only'],
+              ['Total Leads', conversionLeads || '—', 'Conversion campaigns only'],
+            ].map(([label, val, hint]) => (
               <div key={label} style={{ background: 'var(--sf)', borderRadius: '14px', padding: '14px 15px' }}>
                 <div style={{ fontSize: '10px', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{label}</div>
-                <div style={{ fontSize: '20px', fontWeight: '500', color: 'var(--t1)' }}>{val}</div>
+                <div style={{ fontSize: '20px', fontWeight: '500', color: 'var(--t1)', marginBottom: '4px' }}>{val}</div>
+                <div style={{ fontSize: '9px', color: 'var(--t3)', fontStyle: 'italic' }}>{hint}</div>
               </div>
             ))}
           </div>
@@ -244,7 +302,15 @@ export default function DashboardPage() {
           <div style={{ height: '0.5px', background: 'var(--br)', margin: '8px 0 20px' }}></div>
 
           {/* Campaign Performance Table */}
-          <SectionLabel color="#1877F2" text={`Meta Ads campaign performance (${activeCampaigns.length} active campaigns)`} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <SectionLabel color="#1877F2" text={`Meta Ads campaign performance (${activeCampaigns.length} active campaigns)`} />
+            <button
+              onClick={() => setShowSubtotal(!showSubtotal)}
+              style={{ fontSize: '11px', padding: '4px 12px', borderRadius: '8px', border: '1px solid var(--bs)', background: showSubtotal ? 'var(--ac)' : 'var(--cd)', color: showSubtotal ? '#fff' : 'var(--t2)', cursor: 'pointer', fontWeight: '500', marginBottom: '10px' }}>
+              {showSubtotal ? '✓ Subtotal On' : 'Subtotal Off'}
+            </button>
+          </div>
+
           <div style={{ background: 'var(--cd)', border: '0.5px solid var(--br)', borderRadius: '18px', overflow: 'hidden', marginBottom: '20px' }}>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
@@ -253,12 +319,13 @@ export default function DashboardPage() {
                     <th style={thStyle('left')}>Campaign</th>
                     <th style={thStyle('center')}>Status</th>
                     <th style={thStyle()}>Daily Budget</th>
+                    <th style={thStyle()}>Result</th>
+                    <th style={thStyle()}>Reach</th>
                     <th style={thStyle()}>Impressions</th>
                     <th style={thStyle()}>Traffic</th>
-                    <th style={thStyle()}>CTR</th>
+                    <th style={thStyle()}>Leads</th>
                     <th style={thStyle()}>CPM</th>
                     <th style={thStyle()}>CPC</th>
-                    <th style={thStyle()}>Leads</th>
                     <th style={thStyle()}>CPL</th>
                   </tr>
                 </thead>
@@ -267,9 +334,10 @@ export default function DashboardPage() {
                     const rows = grouped[grp] || [];
                     if (!rows.length) return null;
                     const subtotalBudget = rows.reduce((s, c) => s + (c.daily_budget ? parseInt(c.daily_budget) : 0), 0);
+
                     return [
                       <tr key={grp + '-hdr'} style={{ background: 'var(--s2)' }}>
-                        <td colSpan={10} style={{ padding: '6px 14px' }}>
+                        <td colSpan={11} style={{ padding: '6px 14px' }}>
                           <span style={{ fontSize: '10px', fontWeight: '600', color: 'var(--t2)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ padding: '2px 9px', borderRadius: '20px', fontSize: '10px', fontWeight: '500', background: OBJ_STYLE[grp]?.bg, color: OBJ_STYLE[grp]?.color }}>{grp}</span>
                             {rows.length} campaign{rows.length > 1 ? 's' : ''}
@@ -279,37 +347,56 @@ export default function DashboardPage() {
                       ...rows.map(c => {
                         const ci = c.insights?.data?.[0] || {};
                         const cLeads = getLeads(ci.actions);
-                        const cCPL = getCPL(ci.spend, cLeads);
+                        const cLinkClicks = getLinkClicks(ci.actions);
+                        const cCPM = ci.impressions > 0 ? (parseFloat(ci.spend || 0) / parseFloat(ci.impressions)) * 1000 : null;
+                        const cCPC = cLinkClicks > 0 ? parseFloat(ci.spend || 0) / cLinkClicks : null;
+                        const cCPL = cLeads > 0 ? parseFloat(ci.spend || 0) / cLeads : null;
+                        const result = getResult(c, ci);
+
+                        // Check if campaign is active but ended
+                        const isEnded = ci.date_stop && new Date(ci.date_stop) < new Date();
+
                         return (
                           <tr key={c.id} style={{ borderTop: '0.5px solid var(--br)' }}>
                             <td style={{ ...tdStyle('left'), fontWeight: '500', color: 'var(--t1)' }}>{c.name}</td>
                             <td style={tdStyle('center')}>
-                              <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'var(--pr-bg)', color: 'var(--pr-tx)', fontWeight: '500' }}>▶ Active</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                                <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'var(--pr-bg)', color: 'var(--pr-tx)', fontWeight: '500', whiteSpace: 'nowrap' }}>▶ Active</span>
+                                {isEnded && <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '9px', background: 'var(--pd-bg)', color: 'var(--pd-tx)', fontWeight: '500', whiteSpace: 'nowrap' }}>Ended</span>}
+                              </div>
                             </td>
                             <td style={tdStyle()}>{c.daily_budget ? fmtRp(parseInt(c.daily_budget)) : '—'}</td>
+                            <td style={tdStyle()}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                <span style={{ fontSize: '10px', color: 'var(--t3)' }}>{result.label}</span>
+                                <span style={{ fontWeight: '500', color: 'var(--t1)' }}>{result.value}</span>
+                              </div>
+                            </td>
+                            <td style={tdStyle()}>{fmtNum(ci.reach)}</td>
                             <td style={tdStyle()}>{fmtNum(ci.impressions)}</td>
-                            <td style={tdStyle()}>{fmtNum(ci.clicks)}</td>
-                            <td style={tdStyle()}>{fmtPct(ci.ctr)}</td>
-                            <td style={tdStyle()}>{fmtRp(ci.cpm)}</td>
-                            <td style={tdStyle()}>{fmtRp(ci.cpc)}</td>
+                            <td style={tdStyle()}>{fmtNum(cLinkClicks)}</td>
                             <td style={tdStyle()}>{cLeads ?? '—'}</td>
+                            <td style={tdStyle()}>{fmtRp(cCPM)}</td>
+                            <td style={tdStyle()}>{fmtRp(cCPC)}</td>
                             <td style={tdStyle()}>{fmtRp(cCPL)}</td>
                           </tr>
                         );
                       }),
-                      <tr key={grp + '-sub'} style={{ borderTop: '0.5px solid var(--br)', background: 'var(--sf)' }}>
-                        <td colSpan={2} style={{ padding: '8px 12px', fontWeight: '600', color: 'var(--t1)', fontSize: '11px', fontStyle: 'italic' }}>Subtotal {grp}</td>
-                        <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subtotalBudget)}</td>
-                        <td colSpan={7}></td>
-                      </tr>
-                    ];
+                      showSubtotal && (
+                        <tr key={grp + '-sub'} style={{ borderTop: '0.5px solid var(--br)', background: 'var(--sf)' }}>
+                          <td colSpan={2} style={{ padding: '8px 12px', fontWeight: '600', color: 'var(--t1)', fontSize: '11px', fontStyle: 'italic' }}>Subtotal {grp}</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subtotalBudget)}</td>
+                          <td colSpan={8}></td>
+                        </tr>
+                      ),
+                    ].filter(Boolean);
                   })}
                   <tr style={{ borderTop: '0.5px solid var(--br)', background: 'var(--s2)' }}>
                     <td colSpan={2} style={{ padding: '9px 12px', fontWeight: '600', color: 'var(--t1)' }}>Total</td>
                     <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: '600', color: 'var(--t1)' }}>
                       {fmtRp(activeCampaigns.reduce((s, c) => s + (c.daily_budget ? parseInt(c.daily_budget) : 0), 0))}
                     </td>
-                    <td colSpan={7}></td>
+                    <td colSpan={8}></td>
                   </tr>
                 </tbody>
               </table>
