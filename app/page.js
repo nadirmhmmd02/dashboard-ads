@@ -2,14 +2,14 @@
 import { useState, useEffect } from 'react';
 
 const dateOptions = [
-  { label: 'Hari ini', value: 'today' },
-  { label: 'Kemarin', value: 'yesterday' },
-  { label: '3 hari terakhir', value: 'last_3d' },
-  { label: '7 hari terakhir', value: 'last_7d' },
-  { label: '14 hari terakhir', value: 'last_14d' },
-  { label: '30 hari terakhir', value: 'last_30d' },
-  { label: 'Bulan ini', value: 'this_month' },
-  { label: 'Bulan lalu', value: 'last_month' },
+  { label: 'Today', value: 'today' },
+  { label: 'Yesterday', value: 'yesterday' },
+  { label: 'Last 3 days', value: 'last_3d' },
+  { label: 'Last 7 days', value: 'last_7d' },
+  { label: 'Last 14 days', value: 'last_14d' },
+  { label: 'Last 30 days', value: 'last_30d' },
+  { label: 'This month', value: 'this_month' },
+  { label: 'Last month', value: 'last_month' },
 ];
 
 function fmtRp(v) {
@@ -44,8 +44,8 @@ function getCPL(spend, leads) {
 const OBJ_GROUP = {
   OUTCOME_AWARENESS: 'Awareness',
   OUTCOME_TRAFFIC: 'Traffic',
-  OUTCOME_LEADS: 'Konversi',
-  OUTCOME_SALES: 'Konversi',
+  OUTCOME_LEADS: 'Conversion',
+  OUTCOME_SALES: 'Conversion',
   OUTCOME_ENGAGEMENT: 'Traffic',
   LINK_CLICKS: 'Traffic',
 };
@@ -53,10 +53,10 @@ const OBJ_GROUP = {
 const OBJ_STYLE = {
   Awareness: { bg: 'rgba(91,127,212,0.14)', color: '#3A5FAD' },
   Traffic: { bg: 'rgba(242,168,48,0.14)', color: '#9A6800' },
-  Konversi: { bg: 'rgba(61,170,106,0.14)', color: '#1E7A45' },
+  Conversion: { bg: 'rgba(61,170,106,0.14)', color: '#1E7A45' },
 };
 
-const OBJ_ORDER = ['Awareness', 'Traffic', 'Konversi'];
+const OBJ_ORDER = ['Awareness', 'Traffic', 'Conversion'];
 
 function SectionLabel({ color, text }) {
   return (
@@ -68,7 +68,7 @@ function SectionLabel({ color, text }) {
 }
 
 export default function DashboardPage() {
-  const [selectedDate, setSelectedDate] = useState(dateOptions[3]);
+  const [selectedDate, setSelectedDate] = useState(dateOptions[6]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -97,7 +97,7 @@ export default function DashboardPage() {
   const totalCPL = getCPL(insights.spend, totalLeads);
 
   const grouped = activeCampaigns.reduce((acc, c) => {
-    const grp = OBJ_GROUP[c.objective] || 'Lainnya';
+    const grp = OBJ_GROUP[c.objective] || 'Other';
     if (!acc[grp]) acc[grp] = [];
     acc[grp].push(c);
     return acc;
@@ -146,7 +146,7 @@ export default function DashboardPage() {
 
       {loading && (
         <div style={{ textAlign: 'center', padding: '60px', color: 'var(--t3)', fontSize: '14px' }}>
-          ⏳ Memuat data dari Meta Ads...
+          ⏳ Loading data from Meta Ads...
         </div>
       )}
 
@@ -159,7 +159,7 @@ export default function DashboardPage() {
       {!loading && !error && data && (
         <>
           {/* Breakdown per Platform */}
-          <SectionLabel color="#1877F2" text="Breakdown per platform" />
+          <SectionLabel color="#1877F2" text="Breakdown by platform" />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
             {/* Meta Ads Card */}
             <div style={{ background: 'var(--cd)', border: '0.5px solid var(--br)', borderRadius: '18px', padding: '18px 20px' }}>
@@ -169,14 +169,14 @@ export default function DashboardPage() {
                   Meta Ads
                 </div>
                 <span style={{ fontSize: '10px', padding: '3px 10px', borderRadius: '20px', background: 'var(--pr-bg)', color: 'var(--pr-tx)', fontWeight: '500' }}>
-                  {activeCampaigns.length} campaign aktif
+                  {activeCampaigns.length} active campaigns
                 </span>
               </div>
               <div style={{ fontSize: '30px', fontWeight: '500', color: 'var(--t1)', lineHeight: 1, marginBottom: '3px' }}>
                 {fmtRp(insights.spend)}
               </div>
               <div style={{ fontSize: '11px', color: 'var(--t3)', marginBottom: '14px' }}>
-                Total budget terpakai · {selectedDate.label}
+                Total budget spent · {selectedDate.label}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', borderTop: '0.5px solid var(--br)', paddingTop: '13px' }}>
                 {[
@@ -201,11 +201,11 @@ export default function DashboardPage() {
                   Google Ads
                 </div>
                 <span style={{ fontSize: '10px', padding: '3px 10px', borderRadius: '20px', background: 'var(--pd-bg)', color: 'var(--pd-tx)', fontWeight: '500' }}>
-                  Belum terkoneksi
+                  Not connected
                 </span>
               </div>
               <div style={{ fontSize: '30px', fontWeight: '500', color: 'var(--t1)', lineHeight: 1, marginBottom: '3px' }}>—</div>
-              <div style={{ fontSize: '11px', color: 'var(--t3)', marginBottom: '14px' }}>Total budget terpakai · {selectedDate.label}</div>
+              <div style={{ fontSize: '11px', color: 'var(--t3)', marginBottom: '14px' }}>Total budget spent · {selectedDate.label}</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', borderTop: '0.5px solid var(--br)', paddingTop: '13px' }}>
                 {['CPM', 'CPC', 'CPL', 'Leads'].map((label, i) => (
                   <div key={label} style={{ textAlign: 'center', borderRight: i < 3 ? '0.5px solid var(--br)' : 'none' }}>
@@ -219,14 +219,14 @@ export default function DashboardPage() {
 
           <div style={{ height: '0.5px', background: 'var(--br)', margin: '8px 0 20px' }}></div>
 
-          {/* Metrik Keseluruhan Meta Ads */}
-          <SectionLabel color="#1877F2" text={`Metrik keseluruhan Meta Ads · ${selectedDate.label}`} />
+          {/* Overall Metrics */}
+          <SectionLabel color="#1877F2" text={`Meta Ads overall metrics · ${selectedDate.label}`} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '10px', marginBottom: '24px' }}>
             {[
               ['Total Spend', fmtRp(insights.spend)],
               ['Reach', fmtNum(insights.reach)],
-              ['Impressi', fmtNum(insights.impressions)],
-              ['Traffic (Klik)', fmtNum(insights.clicks)],
+              ['Impressions', fmtNum(insights.impressions)],
+              ['Traffic (Clicks)', fmtNum(insights.clicks)],
               ['Leads', totalLeads ?? '—'],
               ['CPM', fmtRp(insights.cpm)],
               ['CPC', fmtRp(insights.cpc)],
@@ -243,8 +243,8 @@ export default function DashboardPage() {
 
           <div style={{ height: '0.5px', background: 'var(--br)', margin: '8px 0 20px' }}></div>
 
-          {/* Tabel Performa Campaign Meta Ads */}
-          <SectionLabel color="#1877F2" text={`Performa campaign Meta Ads (${activeCampaigns.length} campaign aktif)`} />
+          {/* Campaign Performance Table */}
+          <SectionLabel color="#1877F2" text={`Meta Ads campaign performance (${activeCampaigns.length} active campaigns)`} />
           <div style={{ background: 'var(--cd)', border: '0.5px solid var(--br)', borderRadius: '18px', overflow: 'hidden', marginBottom: '20px' }}>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
@@ -252,8 +252,8 @@ export default function DashboardPage() {
                   <tr style={{ background: 'var(--sf)' }}>
                     <th style={thStyle('left')}>Campaign</th>
                     <th style={thStyle('center')}>Status</th>
-                    <th style={thStyle()}>Budget/Hari</th>
-                    <th style={thStyle()}>Impressi</th>
+                    <th style={thStyle()}>Daily Budget</th>
+                    <th style={thStyle()}>Impressions</th>
                     <th style={thStyle()}>Traffic</th>
                     <th style={thStyle()}>CTR</th>
                     <th style={thStyle()}>CPM</th>
@@ -266,15 +266,13 @@ export default function DashboardPage() {
                   {OBJ_ORDER.map(grp => {
                     const rows = grouped[grp] || [];
                     if (!rows.length) return null;
-
                     const subtotalBudget = rows.reduce((s, c) => s + (c.daily_budget ? parseInt(c.daily_budget) / 100 : 0), 0);
-
                     return [
                       <tr key={grp + '-hdr'} style={{ background: 'var(--s2)' }}>
                         <td colSpan={10} style={{ padding: '6px 14px' }}>
                           <span style={{ fontSize: '10px', fontWeight: '600', color: 'var(--t2)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ padding: '2px 9px', borderRadius: '20px', fontSize: '10px', fontWeight: '500', background: OBJ_STYLE[grp]?.bg, color: OBJ_STYLE[grp]?.color }}>{grp}</span>
-                            {rows.length} campaign
+                            {rows.length} campaign{rows.length > 1 ? 's' : ''}
                           </span>
                         </td>
                       </tr>,
@@ -286,7 +284,7 @@ export default function DashboardPage() {
                           <tr key={c.id} style={{ borderTop: '0.5px solid var(--br)' }}>
                             <td style={{ ...tdStyle('left'), fontWeight: '500', color: 'var(--t1)' }}>{c.name}</td>
                             <td style={tdStyle('center')}>
-                              <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'var(--pr-bg)', color: 'var(--pr-tx)', fontWeight: '500' }}>▶ Aktif</span>
+                              <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'var(--pr-bg)', color: 'var(--pr-tx)', fontWeight: '500' }}>▶ Active</span>
                             </td>
                             <td style={tdStyle()}>{c.daily_budget ? fmtRp(parseInt(c.daily_budget) / 100) : '—'}</td>
                             <td style={tdStyle()}>{fmtNum(ci.impressions)}</td>
