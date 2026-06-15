@@ -306,7 +306,6 @@ export default function DashboardPage() {
                     const rows = grouped[grp] || [];
                     if (!rows.length) return null;
 
-                    // Calculate subtotals
                     const subBudget = rows.reduce((s, c) => s + (c.daily_budget ? parseInt(c.daily_budget) : 0), 0);
                     const subReach = rows.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.reach || 0), 0);
                     const subImpressions = rows.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.impressions || 0), 0);
@@ -316,30 +315,17 @@ export default function DashboardPage() {
                     const subCPM = subImpressions > 0 ? (subSpend / subImpressions) * 1000 : null;
                     const subCPC = subTraffic > 0 ? subSpend / subTraffic : null;
                     const subCPL = subLeads > 0 ? subSpend / subLeads : null;
-
-                    // Result subtotal based on group
-                    const subResultVal = grp === 'Awareness'
-                      ? fmtNum(subImpressions)
-                      : grp === 'Traffic'
-                      ? fmtNum(subTraffic)
-                      : fmtNum(subLeads);
+                    const subResultVal = grp === 'Awareness' ? fmtNum(subImpressions) : grp === 'Traffic' ? fmtNum(subTraffic) : fmtNum(subLeads);
                     const subResultLabel = grp === 'Awareness' ? 'Impressions' : grp === 'Traffic' ? 'Link Clicks' : 'Leads';
 
                     return [
-                      // Group header with toggle
+                      // Group header (no toggle button here)
                       <tr key={grp + '-hdr'} style={{ background: 'var(--s2)' }}>
                         <td colSpan={11} style={{ padding: '6px 14px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: '10px', fontWeight: '600', color: 'var(--t2)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span style={{ padding: '2px 9px', borderRadius: '20px', fontSize: '10px', fontWeight: '500', background: OBJ_STYLE[grp]?.bg, color: OBJ_STYLE[grp]?.color }}>{grp}</span>
-                              {rows.length} campaign{rows.length > 1 ? 's' : ''}
-                            </span>
-                            <button
-                              onClick={() => toggleSubtotal(grp)}
-                              style={{ fontSize: '10px', padding: '2px 10px', borderRadius: '6px', border: '1px solid var(--bs)', background: showSubtotal[grp] ? OBJ_STYLE[grp]?.bg : 'transparent', color: showSubtotal[grp] ? OBJ_STYLE[grp]?.color : 'var(--t3)', cursor: 'pointer', fontWeight: '500' }}>
-                              {showSubtotal[grp] ? '▲ Hide subtotal' : '▼ Show subtotal'}
-                            </button>
-                          </div>
+                          <span style={{ fontSize: '10px', fontWeight: '600', color: 'var(--t2)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ padding: '2px 9px', borderRadius: '20px', fontSize: '10px', fontWeight: '500', background: OBJ_STYLE[grp]?.bg, color: OBJ_STYLE[grp]?.color }}>{grp}</span>
+                            {rows.length} campaign{rows.length > 1 ? 's' : ''}
+                          </span>
                         </td>
                       </tr>,
 
@@ -377,7 +363,7 @@ export default function DashboardPage() {
                         );
                       }),
 
-                      // Subtotal row (toggleable per group)
+                      // Subtotal row
                       showSubtotal[grp] && (
                         <tr key={grp + '-sub'} style={{ borderTop: '0.5px solid var(--br)', background: 'var(--sf)' }}>
                           <td colSpan={2} style={{ padding: '8px 12px', fontWeight: '600', color: 'var(--t1)', fontSize: '11px', fontStyle: 'italic' }}>Subtotal {grp}</td>
@@ -397,6 +383,18 @@ export default function DashboardPage() {
                           <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subCPL)}</td>
                         </tr>
                       ),
+
+                      // Toggle button row (always visible, below subtotal)
+                      <tr key={grp + '-toggle'} style={{ borderTop: '0.5px solid var(--br)', background: 'var(--sf)' }}>
+                        <td colSpan={11} style={{ padding: '4px 14px', textAlign: 'center' }}>
+                          <button
+                            onClick={() => toggleSubtotal(grp)}
+                            style={{ fontSize: '10px', padding: '2px 14px', borderRadius: '6px', border: '1px solid var(--bs)', background: 'transparent', color: 'var(--t3)', cursor: 'pointer' }}>
+                            {showSubtotal[grp] ? '▲ Hide subtotal' : '▼ Show subtotal'}
+                          </button>
+                        </td>
+                      </tr>,
+
                     ].filter(Boolean);
                   })}
 
