@@ -266,7 +266,7 @@ export default function DashboardPage() {
                   {OBJ_ORDER.map(grp => {
                     const rows = grouped[grp] || [];
                     if (!rows.length) return null;
-                    const subtotalBudget = rows.reduce((s, c) => s + (c.daily_budget ? parseInt(c.daily_budget) / 100 : 0), 0);
+                    const subtotalBudget = rows.reduce((s, c) => s + (c.daily_budget ? parseInt(c.daily_budget) : 0), 0);
                     return [
                       <tr key={grp + '-hdr'} style={{ background: 'var(--s2)' }}>
                         <td colSpan={10} style={{ padding: '6px 14px' }}>
@@ -286,7 +286,7 @@ export default function DashboardPage() {
                             <td style={tdStyle('center')}>
                               <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'var(--pr-bg)', color: 'var(--pr-tx)', fontWeight: '500' }}>▶ Active</span>
                             </td>
-                            <td style={tdStyle()}>{c.daily_budget ? fmtRp(parseInt(c.daily_budget) / 100) : '—'}</td>
+                            <td style={tdStyle()}>{c.daily_budget ? fmtRp(parseInt(c.daily_budget)) : '—'}</td>
                             <td style={tdStyle()}>{fmtNum(ci.impressions)}</td>
                             <td style={tdStyle()}>{fmtNum(ci.clicks)}</td>
                             <td style={tdStyle()}>{fmtPct(ci.ctr)}</td>
@@ -307,7 +307,7 @@ export default function DashboardPage() {
                   <tr style={{ borderTop: '0.5px solid var(--br)', background: 'var(--s2)' }}>
                     <td colSpan={2} style={{ padding: '9px 12px', fontWeight: '600', color: 'var(--t1)' }}>Total</td>
                     <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: '600', color: 'var(--t1)' }}>
-                      {fmtRp(activeCampaigns.reduce((s, c) => s + (c.daily_budget ? parseInt(c.daily_budget) / 100 : 0), 0))}
+                      {fmtRp(activeCampaigns.reduce((s, c) => s + (c.daily_budget ? parseInt(c.daily_budget) : 0), 0))}
                     </td>
                     <td colSpan={7}></td>
                   </tr>
