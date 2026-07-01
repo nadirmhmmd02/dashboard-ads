@@ -75,33 +75,21 @@ const OBJ_GROUP = {
 };
 
 const OBJ_STYLE = {
-  Awareness: { bg: 'rgba(91,127,212,0.14)', color: '#3A5FAD' },
-  Traffic: { bg: 'rgba(242,168,48,0.14)', color: '#9A6800' },
-  Conversion: { bg: 'rgba(61,170,106,0.14)', color: '#1E7A45' },
+  Awareness: { bg: 'rgba(91,127,212,0.14)', color: '#5b8fd4' },
+  Traffic: { bg: 'rgba(245,158,11,0.14)', color: '#f59e0b' },
+  Conversion: { bg: 'rgba(16,185,129,0.14)', color: '#10b981' },
 };
 
 const OBJ_ORDER = ['Awareness', 'Traffic', 'Conversion'];
 
-function SectionLabel({ color, text }) {
-  return (
-    <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, display: 'inline-block' }}></span>
-      {text}
-    </div>
-  );
-}
-
-export default function DashboardPage() {
-  const [selectedDate, setSelectedDate] = useState(dateOptions[6]);
+export default function CampaignsPage() {
+  const [selectedDate, setSelectedDate] = useState(dateOptions[6]); // this_month
   const [showDropdown, setShowDropdown] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showSubtotal, setShowSubtotal] = useState({
-    Awareness: true,
-    Traffic: true,
-    Conversion: true,
-  });
+  const [showSubtotal, setShowSubtotal] = useState({ Awareness: true, Traffic: true, Conversion: true });
+  const [showInactive, setShowInactive] = useState(true);
 
   useEffect(() => { fetchData(); }, [selectedDate]);
 
@@ -123,34 +111,20 @@ export default function DashboardPage() {
     setShowSubtotal(prev => ({ ...prev, [grp]: !prev[grp] }));
   }
 
-  const activeCampaigns = data?.campaigns?.filter(c => c.status === 'ACTIVE') || [];
-  const trafficCampaigns = activeCampaigns.filter(c => getCampaignType(c.name) === 'TRAFFIC');
-  const conversionCampaigns = activeCampaigns.filter(c => getCampaignType(c.name) === 'CONVERSION');
-  const apiInsights = data?.insights?.[0] || {};
+  const allCampaigns = data?.campaigns || [];
+  const activeCampaigns = allCampaigns.filter(c => c.status === 'ACTIVE');
+  const inactiveCampaigns = allCampaigns.filter(c => c.status !== 'ACTIVE');
 
-  const totalSpend = parseFloat(apiInsights.spend || 0);
-  const totalReach = parseFloat(apiInsights.reach || 0);
-  const totalImpressions = parseFloat(apiInsights.impressions || 0);
+  const groupCampaigns = (list) =>
+    list.reduce((acc, c) => {
+      const grp = OBJ_GROUP[c.objective] || 'Awareness';
+      if (!acc[grp]) acc[grp] = [];
+      acc[grp].push(c);
+      return acc;
+    }, {});
 
-  const trafficSpend = trafficCampaigns.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
-  const trafficClicks = trafficCampaigns.reduce((s, c) => s + (getLinkClicks(c.insights?.data?.[0]?.actions) || 0), 0);
-
-  const conversionSpend = conversionCampaigns.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
-  const conversionLeads = conversionCampaigns.reduce((s, c) => s + (getLeads(c.insights?.data?.[0]?.actions) || 0), 0);
-  const conversionImpressions = conversionCampaigns.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.impressions || 0), 0);
-  const conversionClicks = conversionCampaigns.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.clicks || 0), 0);
-
-  const calcCPM = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : null;
-  const calcCPC = trafficClicks > 0 ? trafficSpend / trafficClicks : null;
-  const calcCPL = conversionLeads > 0 ? conversionSpend / conversionLeads : null;
-  const calcCTR = conversionImpressions > 0 ? (conversionClicks / conversionImpressions) * 100 : null;
-
-  const grouped = activeCampaigns.reduce((acc, c) => {
-    const grp = OBJ_GROUP[c.objective] || 'Other';
-    if (!acc[grp]) acc[grp] = [];
-    acc[grp].push(c);
-    return acc;
-  }, {});
+  const activeGrouped = groupCampaigns(activeCampaigns);
+  const inactiveGrouped = groupCampaigns(inactiveCampaigns);
 
   const thStyle = (align = 'right') => ({
     padding: '10px 12px',
@@ -171,21 +145,130 @@ export default function DashboardPage() {
     fontSize: '12px',
   });
 
+  function renderCampaignRow(c, isActive) {
+    const ci = c.insights?.data?.[0] || {};
+    const cLeads = getLeads(ci.actions);
+    const cLinkClicks = getLinkClicks(ci.actions);
+    const cCPM = parseFloat(ci.impressions || 0) > 0 ? (parseFloat(ci.spend || 0) / parseFloat(ci.impressions)) * 1000 : null;
+    const cCPC = cLinkClicks > 0 ? parseFloat(ci.spend || 0) / cLinkClicks : null;
+    const cCPL = cLeads > 0 ? parseFloat(ci.spend || 0) / cLeads : null;
+    const result = getResult(c, ci);
+
+    return (
+      <tr key={c.id} style={{ borderTop: '0.5px solid var(--br)', opacity: isActive ? 1 : 0.55 }}>
+        <td style={{ ...tdStyle('left'), fontWeight: '500', color: 'var(--t1)' }}>{c.name}</td>
+        <td style={tdStyle('center')}>
+          {isActive ? (
+            <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'rgba(16,185,129,0.14)', color: '#10b981', fontWeight: '500', whiteSpace: 'nowrap' }}>▶ Active</span>
+          ) : (
+            <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'rgba(115,115,115,0.14)', color: 'var(--t3)', fontWeight: '500', whiteSpace: 'nowrap' }}>■ {c.status === 'PAUSED' ? 'Paused' : 'Ended'}</span>
+          )}
+        </td>
+        <td style={tdStyle()}>{c.daily_budget ? fmtRp(parseInt(c.daily_budget)) : '—'}</td>
+        <td style={tdStyle()}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+            <span style={{ fontSize: '9px', color: 'var(--t3)' }}>{result.label}</span>
+            <span style={{ fontWeight: '500', color: 'var(--t1)' }}>{result.value}</span>
+          </div>
+        </td>
+        <td style={tdStyle()}>{fmtNum(ci.reach)}</td>
+        <td style={tdStyle()}>{fmtNum(ci.impressions)}</td>
+        <td style={tdStyle()}>{fmtNum(cLinkClicks)}</td>
+        <td style={tdStyle()}>{cLeads ?? '—'}</td>
+        <td style={tdStyle()}>{fmtRp(cCPM)}</td>
+        <td style={tdStyle()}>{fmtRp(cCPC)}</td>
+        <td style={tdStyle()}>{fmtRp(cCPL)}</td>
+      </tr>
+    );
+  }
+
+  function renderGroup(grp, rows, isActive) {
+    if (!rows.length) return null;
+
+    const subBudget = rows.reduce((s, c) => s + (c.daily_budget ? parseInt(c.daily_budget) : 0), 0);
+    const subReach = rows.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.reach || 0), 0);
+    const subImpressions = rows.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.impressions || 0), 0);
+    const subTraffic = rows.reduce((s, c) => s + (getLinkClicks(c.insights?.data?.[0]?.actions) || 0), 0);
+    const subLeads = rows.reduce((s, c) => s + (getLeads(c.insights?.data?.[0]?.actions) || 0), 0);
+    const subSpend = rows.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
+    const subCPM = subImpressions > 0 ? (subSpend / subImpressions) * 1000 : null;
+    const subCPC = subTraffic > 0 ? subSpend / subTraffic : null;
+    const subCPL = subLeads > 0 ? subSpend / subLeads : null;
+    const subResultVal = grp === 'Awareness' ? fmtNum(subImpressions) : grp === 'Traffic' ? fmtNum(subTraffic) : fmtNum(subLeads);
+    const subResultLabel = grp === 'Awareness' ? 'Impressions' : grp === 'Traffic' ? 'Link Clicks' : 'Leads';
+
+    const key = isActive ? grp : grp + '-inactive';
+
+    return [
+      <tr key={key + '-hdr'} style={{ background: 'var(--s2)' }}>
+        <td colSpan={11} style={{ padding: '6px 14px' }}>
+          <span style={{ fontSize: '10px', fontWeight: '600', color: 'var(--t2)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ padding: '2px 9px', borderRadius: '20px', fontSize: '10px', fontWeight: '500', background: OBJ_STYLE[grp]?.bg || 'var(--sf)', color: OBJ_STYLE[grp]?.color || 'var(--t2)' }}>{grp}</span>
+            {rows.length} campaign{rows.length > 1 ? 's' : ''}
+          </span>
+        </td>
+      </tr>,
+
+      ...rows.map(c => renderCampaignRow(c, isActive)),
+
+      isActive && showSubtotal[grp] && (
+        <tr key={key + '-sub'} style={{ borderTop: '0.5px solid var(--br)', background: 'var(--sf)' }}>
+          <td colSpan={2} style={{ padding: '8px 12px', fontWeight: '600', color: 'var(--t1)', fontSize: '11px', fontStyle: 'italic' }}>Subtotal {grp}</td>
+          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subBudget)}</td>
+          <td style={{ padding: '8px 12px', textAlign: 'right', fontSize: '11px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              <span style={{ fontSize: '9px', color: 'var(--t3)' }}>{subResultLabel}</span>
+              <span style={{ fontWeight: '500', color: 'var(--t1)' }}>{subResultVal}</span>
+            </div>
+          </td>
+          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtNum(subReach)}</td>
+          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtNum(subImpressions)}</td>
+          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{subTraffic > 0 ? fmtNum(subTraffic) : '—'}</td>
+          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{subLeads > 0 ? fmtNum(subLeads) : '—'}</td>
+          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subCPM)}</td>
+          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subCPC)}</td>
+          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subCPL)}</td>
+        </tr>
+      ),
+
+      isActive && (
+        <tr key={key + '-toggle'} style={{ borderTop: '0.5px solid var(--br)', background: 'var(--sf)' }}>
+          <td colSpan={11} style={{ padding: '4px 14px', textAlign: 'center' }}>
+            <button
+              onClick={() => toggleSubtotal(grp)}
+              style={{ fontSize: '10px', padding: '2px 14px', borderRadius: '6px', border: '1px solid var(--bs)', background: 'transparent', color: 'var(--t3)', cursor: 'pointer' }}>
+              {showSubtotal[grp] ? '▲ Hide subtotal' : '▼ Show subtotal'}
+            </button>
+          </td>
+        </tr>
+      ),
+    ].filter(Boolean);
+  }
+
   return (
     <div style={{ padding: '18px 20px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
-      {/* Toolbar */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '20px' }}>
+
+      {/* Topbar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div>
+          <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--t1)' }}>Campaign Performance</div>
+          <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>
+            {loading ? 'Loading...' : `${activeCampaigns.length} active · ${inactiveCampaigns.length} inactive`}
+          </div>
+        </div>
         <div style={{ position: 'relative' }}>
-          <button onClick={() => setShowDropdown(!showDropdown)}
-            style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 14px', fontSize: '13px', fontWeight: '500', border: '1.5px solid var(--bs)', borderRadius: '12px', background: 'var(--cd)', color: 'var(--t1)', cursor: 'pointer' }}>
+          <button
+            onClick={() => setShowDropdown(!showDropdown)}
+            style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '7px 12px', fontSize: '13px', border: '1px solid var(--br)', borderRadius: '8px', background: 'var(--cd)', color: 'var(--t1)', cursor: 'pointer' }}>
             📅 {selectedDate.label} ▾
           </button>
           {showDropdown && (
-            <div style={{ position: 'absolute', top: '42px', right: 0, zIndex: 50, background: 'var(--cd)', border: '1px solid var(--bs)', borderRadius: '12px', overflow: 'hidden', minWidth: '180px' }}>
+            <div style={{ position: 'absolute', top: '38px', right: 0, zIndex: 50, background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '8px', overflow: 'hidden', minWidth: '160px' }}>
               {dateOptions.map(opt => (
-                <div key={opt.value} onClick={() => { setSelectedDate(opt); setShowDropdown(false); }}
-                  style={{ padding: '10px 16px', fontSize: '13px', cursor: 'pointer', color: opt.value === selectedDate.value ? 'var(--ac)' : 'var(--t2)', fontWeight: opt.value === selectedDate.value ? '500' : '400', background: opt.value === selectedDate.value ? 'var(--sf)' : 'transparent' }}>
-                  {opt.value === selectedDate.value ? '● ' : '○ '}{opt.label}
+                <div key={opt.value}
+                  onClick={() => { setSelectedDate(opt); setShowDropdown(false); }}
+                  style={{ padding: '9px 14px', fontSize: '13px', cursor: 'pointer', color: opt.value === selectedDate.value ? 'var(--ac)' : 'var(--t2)', background: opt.value === selectedDate.value ? 'var(--sf)' : 'transparent' }}>
+                  {opt.label}
                 </div>
               ))}
             </div>
@@ -195,222 +278,63 @@ export default function DashboardPage() {
 
       {loading && (
         <div style={{ textAlign: 'center', padding: '60px', color: 'var(--t3)', fontSize: '14px' }}>
-          ⏳ Loading data from Meta Ads...
+          Loading data from Meta Ads...
         </div>
       )}
 
       {error && (
-        <div style={{ padding: '16px', background: 'rgba(220,50,50,0.1)', borderRadius: '12px', color: '#C62828', fontSize: '13px', marginBottom: '20px' }}>
-          ⚠️ Error: {error}
+        <div style={{ padding: '14px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', color: '#ef4444', fontSize: '13px', marginBottom: '16px' }}>
+          Error: {error}
         </div>
       )}
 
       {!loading && !error && data && (
-        <>
-          {/* Breakdown per Platform */}
-          <SectionLabel color="#1877F2" text="Breakdown by platform" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-            <div style={{ background: 'var(--cd)', border: '0.5px solid var(--br)', borderRadius: '18px', padding: '18px 20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '13px', fontWeight: '500', color: 'var(--t1)' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#1877F2', display: 'inline-block' }}></span>
-                  Meta Ads
-                </div>
-                <span style={{ fontSize: '10px', padding: '3px 10px', borderRadius: '20px', background: 'var(--pr-bg)', color: 'var(--pr-tx)', fontWeight: '500' }}>
-                  {activeCampaigns.length} active campaigns
-                </span>
-              </div>
-              <div style={{ fontSize: '30px', fontWeight: '500', color: 'var(--t1)', lineHeight: 1, marginBottom: '3px' }}>{fmtRp(totalSpend)}</div>
-              <div style={{ fontSize: '11px', color: 'var(--t3)', marginBottom: '14px' }}>Total budget spent · {selectedDate.label}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', borderTop: '0.5px solid var(--br)', paddingTop: '13px' }}>
-                {[['CPM', fmtRp(calcCPM)], ['CPC', fmtRp(calcCPC)], ['CPL', fmtRp(calcCPL)], ['Leads', conversionLeads || '—']].map(([label, val], i) => (
-                  <div key={label} style={{ textAlign: 'center', borderRight: i < 3 ? '0.5px solid var(--br)' : 'none' }}>
-                    <div style={{ fontSize: '10px', color: 'var(--t3)', marginBottom: '3px', textTransform: 'uppercase' }}>{label}</div>
-                    <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--t1)' }}>{val}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
+        <div style={{ background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '10px', overflow: 'hidden' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr style={{ background: 'var(--sf)' }}>
+                  <th style={thStyle('left')}>Campaign</th>
+                  <th style={thStyle('center')}>Status</th>
+                  <th style={thStyle()}>Daily Budget</th>
+                  <th style={thStyle()}>Result</th>
+                  <th style={thStyle()}>Reach</th>
+                  <th style={thStyle()}>Impressions</th>
+                  <th style={thStyle()}>Traffic</th>
+                  <th style={thStyle()}>Leads</th>
+                  <th style={thStyle()}>CPM</th>
+                  <th style={thStyle()}>CPC</th>
+                  <th style={thStyle()}>CPL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* ── ACTIVE CAMPAIGNS ── */}
+                {activeCampaigns.length > 0 && OBJ_ORDER.map(grp => renderGroup(grp, activeGrouped[grp] || [], true))}
 
-            <div style={{ background: 'var(--cd)', border: '0.5px solid var(--br)', borderRadius: '18px', padding: '18px 20px', opacity: 0.6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '13px', fontWeight: '500', color: 'var(--t1)' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EA4335', display: 'inline-block' }}></span>
-                  Google Ads
-                </div>
-                <span style={{ fontSize: '10px', padding: '3px 10px', borderRadius: '20px', background: 'var(--pd-bg)', color: 'var(--pd-tx)', fontWeight: '500' }}>Not connected</span>
-              </div>
-              <div style={{ fontSize: '30px', fontWeight: '500', color: 'var(--t1)', lineHeight: 1, marginBottom: '3px' }}>—</div>
-              <div style={{ fontSize: '11px', color: 'var(--t3)', marginBottom: '14px' }}>Total budget spent · {selectedDate.label}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', borderTop: '0.5px solid var(--br)', paddingTop: '13px' }}>
-                {['CPM', 'CPC', 'CPL', 'Leads'].map((label, i) => (
-                  <div key={label} style={{ textAlign: 'center', borderRight: i < 3 ? '0.5px solid var(--br)' : 'none' }}>
-                    <div style={{ fontSize: '10px', color: 'var(--t3)', marginBottom: '3px', textTransform: 'uppercase' }}>{label}</div>
-                    <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--t1)' }}>—</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+                {activeCampaigns.length === 0 && (
+                  <tr><td colSpan={11} style={{ padding: '24px', textAlign: 'center', color: 'var(--t3)', fontSize: '13px' }}>No active campaigns</td></tr>
+                )}
 
-          <div style={{ height: '0.5px', background: 'var(--br)', margin: '8px 0 20px' }}></div>
-
-          {/* Overall Metrics */}
-          <SectionLabel color="#1877F2" text={`Meta Ads overall metrics · ${selectedDate.label}`} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '10px', marginBottom: '24px' }}>
-            {[
-              ['Total Spend', fmtRp(totalSpend), 'All campaigns'],
-              ['Reach', fmtNum(totalReach), 'All campaigns'],
-              ['Impressions', fmtNum(totalImpressions), 'All campaigns'],
-              ['Traffic', fmtNum(trafficClicks), 'Traffic campaigns only'],
-              ['Leads', conversionLeads || '—', 'Conversion campaigns only'],
-              ['CPM', fmtRp(calcCPM), 'Total spend / impressions'],
-              ['CPC', fmtRp(calcCPC), 'Traffic spend / clicks'],
-              ['CPL', fmtRp(calcCPL), 'Conversion spend / leads'],
-              ['CTR', calcCTR ? fmtPct(calcCTR) : '—', 'Conversion campaigns only'],
-              ['Total Leads', conversionLeads || '—', 'Conversion campaigns only'],
-            ].map(([label, val, hint]) => (
-              <div key={label} style={{ background: 'var(--sf)', borderRadius: '14px', padding: '14px 15px' }}>
-                <div style={{ fontSize: '10px', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{label}</div>
-                <div style={{ fontSize: '20px', fontWeight: '500', color: 'var(--t1)', marginBottom: '4px' }}>{val}</div>
-                <div style={{ fontSize: '9px', color: 'var(--t3)', fontStyle: 'italic' }}>{hint}</div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ height: '0.5px', background: 'var(--br)', margin: '8px 0 20px' }}></div>
-
-          {/* Campaign Performance Table */}
-          <SectionLabel color="#1877F2" text={`Meta Ads campaign performance (${activeCampaigns.length} active campaigns)`} />
-
-          <div style={{ background: 'var(--cd)', border: '0.5px solid var(--br)', borderRadius: '18px', overflow: 'hidden', marginBottom: '20px' }}>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                <thead>
-                  <tr style={{ background: 'var(--sf)' }}>
-                    <th style={thStyle('left')}>Campaign</th>
-                    <th style={thStyle('center')}>Status</th>
-                    <th style={thStyle()}>Daily Budget</th>
-                    <th style={thStyle()}>Result</th>
-                    <th style={thStyle()}>Reach</th>
-                    <th style={thStyle()}>Impressions</th>
-                    <th style={thStyle()}>Traffic</th>
-                    <th style={thStyle()}>Leads</th>
-                    <th style={thStyle()}>CPM</th>
-                    <th style={thStyle()}>CPC</th>
-                    <th style={thStyle()}>CPL</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {OBJ_ORDER.map(grp => {
-                    const rows = grouped[grp] || [];
-                    if (!rows.length) return null;
-
-                    const subBudget = rows.reduce((s, c) => s + (c.daily_budget ? parseInt(c.daily_budget) : 0), 0);
-                    const subReach = rows.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.reach || 0), 0);
-                    const subImpressions = rows.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.impressions || 0), 0);
-                    const subTraffic = rows.reduce((s, c) => s + (getLinkClicks(c.insights?.data?.[0]?.actions) || 0), 0);
-                    const subLeads = rows.reduce((s, c) => s + (getLeads(c.insights?.data?.[0]?.actions) || 0), 0);
-                    const subSpend = rows.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
-                    const subCPM = subImpressions > 0 ? (subSpend / subImpressions) * 1000 : null;
-                    const subCPC = subTraffic > 0 ? subSpend / subTraffic : null;
-                    const subCPL = subLeads > 0 ? subSpend / subLeads : null;
-                    const subResultVal = grp === 'Awareness' ? fmtNum(subImpressions) : grp === 'Traffic' ? fmtNum(subTraffic) : fmtNum(subLeads);
-                    const subResultLabel = grp === 'Awareness' ? 'Impressions' : grp === 'Traffic' ? 'Link Clicks' : 'Leads';
-
-                    return [
-                      // Group header (no toggle button here)
-                      <tr key={grp + '-hdr'} style={{ background: 'var(--s2)' }}>
-                        <td colSpan={11} style={{ padding: '6px 14px' }}>
-                          <span style={{ fontSize: '10px', fontWeight: '600', color: 'var(--t2)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ padding: '2px 9px', borderRadius: '20px', fontSize: '10px', fontWeight: '500', background: OBJ_STYLE[grp]?.bg, color: OBJ_STYLE[grp]?.color }}>{grp}</span>
-                            {rows.length} campaign{rows.length > 1 ? 's' : ''}
-                          </span>
-                        </td>
-                      </tr>,
-
-                      // Campaign rows
-                      ...rows.map(c => {
-                        const ci = c.insights?.data?.[0] || {};
-                        const cLeads = getLeads(ci.actions);
-                        const cLinkClicks = getLinkClicks(ci.actions);
-                        const cCPM = parseFloat(ci.impressions || 0) > 0 ? (parseFloat(ci.spend || 0) / parseFloat(ci.impressions)) * 1000 : null;
-                        const cCPC = cLinkClicks > 0 ? parseFloat(ci.spend || 0) / cLinkClicks : null;
-                        const cCPL = cLeads > 0 ? parseFloat(ci.spend || 0) / cLeads : null;
-                        const result = getResult(c, ci);
-
-                        return (
-                          <tr key={c.id} style={{ borderTop: '0.5px solid var(--br)' }}>
-                            <td style={{ ...tdStyle('left'), fontWeight: '500', color: 'var(--t1)' }}>{c.name}</td>
-                            <td style={tdStyle('center')}>
-                              <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'var(--pr-bg)', color: 'var(--pr-tx)', fontWeight: '500', whiteSpace: 'nowrap' }}>▶ Active</span>
-                            </td>
-                            <td style={tdStyle()}>{c.daily_budget ? fmtRp(parseInt(c.daily_budget)) : '—'}</td>
-                            <td style={tdStyle()}>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                <span style={{ fontSize: '9px', color: 'var(--t3)' }}>{result.label}</span>
-                                <span style={{ fontWeight: '500', color: 'var(--t1)' }}>{result.value}</span>
-                              </div>
-                            </td>
-                            <td style={tdStyle()}>{fmtNum(ci.reach)}</td>
-                            <td style={tdStyle()}>{fmtNum(ci.impressions)}</td>
-                            <td style={tdStyle()}>{fmtNum(cLinkClicks)}</td>
-                            <td style={tdStyle()}>{cLeads ?? '—'}</td>
-                            <td style={tdStyle()}>{fmtRp(cCPM)}</td>
-                            <td style={tdStyle()}>{fmtRp(cCPC)}</td>
-                            <td style={tdStyle()}>{fmtRp(cCPL)}</td>
-                          </tr>
-                        );
-                      }),
-
-                      // Subtotal row
-                      showSubtotal[grp] && (
-                        <tr key={grp + '-sub'} style={{ borderTop: '0.5px solid var(--br)', background: 'var(--sf)' }}>
-                          <td colSpan={2} style={{ padding: '8px 12px', fontWeight: '600', color: 'var(--t1)', fontSize: '11px', fontStyle: 'italic' }}>Subtotal {grp}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subBudget)}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontSize: '11px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                              <span style={{ fontSize: '9px', color: 'var(--t3)' }}>{subResultLabel}</span>
-                              <span style={{ fontWeight: '500', color: 'var(--t1)' }}>{subResultVal}</span>
-                            </div>
-                          </td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtNum(subReach)}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtNum(subImpressions)}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{subTraffic > 0 ? fmtNum(subTraffic) : '—'}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{subLeads > 0 ? fmtNum(subLeads) : '—'}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subCPM)}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subCPC)}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subCPL)}</td>
-                        </tr>
-                      ),
-
-                      // Toggle button row (always visible, below subtotal)
-                      <tr key={grp + '-toggle'} style={{ borderTop: '0.5px solid var(--br)', background: 'var(--sf)' }}>
-                        <td colSpan={11} style={{ padding: '4px 14px', textAlign: 'center' }}>
-                          <button
-                            onClick={() => toggleSubtotal(grp)}
-                            style={{ fontSize: '10px', padding: '2px 14px', borderRadius: '6px', border: '1px solid var(--bs)', background: 'transparent', color: 'var(--t3)', cursor: 'pointer' }}>
-                            {showSubtotal[grp] ? '▲ Hide subtotal' : '▼ Show subtotal'}
-                          </button>
-                        </td>
-                      </tr>,
-
-                    ].filter(Boolean);
-                  })}
-
-                  {/* Total row */}
-                  <tr style={{ borderTop: '0.5px solid var(--br)', background: 'var(--s2)' }}>
-                    <td colSpan={2} style={{ padding: '9px 12px', fontWeight: '600', color: 'var(--t1)' }}>Total</td>
-                    <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: '600', color: 'var(--t1)' }}>
-                      {fmtRp(activeCampaigns.reduce((s, c) => s + (c.daily_budget ? parseInt(c.daily_budget) : 0), 0))}
+                {/* ── DIVIDER + INACTIVE TOGGLE ── */}
+                {inactiveCampaigns.length > 0 && (
+                  <tr style={{ background: '#1a1a1a' }}>
+                    <td colSpan={11} style={{ padding: '8px 14px' }}>
+                      <button
+                        onClick={() => setShowInactive(v => !v)}
+                        style={{ fontSize: '11px', color: 'var(--t3)', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '10px' }}>{showInactive ? '▲' : '▼'}</span>
+                        {showInactive ? 'Hide' : 'Show'} inactive campaigns ({inactiveCampaigns.length})
+                      </button>
                     </td>
-                    <td colSpan={8}></td>
                   </tr>
-                </tbody>
-              </table>
-            </div>
+                )}
+
+                {/* ── INACTIVE CAMPAIGNS ── */}
+                {showInactive && inactiveCampaigns.length > 0 && OBJ_ORDER.map(grp => renderGroup(grp, inactiveGrouped[grp] || [], false))}
+              </tbody>
+            </table>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
