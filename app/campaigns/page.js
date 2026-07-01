@@ -89,7 +89,6 @@ export default function CampaignsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showSubtotal, setShowSubtotal] = useState({ Awareness: true, Traffic: true, Conversion: true });
-  const [showInactive, setShowInactive] = useState(true);
 
   useEffect(() => { fetchData(); }, [selectedDate]);
 
@@ -112,9 +111,18 @@ export default function CampaignsPage() {
   }
 
   const allCampaigns = data?.campaigns || [];
-  const activeCampaigns = allCampaigns.filter(c => c.status === 'ACTIVE');
-  const inactiveCampaigns = allCampaigns.filter(c => c.status !== 'ACTIVE');
 
+  // Tampilkan semua campaign yang punya data di periode ini (spend/reach/impressions > 0)
+  const campaignsWithData = allCampaigns.filter(c => {
+    const ci = c.insights?.data?.[0];
+    if (!ci) return false;
+    return parseFloat(ci.spend || 0) > 0 || parseFloat(ci.reach || 0) > 0 || parseFloat(ci.impressions || 0) > 0;
+  });
+
+  const activeCampaigns = campaignsWithData.filter(c => c.status === 'ACTIVE');
+  const inactiveCampaigns = campaignsWithData.filter(c => c.status !== 'ACTIVE');
+
+  // Dalam tiap grup: aktif dulu, lalu non-aktif — menyatu tanpa pemisah
   const groupCampaigns = (list) =>
     list.reduce((acc, c) => {
       const grp = OBJ_GROUP[c.objective] || 'Awareness';
@@ -123,8 +131,13 @@ export default function CampaignsPage() {
       return acc;
     }, {});
 
-  const activeGrouped = groupCampaigns(activeCampaigns);
-  const inactiveGrouped = groupCampaigns(inactiveCampaigns);
+  // Gabungkan per grup: aktif di atas, non-aktif di bawah
+  const mergedGrouped = {};
+  OBJ_ORDER.forEach(grp => {
+    const active = (groupCampaigns(activeCampaigns)[grp] || []);
+    const inactive = (groupCampaigns(inactiveCampaigns)[grp] || []);
+    if (active.length || inactive.length) mergedGrouped[grp] = [...active, ...inactive];
+  });
 
   const thStyle = (align = 'right') => ({
     padding: '10px 12px',
@@ -145,7 +158,8 @@ export default function CampaignsPage() {
     fontSize: '12px',
   });
 
-  function renderCampaignRow(c, isActive) {
+  function renderCampaignRow(c) {
+    const isActive = c.status === 'ACTIVE';
     const ci = c.insights?.data?.[0] || {};
     const cLeads = getLeads(ci.actions);
     const cLinkClicks = getLinkClicks(ci.actions);
@@ -182,7 +196,8 @@ export default function CampaignsPage() {
     );
   }
 
-  function renderGroup(grp, rows, isActive) {
+  function renderGroup(grp, rows, activeRows) {
+    const isActive = true; // subtotal selalu ditampilkan, flag ini untuk subtotal logic
     if (!rows.length) return null;
 
     const subBudget = rows.reduce((s, c) => s + (c.daily_budget ? parseInt(c.daily_budget) : 0), 0);
@@ -209,7 +224,7 @@ export default function CampaignsPage() {
         </td>
       </tr>,
 
-      ...rows.map(c => renderCampaignRow(c, isActive)),
+      ...rows.map(c => renderCampaignRow(c)),
 
       isActive && showSubtotal[grp] && (
         <tr key={key + '-sub'} style={{ borderTop: '0.5px solid var(--br)', background: 'var(--sf)' }}>
@@ -253,7 +268,7 @@ export default function CampaignsPage() {
         <div>
           <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--t1)' }}>Campaign Performance</div>
           <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>
-            {loading ? 'Loading...' : `${activeCampaigns.length} active · ${inactiveCampaigns.length} inactive`}
+            {loading ? 'Loading...' : `${campaignsWithData.length} campaigns · ${activeCampaigns.length} active · ${inactiveCampaigns.length} non-active · ${selectedDate.label}`}
           </div>
         </div>
         <div style={{ position: 'relative' }}>
@@ -308,29 +323,20 @@ export default function CampaignsPage() {
                 </tr>
               </thead>
               <tbody>
-                {/* ── ACTIVE CAMPAIGNS ── */}
-                {activeCampaigns.length > 0 && OBJ_ORDER.map(grp => renderGroup(grp, activeGrouped[grp] || [], true))}
-
-                {activeCampaigns.length === 0 && (
-                  <tr><td colSpan={11} style={{ padding: '24px', textAlign: 'center', color: 'var(--t3)', fontSize: '13px' }}>No active campaigns</td></tr>
-                )}
-
-                {/* ── DIVIDER + INACTIVE TOGGLE ── */}
-                {inactiveCampaigns.length > 0 && (
-                  <tr style={{ background: '#1a1a1a' }}>
-                    <td colSpan={11} style={{ padding: '8px 14px' }}>
-                      <button
-                        onClick={() => setShowInactive(v => !v)}
-                        style={{ fontSize: '11px', color: 'var(--t3)', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '10px' }}>{showInactive ? '▲' : '▼'}</span>
-                        {showInactive ? 'Hide' : 'Show'} inactive campaigns ({inactiveCampaigns.length})
-                      </button>
-                    </td>
-                  </tr>
-                )}
-
-                {/* ── INACTIVE CAMPAIGNS ── */}
-                {showInactive && inactiveCampaigns.length > 0 && OBJ_ORDER.map(grp => renderGroup(grp, inactiveGrouped[grp] || [], false))}
+                {campaignsWithData.length > 0
+                  ? OBJ_ORDER.map(grp => {
+                      const rows = mergedGrouped[grp];
+                      if (!rows || !rows.length) return null;
+                      const activeRows = rows.filter(c => c.status === 'ACTIVE');
+                      // tiap row: aktif = true kalau statusnya ACTIVE
+                      return renderGroup(grp, rows, activeRows);
+                    })
+                  : (
+                    <tr><td colSpan={11} style={{ padding: '32px', textAlign: 'center', color: 'var(--t3)', fontSize: '13px' }}>
+                      No campaign data for {selectedDate.label}
+                    </td></tr>
+                  )
+                }
               </tbody>
             </table>
           </div>
