@@ -280,7 +280,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── KONTEN ── */}
-      <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', padding:'16px 20px', gap:'12px', overflow:'auto' }}>
+      <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', padding:'16px 20px', gap:'12px', overflow:'hidden' }}>
 
         {loading && (
           <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--t3)', fontSize:'14px' }}>
@@ -339,7 +339,7 @@ export default function DashboardPage() {
             </div>
 
             {/* ── BOTTOM: DONUT + BAR CHART BERDAMPINGAN ── */}
-            <div style={{ height:'230px', flexShrink:0, display:'grid', gridTemplateColumns:'260px 1fr', gap:'10px' }}>
+            <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'260px 1fr', gap:'10px' }}>
 
               {/* DONUT */}
               <div style={{
