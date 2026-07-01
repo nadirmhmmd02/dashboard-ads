@@ -1,19 +1,29 @@
 import './globals.css';
-import Navbar from './components/Navbar';
+import Sidebar from './components/Sidebar';
 
 export const metadata = {
-  title: 'Dashboard Ads',
-  description: 'Dashboard Ads - Baba Rafi Enterprise',
+  title: 'WILL OF D · Dashboard Ads',
+  description: 'Performance Marketing Dashboard',
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="id">
+    <html lang="id" data-theme="dark">
       <body>
-        <Navbar />
-        <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px 24px' }}>
-          {children}
-        </main>
+        <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden' }}>
+          <Sidebar />
+          <main
+            style={{
+              flex: 1,
+              minWidth: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
+            {children}
+          </main>
+        </div>
       </body>
     </html>
   );

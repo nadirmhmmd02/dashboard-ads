@@ -4,51 +4,73 @@
   padding: 0;
 }
 
+/* ===== LIGHT MODE (dipakai nanti utk toggle, belum aktif) ===== */
 :root {
-  --pg: #FBF3E8;
-  --cd: #FFFFFF;
-  --sf: #FFF2DC;
-  --s2: #FFE8C0;
-  --br: rgba(94,49,23,0.12);
-  --bs: rgba(94,49,23,0.28);
-  --ac: #7A3E10;
-  --t1: #2A0E00;
-  --t2: #5A2E10;
-  --t3: #8A5830;
-  --pos: #2A7D32;
-  --neg: #C62828;
-  --nav: #FFFFFF;
-  --pr-bg: #E8F5E9;
-  --pr-tx: #2E7D32;
-  --pd-bg: #EDE8E4;
-  --pd-tx: #7A5040;
+  --pg: #f5f5f5;
+  --cd: #ffffff;
+  --sf: #fafafa;
+  --s2: #f0f0f0;
+  --br: rgba(0,0,0,0.08);
+  --bs: rgba(0,0,0,0.16);
+  --ac: #f59e0b;
+  --t1: #1a1a1a;
+  --t2: #525252;
+  --t3: #8a8a8a;
+  --pos: #10b981;
+  --neg: #ef4444;
+  --nav: #141414;
+  --pr-bg: rgba(16,185,129,0.12);
+  --pr-tx: #059669;
+  --pd-bg: rgba(0,0,0,0.05);
+  --pd-tx: #737373;
+
+  /* aksen mockup */
+  --blue: #3b82f6;
+  --amber: #f59e0b;
+  --green: #10b981;
+  --red: #ef4444;
+  --purple: #8b5cf6;
+  --amber-active: #f5b53f;
 }
 
+/* ===== DARK MODE (AKTIF — palet abu mockup v5) ===== */
 html[data-theme="dark"] {
-  --pg: #0F0803;
-  --cd: #1C1007;
-  --sf: #271408;
-  --s2: #341C0A;
-  --br: rgba(249,194,0,0.1);
-  --bs: rgba(249,194,0,0.28);
-  --ac: #F9C200;
-  --t1: #FFF2DC;
-  --t2: #C49060;
-  --t3: #7A5030;
-  --pos: #66BB6A;
-  --neg: #EF5350;
-  --nav: #180D04;
-  --pr-bg: rgba(102,187,106,0.14);
-  --pr-tx: #66BB6A;
-  --pd-bg: rgba(255,255,255,0.07);
-  --pd-tx: #8A6040;
+  --pg: #1a1a1a;
+  --cd: #222222;
+  --sf: #1a1a1a;
+  --s2: #252525;
+  --br: #2a2a2a;
+  --bs: #333333;
+  --ac: #f59e0b;
+  --t1: #e5e5e5;
+  --t2: #a3a3a3;
+  --t3: #737373;
+  --pos: #10b981;
+  --neg: #ef4444;
+  --nav: #141414;
+  --pr-bg: rgba(16,185,129,0.14);
+  --pr-tx: #34d399;
+  --pd-bg: rgba(255,255,255,0.06);
+  --pd-tx: #8a8a8a;
+
+  /* aksen mockup */
+  --blue: #3b82f6;
+  --amber: #f59e0b;
+  --green: #10b981;
+  --red: #ef4444;
+  --purple: #8b5cf6;
+  --amber-active: #f5b53f;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
   background: var(--pg);
   color: var(--t1);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  min-height: 100vh;
 }
 
 a {
@@ -60,3 +82,34 @@ button {
   font-family: inherit;
   cursor: pointer;
 }
+
+/* ===== ANIMASI (DNA project) ===== */
+@keyframes wdSpinGlow {
+  0%, 100% { box-shadow: 0 0 8px 0 rgba(245,158,11,0.4); }
+  50% { box-shadow: 0 0 16px 3px rgba(245,158,11,0.7); }
+}
+
+@keyframes wdGrowBar {
+  from { height: 0; }
+}
+
+@keyframes wdFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes wdPulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.5; }
+}
+
+@keyframes wdSweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+/* scrollbar tipis biar nyatu sama tema gelap */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: #444; }

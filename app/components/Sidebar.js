@@ -1,0 +1,282 @@
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
+import {
+  Zap,
+  LayoutDashboard,
+  Megaphone,
+  CalendarDays,
+  FileChartColumn,
+  ChevronsLeft,
+} from 'lucide-react';
+
+const NAV_ITEMS = [
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/campaigns', label: 'Campaigns', icon: Megaphone },
+  { href: '/calendar', label: 'Calendar', icon: CalendarDays },
+  { href: '/reports', label: 'Reports', icon: FileChartColumn },
+];
+
+const MIN_WIDTH = 130;
+const MAX_WIDTH = 360;
+const DEFAULT_WIDTH = 200;
+const COLLAPSED_WIDTH = 64;
+const EASE = 'cubic-bezier(0.4,0,0.2,1)';
+
+export default function Sidebar() {
+  const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const [hovered, setHovered] = useState(null);
+  const [dragHover, setDragHover] = useState(false);
+
+  const lastWidth = useRef(DEFAULT_WIDTH);
+  const dragging = useRef(false);
+  const sidebarRef = useRef(null);
+  const [animate, setAnimate] = useState(true);
+
+  function isActive(href) {
+    if (href === '/') return pathname === '/';
+    return pathname === href || pathname.startsWith(href + '/');
+  }
+
+  function toggleCollapse() {
+    setAnimate(true);
+    if (!collapsed) {
+      lastWidth.current = width;
+      setCollapsed(true);
+      setWidth(COLLAPSED_WIDTH);
+    } else {
+      setCollapsed(false);
+      setWidth(lastWidth.current);
+    }
+  }
+
+  useEffect(() => {
+    function onMove(e) {
+      if (!dragging.current || !sidebarRef.current) return;
+      const left = sidebarRef.current.getBoundingClientRect().left;
+      let w = e.clientX - left;
+      if (w < MIN_WIDTH) w = MIN_WIDTH;
+      if (w > MAX_WIDTH) w = MAX_WIDTH;
+      setWidth(w);
+    }
+    function onUp() {
+      if (dragging.current) {
+        dragging.current = false;
+        setAnimate(true);
+        document.body.style.userSelect = '';
+      }
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
+  function startDrag(e) {
+    if (collapsed) return;
+    dragging.current = true;
+    setAnimate(false);
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  }
+
+  const textOpacity = collapsed ? 0 : 1;
+
+  return (
+    <aside
+      ref={sidebarRef}
+      style={{
+        width: width + 'px',
+        background: '#141414',
+        borderRight: '1px solid #2a2a2a',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'sticky',
+        top: 0,
+        transition: animate ? `width 0.28s ${EASE}` : 'none',
+        flexShrink: 0,
+        height: '100vh',
+      }}
+    >
+      {/* Logo */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'flex-start',
+          gap: collapsed ? '0' : '11px',
+          padding: collapsed ? '18px 0' : '18px 16px',
+          borderBottom: '1px solid #2a2a2a',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          transition: `gap 0.28s ${EASE}, padding 0.28s ${EASE}`,
+        }}
+      >
+        <div
+          style={{
+            width: '30px',
+            height: '30px',
+            borderRadius: '8px',
+            background: '#f59e0b',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            animation: 'wdSpinGlow 3s ease-in-out infinite',
+          }}
+        >
+          <Zap size={19} color="#412402" fill="#412402" style={{ flexShrink: 0, minWidth: 19 }} />
+        </div>
+        <span
+          style={{
+            fontSize: '15px',
+            fontWeight: 500,
+            letterSpacing: '0.5px',
+            color: '#e5e5e5',
+            opacity: textOpacity,
+            width: collapsed ? 0 : 'auto',
+            overflow: 'hidden',
+            transition: 'opacity 0.2s',
+          }}
+        >
+          WILL OF D
+        </span>
+      </div>
+
+      {/* Nav */}
+      <nav
+        style={{
+          flex: 1,
+          padding: '12px 10px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px',
+        }}
+      >
+        {NAV_ITEMS.map((item) => {
+          const active = isActive(item.href);
+          const isHover = hovered === item.href && !active;
+          const Icon = item.icon;
+
+          let bg = 'transparent';
+          let color = '#a3a3a3';
+          let iconColor = '#a3a3a3';
+          let padLeft = 12;
+
+          if (active) {
+            bg = 'rgba(245,158,11,0.16)';
+            color = '#f5b53f';
+            iconColor = '#f5b53f';
+          } else if (isHover) {
+            bg = 'rgba(245,158,11,0.09)';
+            color = '#d9a441';
+            iconColor = '#d9a441';
+            padLeft = collapsed ? 12 : 16;
+          }
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onMouseEnter={() => setHovered(item.href)}
+              onMouseLeave={() => setHovered(null)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                gap: collapsed ? '0' : '13px',
+                padding: collapsed ? '10px 0' : `10px 12px 10px ${padLeft}px`,
+                borderRadius: '8px',
+                background: bg,
+                color: color,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                transition: `background 0.22s ${EASE}, color 0.22s, padding-left 0.18s, gap 0.28s ${EASE}`,
+              }}
+            >
+              <Icon
+                size={20}
+                color={iconColor}
+                style={{ flexShrink: 0, minWidth: 20, transition: 'color 0.22s' }}
+              />
+              <span
+                style={{
+                  opacity: textOpacity,
+                  width: collapsed ? 0 : 'auto',
+                  overflow: 'hidden',
+                  transition: 'opacity 0.2s',
+                }}
+              >
+                {item.label}
+              </span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Collapse button */}
+      <div style={{ padding: '12px 10px', borderTop: '1px solid #2a2a2a' }}>
+        <button
+          onClick={toggleCollapse}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            gap: collapsed ? '0' : '13px',
+            width: '100%',
+            padding: collapsed ? '10px 0' : '10px 12px',
+            borderRadius: '8px',
+            background: 'transparent',
+            border: 'none',
+            color: '#a3a3a3',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            transition: `gap 0.28s ${EASE}`,
+          }}
+        >
+          <ChevronsLeft
+            size={20}
+            color="#a3a3a3"
+            style={{
+              flexShrink: 0,
+              minWidth: 20,
+              transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: `transform 0.28s ${EASE}`,
+            }}
+          />
+          <span style={{ opacity: textOpacity, width: collapsed ? 0 : 'auto', overflow: 'hidden', transition: 'opacity 0.2s' }}>
+            Collapse
+          </span>
+        </button>
+      </div>
+
+      {/* Drag handle - hilang total saat collapsed */}
+      {!collapsed && (
+        <div
+          onMouseDown={startDrag}
+          onMouseEnter={() => setDragHover(true)}
+          onMouseLeave={() => setDragHover(false)}
+          style={{
+            position: 'absolute',
+            top: 0,
+            right: '-3px',
+            width: '6px',
+            height: '100%',
+            cursor: 'col-resize',
+            zIndex: 10,
+            background: dragHover ? '#f59e0b' : 'transparent',
+            transition: 'background 0.15s',
+          }}
+        />
+      )}
+    </aside>
+  );
+}

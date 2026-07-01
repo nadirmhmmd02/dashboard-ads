@@ -1,10 +1,13 @@
 'use client';
-import { useState, useEffect } from 'react';
 
-const dateOptions = [
+import { useState, useEffect } from 'react';
+import { Calendar, ChevronDown, GitCompare, Moon, Sun, Square, Globe } from 'lucide-react';
+import CountUp from './components/CountUp';
+import BarChart from './components/BarChart';
+
+const DATE_OPTIONS = [
   { label: 'Today', value: 'today' },
   { label: 'Yesterday', value: 'yesterday' },
-  { label: 'Last 3 days', value: 'last_3d' },
   { label: 'Last 7 days', value: 'last_7d' },
   { label: 'Last 14 days', value: 'last_14d' },
   { label: 'Last 30 days', value: 'last_30d' },
@@ -12,50 +15,13 @@ const dateOptions = [
   { label: 'Last month', value: 'last_month' },
 ];
 
-function fmtRp(v) {
-  if (!v && v !== 0) return '—';
-  const n = parseFloat(v);
-  if (n >= 1000000) return 'Rp ' + (n / 1000000).toFixed(1).replace('.0', '') + ' jt';
-  if (n >= 1000) return 'Rp ' + (n / 1000).toFixed(0) + 'rb';
-  return 'Rp ' + n.toFixed(0);
-}
-
-function fmtNum(v) {
-  if (!v) return '—';
-  return parseFloat(v).toLocaleString('id-ID');
-}
-
-function fmtPct(v) {
-  if (!v) return '—';
-  return parseFloat(v).toFixed(2) + '%';
-}
-
 function getActionValue(actions, types) {
-  if (!actions) return null;
+  if (!actions) return 0;
   for (const type of types) {
     const a = actions.find(x => x.action_type === type);
-    if (a) return parseInt(a.value);
+    if (a) return parseInt(a.value) || 0;
   }
-  return null;
-}
-
-function getLeads(actions) {
-  return getActionValue(actions, ['lead', 'onsite_conversion.lead_grouped']);
-}
-
-function getLinkClicks(actions) {
-  return getActionValue(actions, ['link_click']);
-}
-
-function getResult(campaign, insights) {
-  const name = campaign.name?.toUpperCase() || '';
-  const actions = insights?.actions || [];
-  if (name.includes('AWR REACH')) return { label: 'Reach', value: fmtNum(insights?.reach) };
-  if (name.includes('AWR IMPR')) return { label: 'Impressions', value: fmtNum(insights?.impressions) };
-  if (name.includes('AWR')) return { label: 'Impressions', value: fmtNum(insights?.impressions) };
-  if (name.includes('TRAFFIC')) return { label: 'Link Clicks', value: fmtNum(getLinkClicks(actions)) };
-  if (name.includes('PROSPEK') || name.includes('KONVERSI')) return { label: 'Leads', value: fmtNum(getLeads(actions)) };
-  return { label: '—', value: '—' };
+  return 0;
 }
 
 function getCampaignType(name) {
@@ -65,353 +31,381 @@ function getCampaignType(name) {
   return 'AWARENESS';
 }
 
-const OBJ_GROUP = {
-  OUTCOME_AWARENESS: 'Awareness',
-  OUTCOME_TRAFFIC: 'Traffic',
-  OUTCOME_LEADS: 'Conversion',
-  OUTCOME_SALES: 'Conversion',
-  OUTCOME_ENGAGEMENT: 'Traffic',
-  LINK_CLICKS: 'Traffic',
-};
+function fmtBigNum(n) {
+  if (n >= 1000000000) return (n / 1000000000).toFixed(1).replace('.0', '') + 'B';
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.0', '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace('.0', '') + 'K';
+  return n.toLocaleString('id-ID');
+}
 
-const OBJ_STYLE = {
-  Awareness: { bg: 'rgba(91,127,212,0.14)', color: '#3A5FAD' },
-  Traffic: { bg: 'rgba(242,168,48,0.14)', color: '#9A6800' },
-  Conversion: { bg: 'rgba(61,170,106,0.14)', color: '#1E7A45' },
-};
+function fmtSpend(n) {
+  if (n >= 1000000) return 'Rp ' + (n / 1000000).toFixed(1).replace('.0', '') + 'M';
+  if (n >= 1000) return 'Rp ' + (n / 1000).toFixed(0) + 'K';
+  return 'Rp ' + Math.round(n);
+}
 
-const OBJ_ORDER = ['Awareness', 'Traffic', 'Conversion'];
-
-function SectionLabel({ color, text }) {
-  return (
-    <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, display: 'inline-block' }}></span>
-      {text}
-    </div>
-  );
+function buildChartData(daily) {
+  // daily = array of {date_start, spend, impressions, reach, clicks, actions}
+  const result = { spend: [], awareness: [], traffic: [], leads: [] };
+  daily.forEach(d => {
+    result.spend.push(Math.round(parseFloat(d.spend || 0)));
+    result.awareness.push(Math.round(parseFloat(d.impressions || 0)));
+    result.traffic.push(getActionValue(d.actions, ['link_click']));
+    result.leads.push(getActionValue(d.actions, ['lead', 'onsite_conversion.lead_grouped']));
+  });
+  return result;
 }
 
 export default function DashboardPage() {
-  const [selectedDate, setSelectedDate] = useState(dateOptions[6]);
+  const [hoverSeg, setHoverSeg] = useState(null);
+  const [dateOpt, setDateOpt] = useState(DATE_OPTIONS[5]); // this_month
   const [showDropdown, setShowDropdown] = useState(false);
-  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showSubtotal, setShowSubtotal] = useState({
-    Awareness: true,
-    Traffic: true,
-    Conversion: true,
-  });
 
-  useEffect(() => { fetchData(); }, [selectedDate]);
+  // Processed data state
+  const [summary, setSummary] = useState(null);
+  const [chartData, setChartData] = useState({ spend: [], awareness: [], traffic: [], leads: [] });
+  const [donutSegs, setDonutSegs] = useState([]);
+  const [donutTotal, setDonutTotal] = useState({ value: '—', label: 'Total spend' });
+  const [todayIdx, setTodayIdx] = useState(0);
+  const [activeCampaignCount, setActiveCampaignCount] = useState(0);
+
+  useEffect(() => { fetchData(); }, [dateOpt]);
 
   async function fetchData() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/meta?date_preset=${selectedDate.value}`);
+      const res = await fetch(`/api/meta?mode=dashboard&date_preset=${dateOpt.value}`);
       const json = await res.json();
       if (json.error) throw new Error(json.error);
-      setData(json);
+
+      const sum = json.summary || {};
+      const daily = json.daily || [];
+      const campaigns = json.campaigns || [];
+
+      // Summary metrics
+      const totalSpend = parseFloat(sum.spend || 0);
+      const totalReach = parseFloat(sum.reach || 0);
+      const totalImpressions = parseFloat(sum.impressions || 0);
+      const totalLeads = getActionValue(sum.actions, ['lead', 'onsite_conversion.lead_grouped']);
+
+      const activeCamps = campaigns.filter(c => c.status === 'ACTIVE');
+      setActiveCampaignCount(activeCamps.length);
+
+      const trafficCamps = activeCamps.filter(c => getCampaignType(c.name) === 'TRAFFIC');
+      const convCamps = activeCamps.filter(c => getCampaignType(c.name) === 'CONVERSION');
+      const awareCamps = activeCamps.filter(c => getCampaignType(c.name) === 'AWARENESS');
+
+      const trafficSpend = trafficCamps.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
+      const trafficClicks = trafficCamps.reduce((s, c) => s + getActionValue(c.insights?.data?.[0]?.actions, ['link_click']), 0);
+
+      const convSpend = convCamps.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
+      const convLeads = convCamps.reduce((s, c) => s + getActionValue(c.insights?.data?.[0]?.actions, ['lead', 'onsite_conversion.lead_grouped']), 0);
+      const convImpressions = convCamps.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.impressions || 0), 0);
+      const convClicks = convCamps.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.clicks || 0), 0);
+
+      const awareSpend = awareCamps.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
+
+      const calcCPM = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : null;
+      const calcCPC = trafficClicks > 0 ? trafficSpend / trafficClicks : null;
+      const calcCPL = convLeads > 0 ? convSpend / convLeads : null;
+      const calcCTR = convImpressions > 0 ? (convClicks / convImpressions) * 100 : null;
+
+      setSummary({
+        totalSpend,
+        totalReach,
+        totalImpressions,
+        totalTraffic: trafficClicks,
+        totalLeads: convLeads || totalLeads,
+        calcCPM,
+        calcCPC,
+        calcCPL,
+        calcCTR,
+      });
+
+      // Chart data
+      setChartData(buildChartData(daily));
+      setTodayIdx(daily.length);
+
+      // Donut: breakdown by objective
+      const otherSpend = Math.max(0, totalSpend - awareSpend - trafficSpend - convSpend);
+      const total = totalSpend || 1;
+      const segs = [];
+      if (awareSpend > 0) segs.push({ color: '#8b5cf6', label: 'Awareness', pct: Math.round((awareSpend / total) * 100), value: fmtSpend(awareSpend), spend: awareSpend });
+      if (trafficSpend > 0) segs.push({ color: '#f59e0b', label: 'Traffic', pct: Math.round((trafficSpend / total) * 100), value: fmtSpend(trafficSpend), spend: trafficSpend });
+      if (convSpend > 0) segs.push({ color: '#10b981', label: 'Conversion', pct: Math.round((convSpend / total) * 100), value: fmtSpend(convSpend), spend: convSpend });
+      if (otherSpend > 0) segs.push({ color: '#3b82f6', label: 'Other', pct: Math.round((otherSpend / total) * 100), value: fmtSpend(otherSpend), spend: otherSpend });
+
+      // Compute SVG dash values (circumference r=38 → ~238.76)
+      const CIRC = 238.76;
+      let offset = 0;
+      const segsWithDash = segs.map(seg => {
+        const dash = (seg.pct / 100) * CIRC;
+        const s = { ...seg, dash: parseFloat(dash.toFixed(1)), offset: parseFloat((-offset).toFixed(1)) };
+        offset += dash;
+        return s;
+      });
+
+      setDonutSegs(segsWithDash);
+      setDonutTotal({ value: fmtSpend(totalSpend), label: 'Total spend' });
     } catch (err) {
       setError(err.message);
     }
     setLoading(false);
   }
 
-  function toggleSubtotal(grp) {
-    setShowSubtotal(prev => ({ ...prev, [grp]: !prev[grp] }));
-  }
+  const center = hoverSeg === null ? donutTotal : { value: donutSegs[hoverSeg]?.value || '—', label: donutSegs[hoverSeg]?.label || '' };
 
-  const activeCampaigns = data?.campaigns?.filter(c => c.status === 'ACTIVE') || [];
-  const trafficCampaigns = activeCampaigns.filter(c => getCampaignType(c.name) === 'TRAFFIC');
-  const conversionCampaigns = activeCampaigns.filter(c => getCampaignType(c.name) === 'CONVERSION');
-  const apiInsights = data?.insights?.[0] || {};
+  const bigCards = summary ? [
+    { dot: '#10b981', label: 'Total Spend', value: Math.round(summary.totalSpend), display: fmtSpend(summary.totalSpend), sub: 'all campaigns' },
+    { dot: '#3b82f6', label: 'Reach', value: Math.round(summary.totalReach), display: fmtBigNum(summary.totalReach), sub: 'all campaigns' },
+    { dot: '#8b5cf6', label: 'Impressions', value: Math.round(summary.totalImpressions), display: fmtBigNum(summary.totalImpressions), sub: 'all campaigns' },
+    { dot: '#f59e0b', label: 'Traffic', value: summary.totalTraffic, display: fmtBigNum(summary.totalTraffic), sub: 'traffic only' },
+    { dot: '#10b981', label: 'Leads', value: summary.totalLeads, display: fmtBigNum(summary.totalLeads), sub: 'conversion only' },
+  ] : [];
 
-  const totalSpend = parseFloat(apiInsights.spend || 0);
-  const totalReach = parseFloat(apiInsights.reach || 0);
-  const totalImpressions = parseFloat(apiInsights.impressions || 0);
-
-  const trafficSpend = trafficCampaigns.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
-  const trafficClicks = trafficCampaigns.reduce((s, c) => s + (getLinkClicks(c.insights?.data?.[0]?.actions) || 0), 0);
-
-  const conversionSpend = conversionCampaigns.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
-  const conversionLeads = conversionCampaigns.reduce((s, c) => s + (getLeads(c.insights?.data?.[0]?.actions) || 0), 0);
-  const conversionImpressions = conversionCampaigns.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.impressions || 0), 0);
-  const conversionClicks = conversionCampaigns.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.clicks || 0), 0);
-
-  const calcCPM = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : null;
-  const calcCPC = trafficClicks > 0 ? trafficSpend / trafficClicks : null;
-  const calcCPL = conversionLeads > 0 ? conversionSpend / conversionLeads : null;
-  const calcCTR = conversionImpressions > 0 ? (conversionClicks / conversionImpressions) * 100 : null;
-
-  const grouped = activeCampaigns.reduce((acc, c) => {
-    const grp = OBJ_GROUP[c.objective] || 'Other';
-    if (!acc[grp]) acc[grp] = [];
-    acc[grp].push(c);
-    return acc;
-  }, {});
-
-  const thStyle = (align = 'right') => ({
-    padding: '10px 12px',
-    textAlign: align,
-    fontSize: '10px',
-    fontWeight: '600',
-    color: 'var(--t3)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.4px',
-    whiteSpace: 'nowrap',
-  });
-
-  const tdStyle = (align = 'right') => ({
-    padding: '9px 12px',
-    textAlign: align,
-    color: 'var(--t2)',
-    whiteSpace: 'nowrap',
-    fontSize: '12px',
-  });
+  const smallCards = summary ? [
+    { label: 'CPM', value: summary.calcCPM ? fmtSpend(summary.calcCPM) : '—' },
+    { label: 'CPC', value: summary.calcCPC ? fmtSpend(summary.calcCPC) : '—' },
+    { label: 'CPL', value: summary.calcCPL ? fmtSpend(summary.calcCPL) : '—' },
+    { label: 'CTR', value: summary.calcCTR ? summary.calcCTR.toFixed(2) + '%' : '—' },
+  ] : [];
 
   return (
-    <div>
-      {/* Toolbar */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '20px' }}>
-        <div style={{ position: 'relative' }}>
-          <button onClick={() => setShowDropdown(!showDropdown)}
-            style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 14px', fontSize: '13px', fontWeight: '500', border: '1.5px solid var(--bs)', borderRadius: '12px', background: 'var(--cd)', color: 'var(--t1)', cursor: 'pointer' }}>
-            📅 {selectedDate.label} ▾
-          </button>
-          {showDropdown && (
-            <div style={{ position: 'absolute', top: '42px', right: 0, zIndex: 50, background: 'var(--cd)', border: '1px solid var(--bs)', borderRadius: '12px', overflow: 'hidden', minWidth: '180px' }}>
-              {dateOptions.map(opt => (
-                <div key={opt.value} onClick={() => { setSelectedDate(opt); setShowDropdown(false); }}
-                  style={{ padding: '10px 16px', fontSize: '13px', cursor: 'pointer', color: opt.value === selectedDate.value ? 'var(--ac)' : 'var(--t2)', fontWeight: opt.value === selectedDate.value ? '500' : '400', background: opt.value === selectedDate.value ? 'var(--sf)' : 'transparent' }}>
-                  {opt.value === selectedDate.value ? '● ' : '○ '}{opt.label}
-                </div>
-              ))}
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      {/* ===== TOPBAR ===== */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '14px 20px',
+          borderBottom: '1px solid var(--br)',
+          gap: '12px',
+          flexWrap: 'wrap',
+          flexShrink: 0,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: '17px', fontWeight: 500, color: 'var(--t1)' }}>Dashboard</div>
+          <div style={{ fontSize: '12px', color: 'var(--t3)' }}>Meta Ads overview · {activeCampaignCount > 0 ? `${activeCampaignCount} active campaigns` : loading ? 'loading...' : 'no active campaigns'}</div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Date picker */}
+          <div style={{ position: 'relative' }}>
+            <div
+              onClick={() => setShowDropdown(d => !d)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '7px 12px', background: 'var(--cd)',
+                border: '1px solid var(--br)', borderRadius: '8px',
+                fontSize: '13px', color: 'var(--t1)', cursor: 'pointer',
+              }}
+            >
+              <Calendar size={16} /> {dateOpt.label} <ChevronDown size={14} color="var(--t3)" />
             </div>
-          )}
+            {showDropdown && (
+              <div style={{
+                position: 'absolute', top: '38px', right: 0, zIndex: 50,
+                background: 'var(--cd)', border: '1px solid var(--br)',
+                borderRadius: '8px', overflow: 'hidden', minWidth: '160px',
+              }}>
+                {DATE_OPTIONS.map(opt => (
+                  <div
+                    key={opt.value}
+                    onClick={() => { setDateOpt(opt); setShowDropdown(false); }}
+                    style={{
+                      padding: '9px 14px', fontSize: '13px', cursor: 'pointer',
+                      color: opt.value === dateOpt.value ? 'var(--ac)' : 'var(--t2)',
+                      background: opt.value === dateOpt.value ? 'var(--sf)' : 'transparent',
+                    }}
+                  >
+                    {opt.label}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '7px 12px', background: 'var(--cd)',
+              border: '1px solid var(--br)', borderRadius: '8px',
+              fontSize: '13px', color: 'var(--t3)', cursor: 'not-allowed',
+            }}
+            title="Coming soon"
+          >
+            <GitCompare size={16} /> Compare
+          </div>
+          <ThemeToggle />
         </div>
       </div>
 
-      {loading && (
-        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--t3)', fontSize: '14px' }}>
-          ⏳ Loading data from Meta Ads...
-        </div>
-      )}
+      {/* ===== KONTEN ===== */}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '18px 20px',
+          gap: '12px',
+          overflow: 'auto',
+        }}
+      >
+        {/* Loading state */}
+        {loading && (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--t3)', fontSize: '14px' }}>
+            Loading Meta Ads data...
+          </div>
+        )}
 
-      {error && (
-        <div style={{ padding: '16px', background: 'rgba(220,50,50,0.1)', borderRadius: '12px', color: '#C62828', fontSize: '13px', marginBottom: '20px' }}>
-          ⚠️ Error: {error}
-        </div>
-      )}
+        {/* Error state */}
+        {!loading && error && (
+          <div style={{ padding: '14px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', color: '#ef4444', fontSize: '13px' }}>
+            Error: {error}
+          </div>
+        )}
 
-      {!loading && !error && data && (
-        <>
-          {/* Breakdown per Platform */}
-          <SectionLabel color="#1877F2" text="Breakdown by platform" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-            <div style={{ background: 'var(--cd)', border: '0.5px solid var(--br)', borderRadius: '18px', padding: '18px 20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '13px', fontWeight: '500', color: 'var(--t1)' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#1877F2', display: 'inline-block' }}></span>
-                  Meta Ads
-                </div>
-                <span style={{ fontSize: '10px', padding: '3px 10px', borderRadius: '20px', background: 'var(--pr-bg)', color: 'var(--pr-tx)', fontWeight: '500' }}>
-                  {activeCampaigns.length} active campaigns
-                </span>
-              </div>
-              <div style={{ fontSize: '30px', fontWeight: '500', color: 'var(--t1)', lineHeight: 1, marginBottom: '3px' }}>{fmtRp(totalSpend)}</div>
-              <div style={{ fontSize: '11px', color: 'var(--t3)', marginBottom: '14px' }}>Total budget spent · {selectedDate.label}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', borderTop: '0.5px solid var(--br)', paddingTop: '13px' }}>
-                {[['CPM', fmtRp(calcCPM)], ['CPC', fmtRp(calcCPC)], ['CPL', fmtRp(calcCPL)], ['Leads', conversionLeads || '—']].map(([label, val], i) => (
-                  <div key={label} style={{ textAlign: 'center', borderRight: i < 3 ? '0.5px solid var(--br)' : 'none' }}>
-                    <div style={{ fontSize: '10px', color: 'var(--t3)', marginBottom: '3px', textTransform: 'uppercase' }}>{label}</div>
-                    <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--t1)' }}>{val}</div>
+        {/* Data loaded */}
+        {!loading && !error && summary && (
+          <>
+            {/* 5 big cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0,1fr))', gap: '12px', flexShrink: 0 }}>
+              {bigCards.map((c, i) => (
+                <div
+                  key={c.label}
+                  style={{
+                    background: 'var(--cd)', border: '1px solid var(--br)',
+                    borderRadius: '10px', padding: '14px',
+                    animation: `wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) backwards`,
+                    animationDelay: i * 0.06 + 's',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: c.dot }} />
+                    <span style={{ fontSize: '12px', color: 'var(--t2)' }}>{c.label}</span>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ background: 'var(--cd)', border: '0.5px solid var(--br)', borderRadius: '18px', padding: '18px 20px', opacity: 0.6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '13px', fontWeight: '500', color: 'var(--t1)' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EA4335', display: 'inline-block' }}></span>
-                  Google Ads
-                </div>
-                <span style={{ fontSize: '10px', padding: '3px 10px', borderRadius: '20px', background: 'var(--pd-bg)', color: 'var(--pd-tx)', fontWeight: '500' }}>Not connected</span>
-              </div>
-              <div style={{ fontSize: '30px', fontWeight: '500', color: 'var(--t1)', lineHeight: 1, marginBottom: '3px' }}>—</div>
-              <div style={{ fontSize: '11px', color: 'var(--t3)', marginBottom: '14px' }}>Total budget spent · {selectedDate.label}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', borderTop: '0.5px solid var(--br)', paddingTop: '13px' }}>
-                {['CPM', 'CPC', 'CPL', 'Leads'].map((label, i) => (
-                  <div key={label} style={{ textAlign: 'center', borderRight: i < 3 ? '0.5px solid var(--br)' : 'none' }}>
-                    <div style={{ fontSize: '10px', color: 'var(--t3)', marginBottom: '3px', textTransform: 'uppercase' }}>{label}</div>
-                    <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--t1)' }}>—</div>
+                  <div style={{ fontSize: '20px', fontWeight: 500, marginBottom: '6px', color: 'var(--t1)' }}>
+                    <CountUp value={c.value} display={c.display} delay={200 + i * 60} />
                   </div>
-                ))}
+                  <div style={{ fontSize: '11px', color: 'var(--t3)' }}>{c.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* 4 small cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: '12px', flexShrink: 0 }}>
+              {smallCards.map((c) => (
+                <div
+                  key={c.label}
+                  style={{ background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '10px', padding: '14px' }}
+                >
+                  <div style={{ fontSize: '12px', color: 'var(--t2)', marginBottom: '8px' }}>{c.label}</div>
+                  <div style={{ fontSize: '18px', fontWeight: 500, color: 'var(--t1)' }}>{c.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Bar chart */}
+            <div style={{ flex: 1, minHeight: 180, display: 'flex' }}>
+              <BarChart data={chartData} today={todayIdx} daysInMonth={chartData.spend.length} />
+            </div>
+
+            {/* 2 kolom: donut + platform */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', flexShrink: 0 }}>
+              {/* DONUT */}
+              <div style={{ background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '10px', padding: '16px' }}>
+                <div style={{ fontSize: '13px', color: 'var(--t2)', marginBottom: '14px' }}>Spend breakdown</div>
+                {donutSegs.length === 0 ? (
+                  <div style={{ fontSize: '13px', color: 'var(--t3)' }}>No spend data</div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div style={{ position: 'relative', width: '120px', height: '120px', flexShrink: 0 }}>
+                      <svg viewBox="0 0 100 100" style={{ width: '120px', height: '120px' }}>
+                        <circle cx="50" cy="50" r="38" fill="none" stroke="var(--br)" strokeWidth="15" />
+                        {donutSegs.map((seg, i) => {
+                          let sw = 15, op = 1;
+                          if (hoverSeg !== null) { sw = hoverSeg === i ? 19 : 11; op = hoverSeg === i ? 1 : 0.4; }
+                          return (
+                            <circle key={i} cx="50" cy="50" r="38" fill="none"
+                              stroke={seg.color} strokeWidth={sw}
+                              strokeDasharray={`${seg.dash} 239`}
+                              strokeDashoffset={seg.offset}
+                              transform="rotate(-90 50 50)"
+                              style={{ opacity: op, transition: 'stroke-width 0.2s, opacity 0.2s', cursor: 'pointer' }}
+                              onMouseEnter={() => setHoverSeg(i)}
+                              onMouseLeave={() => setHoverSeg(null)}
+                            />
+                          );
+                        })}
+                      </svg>
+                      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--t1)' }}>{center.value}</div>
+                        <div style={{ fontSize: '10px', color: 'var(--t3)' }}>{center.label}</div>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '9px' }}>
+                      {donutSegs.map((seg, i) => (
+                        <span key={i}
+                          onMouseEnter={() => setHoverSeg(i)}
+                          onMouseLeave={() => setHoverSeg(null)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '7px', cursor: 'pointer', color: 'var(--t1)', transform: hoverSeg === i ? 'translateX(3px)' : 'translateX(0)', transition: 'transform 0.15s' }}
+                        >
+                          <span style={{ width: '9px', height: '9px', borderRadius: '2px', background: seg.color }} />
+                          {seg.label} {seg.pct}%
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* PLATFORM */}
+              <div style={{ background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '10px', padding: '16px' }}>
+                <div style={{ fontSize: '13px', color: 'var(--t2)', marginBottom: '14px' }}>Platform breakdown</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 0', borderBottom: '1px solid var(--br)' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--t1)' }}>
+                    <Square size={18} color="#3b82f6" fill="#3b82f6" /> Meta Ads
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#10b981' }}>
+                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10b981', animation: 'wdPulseDot 2s ease-in-out infinite' }} /> Connected
+                  </span>
+                </div>
+                <div style={{ position: 'relative', overflow: 'hidden', height: '6px', background: 'var(--sf)', borderRadius: '3px', margin: '12px 0' }}>
+                  <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: '40%', background: 'linear-gradient(90deg,transparent,#3b82f6,transparent)', animation: 'wdSweep 2.2s linear infinite' }} />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 0' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--t3)' }}>
+                    <Globe size={18} color="var(--t3)" /> Google Ads
+                  </span>
+                  <span style={{ fontSize: '13px', color: 'var(--t3)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#404040' }} /> Not connected
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
-          <div style={{ height: '0.5px', background: 'var(--br)', margin: '8px 0 20px' }}></div>
-
-          {/* Overall Metrics */}
-          <SectionLabel color="#1877F2" text={`Meta Ads overall metrics · ${selectedDate.label}`} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '10px', marginBottom: '24px' }}>
-            {[
-              ['Total Spend', fmtRp(totalSpend), 'All campaigns'],
-              ['Reach', fmtNum(totalReach), 'All campaigns'],
-              ['Impressions', fmtNum(totalImpressions), 'All campaigns'],
-              ['Traffic', fmtNum(trafficClicks), 'Traffic campaigns only'],
-              ['Leads', conversionLeads || '—', 'Conversion campaigns only'],
-              ['CPM', fmtRp(calcCPM), 'Total spend / impressions'],
-              ['CPC', fmtRp(calcCPC), 'Traffic spend / clicks'],
-              ['CPL', fmtRp(calcCPL), 'Conversion spend / leads'],
-              ['CTR', calcCTR ? fmtPct(calcCTR) : '—', 'Conversion campaigns only'],
-              ['Total Leads', conversionLeads || '—', 'Conversion campaigns only'],
-            ].map(([label, val, hint]) => (
-              <div key={label} style={{ background: 'var(--sf)', borderRadius: '14px', padding: '14px 15px' }}>
-                <div style={{ fontSize: '10px', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{label}</div>
-                <div style={{ fontSize: '20px', fontWeight: '500', color: 'var(--t1)', marginBottom: '4px' }}>{val}</div>
-                <div style={{ fontSize: '9px', color: 'var(--t3)', fontStyle: 'italic' }}>{hint}</div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ height: '0.5px', background: 'var(--br)', margin: '8px 0 20px' }}></div>
-
-          {/* Campaign Performance Table */}
-          <SectionLabel color="#1877F2" text={`Meta Ads campaign performance (${activeCampaigns.length} active campaigns)`} />
-
-          <div style={{ background: 'var(--cd)', border: '0.5px solid var(--br)', borderRadius: '18px', overflow: 'hidden', marginBottom: '20px' }}>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                <thead>
-                  <tr style={{ background: 'var(--sf)' }}>
-                    <th style={thStyle('left')}>Campaign</th>
-                    <th style={thStyle('center')}>Status</th>
-                    <th style={thStyle()}>Daily Budget</th>
-                    <th style={thStyle()}>Result</th>
-                    <th style={thStyle()}>Reach</th>
-                    <th style={thStyle()}>Impressions</th>
-                    <th style={thStyle()}>Traffic</th>
-                    <th style={thStyle()}>Leads</th>
-                    <th style={thStyle()}>CPM</th>
-                    <th style={thStyle()}>CPC</th>
-                    <th style={thStyle()}>CPL</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {OBJ_ORDER.map(grp => {
-                    const rows = grouped[grp] || [];
-                    if (!rows.length) return null;
-
-                    const subBudget = rows.reduce((s, c) => s + (c.daily_budget ? parseInt(c.daily_budget) : 0), 0);
-                    const subReach = rows.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.reach || 0), 0);
-                    const subImpressions = rows.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.impressions || 0), 0);
-                    const subTraffic = rows.reduce((s, c) => s + (getLinkClicks(c.insights?.data?.[0]?.actions) || 0), 0);
-                    const subLeads = rows.reduce((s, c) => s + (getLeads(c.insights?.data?.[0]?.actions) || 0), 0);
-                    const subSpend = rows.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
-                    const subCPM = subImpressions > 0 ? (subSpend / subImpressions) * 1000 : null;
-                    const subCPC = subTraffic > 0 ? subSpend / subTraffic : null;
-                    const subCPL = subLeads > 0 ? subSpend / subLeads : null;
-                    const subResultVal = grp === 'Awareness' ? fmtNum(subImpressions) : grp === 'Traffic' ? fmtNum(subTraffic) : fmtNum(subLeads);
-                    const subResultLabel = grp === 'Awareness' ? 'Impressions' : grp === 'Traffic' ? 'Link Clicks' : 'Leads';
-
-                    return [
-                      // Group header (no toggle button here)
-                      <tr key={grp + '-hdr'} style={{ background: 'var(--s2)' }}>
-                        <td colSpan={11} style={{ padding: '6px 14px' }}>
-                          <span style={{ fontSize: '10px', fontWeight: '600', color: 'var(--t2)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ padding: '2px 9px', borderRadius: '20px', fontSize: '10px', fontWeight: '500', background: OBJ_STYLE[grp]?.bg, color: OBJ_STYLE[grp]?.color }}>{grp}</span>
-                            {rows.length} campaign{rows.length > 1 ? 's' : ''}
-                          </span>
-                        </td>
-                      </tr>,
-
-                      // Campaign rows
-                      ...rows.map(c => {
-                        const ci = c.insights?.data?.[0] || {};
-                        const cLeads = getLeads(ci.actions);
-                        const cLinkClicks = getLinkClicks(ci.actions);
-                        const cCPM = parseFloat(ci.impressions || 0) > 0 ? (parseFloat(ci.spend || 0) / parseFloat(ci.impressions)) * 1000 : null;
-                        const cCPC = cLinkClicks > 0 ? parseFloat(ci.spend || 0) / cLinkClicks : null;
-                        const cCPL = cLeads > 0 ? parseFloat(ci.spend || 0) / cLeads : null;
-                        const result = getResult(c, ci);
-
-                        return (
-                          <tr key={c.id} style={{ borderTop: '0.5px solid var(--br)' }}>
-                            <td style={{ ...tdStyle('left'), fontWeight: '500', color: 'var(--t1)' }}>{c.name}</td>
-                            <td style={tdStyle('center')}>
-                              <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'var(--pr-bg)', color: 'var(--pr-tx)', fontWeight: '500', whiteSpace: 'nowrap' }}>▶ Active</span>
-                            </td>
-                            <td style={tdStyle()}>{c.daily_budget ? fmtRp(parseInt(c.daily_budget)) : '—'}</td>
-                            <td style={tdStyle()}>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                <span style={{ fontSize: '9px', color: 'var(--t3)' }}>{result.label}</span>
-                                <span style={{ fontWeight: '500', color: 'var(--t1)' }}>{result.value}</span>
-                              </div>
-                            </td>
-                            <td style={tdStyle()}>{fmtNum(ci.reach)}</td>
-                            <td style={tdStyle()}>{fmtNum(ci.impressions)}</td>
-                            <td style={tdStyle()}>{fmtNum(cLinkClicks)}</td>
-                            <td style={tdStyle()}>{cLeads ?? '—'}</td>
-                            <td style={tdStyle()}>{fmtRp(cCPM)}</td>
-                            <td style={tdStyle()}>{fmtRp(cCPC)}</td>
-                            <td style={tdStyle()}>{fmtRp(cCPL)}</td>
-                          </tr>
-                        );
-                      }),
-
-                      // Subtotal row
-                      showSubtotal[grp] && (
-                        <tr key={grp + '-sub'} style={{ borderTop: '0.5px solid var(--br)', background: 'var(--sf)' }}>
-                          <td colSpan={2} style={{ padding: '8px 12px', fontWeight: '600', color: 'var(--t1)', fontSize: '11px', fontStyle: 'italic' }}>Subtotal {grp}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subBudget)}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontSize: '11px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                              <span style={{ fontSize: '9px', color: 'var(--t3)' }}>{subResultLabel}</span>
-                              <span style={{ fontWeight: '500', color: 'var(--t1)' }}>{subResultVal}</span>
-                            </div>
-                          </td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtNum(subReach)}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtNum(subImpressions)}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{subTraffic > 0 ? fmtNum(subTraffic) : '—'}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{subLeads > 0 ? fmtNum(subLeads) : '—'}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subCPM)}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subCPC)}</td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subCPL)}</td>
-                        </tr>
-                      ),
-
-                      // Toggle button row (always visible, below subtotal)
-                      <tr key={grp + '-toggle'} style={{ borderTop: '0.5px solid var(--br)', background: 'var(--sf)' }}>
-                        <td colSpan={11} style={{ padding: '4px 14px', textAlign: 'center' }}>
-                          <button
-                            onClick={() => toggleSubtotal(grp)}
-                            style={{ fontSize: '10px', padding: '2px 14px', borderRadius: '6px', border: '1px solid var(--bs)', background: 'transparent', color: 'var(--t3)', cursor: 'pointer' }}>
-                            {showSubtotal[grp] ? '▲ Hide subtotal' : '▼ Show subtotal'}
-                          </button>
-                        </td>
-                      </tr>,
-
-                    ].filter(Boolean);
-                  })}
-
-                  {/* Total row */}
-                  <tr style={{ borderTop: '0.5px solid var(--br)', background: 'var(--s2)' }}>
-                    <td colSpan={2} style={{ padding: '9px 12px', fontWeight: '600', color: 'var(--t1)' }}>Total</td>
-                    <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: '600', color: 'var(--t1)' }}>
-                      {fmtRp(activeCampaigns.reduce((s, c) => s + (c.daily_budget ? parseInt(c.daily_budget) : 0), 0))}
-                    </td>
-                    <td colSpan={8}></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
+function ThemeToggle() {
+  const [dark, setDark] = useState(true);
+  return (
+    <div
+      onClick={() => setDark(d => !d)}
+      style={{ width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '8px', cursor: 'pointer', overflow: 'hidden' }}
+    >
+      {dark
+        ? <Moon size={17} color="#f59e0b" style={{ transition: 'transform 0.5s cubic-bezier(0.4,0,0.2,1)' }} />
+        : <Sun size={17} color="#f59e0b" style={{ transition: 'transform 0.5s cubic-bezier(0.4,0,0.2,1)' }} />
+      }
     </div>
   );
 }
