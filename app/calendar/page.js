@@ -25,6 +25,7 @@ export default function CalendarPage() {
   const [showModal, setShowModal] = useState(false);
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
   const [form, setForm]         = useState(emptyForm);
   const [editId, setEditId]     = useState(null);
   const [tableKey, setTableKey] = useState(0); // trigger re-animate on month change
@@ -39,8 +40,10 @@ export default function CalendarPage() {
 
   async function loadCampaigns() {
     setLoading(true);
-    const { data, error } = await supabase.from('campaigns').select('*').order('created_at', { ascending: true });
-    if (!error) setCampaigns(data || []);
+    setError(null);
+    const { data, error: err } = await supabase.from('campaigns').select('*').order('created_at', { ascending: true });
+    if (err) setError(err.message);
+    else setCampaigns(data || []);
     setLoading(false);
   }
 
@@ -103,6 +106,13 @@ export default function CalendarPage() {
 
   return (
     <div style={{ padding:'18px 20px', flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:'14px' }}>
+
+      {/* Error banner */}
+      {error && (
+        <div style={{ padding:'12px 16px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:'10px', color:'#ef4444', fontSize:'13px' }}>
+          ⚠️ Gagal load data: {error}
+        </div>
+      )}
 
       {/* Reminder banner */}
       {reminders.length > 0 && (
@@ -339,6 +349,29 @@ export default function CalendarPage() {
           ))}
         </div>
       </div>
+
+      {/* Campaign tanpa tanggal */}
+      {campaigns.filter(c => !c.mulai || !c.selesai).length > 0 && (
+        <div style={{ background:'var(--cd)', border:'1px solid var(--br)', borderRadius:'10px', padding:'14px 16px' }}>
+          <div style={{ fontSize:'11px', fontWeight:'600', color:'var(--t3)', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:'10px' }}>
+            Draft / Belum ada tanggal ({campaigns.filter(c => !c.mulai || !c.selesai).length})
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+            {campaigns.filter(c => !c.mulai || !c.selesai).map(c => (
+              <div key={c.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 10px', background:'var(--sf)', borderRadius:'8px' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                  <span style={{ padding:'2px 7px', borderRadius:'20px', fontSize:'9px', fontWeight:'600', background: OBJ_STYLE[c.obj]?.bg, color: OBJ_STYLE[c.obj]?.color }}>{c.obj}</span>
+                  <span style={{ fontSize:'12px', color:'var(--t1)', fontWeight:'500' }}>{c.name}</span>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                  <span style={{ fontSize:'11px', color:'var(--t3)' }}>Belum ada tanggal</span>
+                  <button onClick={() => openEdit(c)} style={{ fontSize:'10px', padding:'3px 8px', borderRadius:'6px', border:'1px solid var(--br)', background:'transparent', color:'var(--ac)', cursor:'pointer' }}>Set tanggal</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       {showModal && (
