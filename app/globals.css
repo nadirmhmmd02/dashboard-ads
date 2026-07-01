@@ -123,60 +123,6 @@ button {
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* ── REACT-GRID-LAYOUT: resize handles ── */
-.react-resizable-handle {
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  background: none;
-  z-index: 10;
-}
-.react-resizable-handle::after {
-  content: '';
-  position: absolute;
-  border-color: #f59e0b;
-  border-style: solid;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-.react-grid-item:hover .react-resizable-handle::after {
-  opacity: 0.6;
-}
-.react-resizable-handle-se { bottom: 0; right: 0; cursor: se-resize; }
-.react-resizable-handle-se::after { right: 3px; bottom: 3px; width: 6px; height: 6px; border-width: 0 2px 2px 0; }
-.react-resizable-handle-sw { bottom: 0; left: 0; cursor: sw-resize; }
-.react-resizable-handle-sw::after { left: 3px; bottom: 3px; width: 6px; height: 6px; border-width: 0 0 2px 2px; }
-.react-resizable-handle-ne { top: 0; right: 0; cursor: ne-resize; }
-.react-resizable-handle-ne::after { right: 3px; top: 3px; width: 6px; height: 6px; border-width: 2px 2px 0 0; }
-.react-resizable-handle-nw { top: 0; left: 0; cursor: nw-resize; }
-.react-resizable-handle-nw::after { left: 3px; top: 3px; width: 6px; height: 6px; border-width: 2px 0 0 2px; }
-.react-resizable-handle-e  { right: 0; top: 50%; transform: translateY(-50%); cursor: e-resize; }
-.react-resizable-handle-e::after  { right: 3px; top: 50%; transform: translateY(-50%); width: 2px; height: 12px; border-width: 0 2px 0 0; }
-.react-resizable-handle-w  { left: 0; top: 50%; transform: translateY(-50%); cursor: w-resize; }
-.react-resizable-handle-w::after  { left: 3px; top: 50%; transform: translateY(-50%); width: 2px; height: 12px; border-width: 0 0 0 2px; }
-.react-resizable-handle-s  { bottom: 0; left: 50%; transform: translateX(-50%); cursor: s-resize; }
-.react-resizable-handle-s::after  { bottom: 3px; left: 50%; transform: translateX(-50%); width: 12px; height: 2px; border-width: 0 0 2px 0; }
-.react-resizable-handle-n  { top: 0; left: 50%; transform: translateX(-50%); cursor: n-resize; }
-.react-resizable-handle-n::after  { top: 3px; left: 50%; transform: translateX(-50%); width: 12px; height: 2px; border-width: 2px 0 0 0; }
-
-/* saat item di-drag/resize */
-.react-grid-item.react-draggable-dragging {
-  border-color: rgba(245,158,11,0.5) !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-  z-index: 20;
-}
-.react-grid-item.resizing {
-  border-color: rgba(245,158,11,0.5) !important;
-  z-index: 20;
-}
-/* placeholder abu saat drag */
-.react-grid-item.react-grid-placeholder {
-  background: rgba(245,158,11,0.08) !important;
-  border: 1px dashed rgba(245,158,11,0.3) !important;
-  border-radius: 12px;
-  opacity: 1 !important;
-}
-
 /* scrollbar tipis biar nyatu sama tema gelap */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
