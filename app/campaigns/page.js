@@ -158,7 +158,7 @@ export default function CampaignsPage() {
     fontSize: '12px',
   });
 
-  function renderCampaignRow(c) {
+  function renderCampaignRow(c, rowIdx = 0) {
     const isActive = c.status === 'ACTIVE';
     const ci = c.insights?.data?.[0] || {};
     const cLeads = getLeads(ci.actions);
@@ -169,13 +169,23 @@ export default function CampaignsPage() {
     const result = getResult(c, ci);
 
     return (
-      <tr key={c.id} style={{ borderTop: '0.5px solid var(--br)', opacity: isActive ? 1 : 0.55 }}>
+      <tr
+        key={c.id}
+        style={{
+          borderTop: '1px solid var(--br)',
+          opacity: isActive ? 1 : 0.5,
+          transition: 'background 0.15s',
+          animation: `wdFadeUp 0.3s cubic-bezier(0.4,0,0.2,1) ${rowIdx * 0.04}s backwards`,
+        }}
+        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+      >
         <td style={{ ...tdStyle('left'), fontWeight: '500', color: 'var(--t1)' }}>{c.name}</td>
         <td style={tdStyle('center')}>
           {isActive ? (
-            <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'rgba(16,185,129,0.14)', color: '#10b981', fontWeight: '500', whiteSpace: 'nowrap' }}>▶ Active</span>
+            <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'rgba(16,185,129,0.14)', color: '#10b981', fontWeight: '600', whiteSpace: 'nowrap' }}>▶ Active</span>
           ) : (
-            <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'rgba(115,115,115,0.14)', color: 'var(--t3)', fontWeight: '500', whiteSpace: 'nowrap' }}>■ {c.status === 'PAUSED' ? 'Paused' : 'Ended'}</span>
+            <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'rgba(115,115,115,0.12)', color: 'var(--t3)', fontWeight: '600', whiteSpace: 'nowrap' }}>■ {c.status === 'PAUSED' ? 'Paused' : 'Ended'}</span>
           )}
         </td>
         <td style={tdStyle()}>{c.daily_budget ? fmtRp(parseInt(c.daily_budget)) : '—'}</td>
@@ -224,7 +234,7 @@ export default function CampaignsPage() {
         </td>
       </tr>,
 
-      ...rows.map(c => renderCampaignRow(c)),
+      ...rows.map((c, i) => renderCampaignRow(c, i)),
 
       isActive && showSubtotal[grp] && (
         <tr key={key + '-sub'} style={{ borderTop: '0.5px solid var(--br)', background: 'var(--sf)' }}>
@@ -264,7 +274,7 @@ export default function CampaignsPage() {
     <div style={{ padding: '18px 20px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
 
       {/* Topbar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', animation: 'wdFadeUp 0.3s cubic-bezier(0.4,0,0.2,1)' }}>
         <div>
           <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--t1)' }}>Campaign Performance</div>
           <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>
@@ -304,7 +314,7 @@ export default function CampaignsPage() {
       )}
 
       {!loading && !error && data && (
-        <div style={{ background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '10px', overflow: 'hidden' }}>
+        <div style={{ background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '10px', overflow: 'hidden', animation: 'wdFadeUp 0.35s cubic-bezier(0.4,0,0.2,1) 0.05s backwards' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
               <thead>
