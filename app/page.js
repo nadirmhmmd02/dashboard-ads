@@ -100,12 +100,14 @@ export default function DashboardPage() {
       const totalImpressions = parseFloat(sum.impressions || 0);
       const totalLeads       = getActionValue(sum.actions, ['lead', 'onsite_conversion.lead_grouped']);
 
-      const activeCamps  = campaigns.filter(c => c.status === 'ACTIVE');
+      // Pakai semua campaign yang punya spend di periode ini (bukan hanya yg status ACTIVE sekarang)
+      const campsWithData = campaigns.filter(c => parseFloat(c.insights?.data?.[0]?.spend || 0) > 0);
+      const activeCamps   = campaigns.filter(c => c.status === 'ACTIVE');
       setActiveCampaignCount(activeCamps.length);
 
-      const trafficCamps = activeCamps.filter(c => getCampaignType(c.name) === 'TRAFFIC');
-      const convCamps    = activeCamps.filter(c => getCampaignType(c.name) === 'CONVERSION');
-      const awareCamps   = activeCamps.filter(c => getCampaignType(c.name) === 'AWARENESS');
+      const trafficCamps = campsWithData.filter(c => getCampaignType(c.name) === 'TRAFFIC');
+      const convCamps    = campsWithData.filter(c => getCampaignType(c.name) === 'CONVERSION');
+      const awareCamps   = campsWithData.filter(c => getCampaignType(c.name) === 'AWARENESS');
 
       const trafficSpend  = trafficCamps.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
       const trafficClicks = trafficCamps.reduce((s, c) => s + getActionValue(c.insights?.data?.[0]?.actions, ['link_click']), 0);
