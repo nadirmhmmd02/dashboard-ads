@@ -205,13 +205,14 @@ export default function CalendarPage() {
           <div style={{ overflowX:'auto' }}>
             <table style={{ borderCollapse:'collapse', width:'100%', tableLayout:'fixed' }}>
               <colgroup>
-                <col style={{ width:'18%' }}/>
-                <col style={{ width:'9%' }}/>
-                <col style={{ width:'7%' }}/>
+                <col style={{ width:'16%' }}/>
+                <col style={{ width:'8%' }}/>
+                <col style={{ width:'8%' }}/>
+                <col style={{ width:'6%' }}/>
+                <col style={{ width:'5%' }}/>
+                <col style={{ width:'5%' }}/>
                 <col style={{ width:'6%' }}/>
                 <col style={{ width:'6%' }}/>
-                <col style={{ width:'7%' }}/>
-                <col style={{ width:'7%' }}/>
                 <col style={{ width:'6%' }}/>
                 {Array.from({ length:days }).map((_,i) => (
                   <col key={i} style={{ width:`${(34/days)}%` }}/>
@@ -220,7 +221,8 @@ export default function CalendarPage() {
               <thead>
                 <tr>
                   <th style={{ ...thBase, textAlign:'left', position:'sticky', left:0, background:'var(--sf)', zIndex:2 }}>Campaign</th>
-                  <th style={{ ...thBase, textAlign:'left', position:'sticky', left:'18%', background:'var(--sf)', zIndex:2 }}>Objective</th>
+                  <th style={{ ...thBase, textAlign:'left' }}>Objective</th>
+                  <th style={{ ...thBase, textAlign:'left' }}>Ad Content</th>
                   <th style={{ ...thBase, textAlign:'right' }}>Bgt/Day</th>
                   <th style={{ ...thBase, textAlign:'right' }}>Start</th>
                   <th style={{ ...thBase, textAlign:'right' }}>End</th>
@@ -241,7 +243,7 @@ export default function CalendarPage() {
               </thead>
               <tbody>
                 {sorted.length === 0 ? (
-                  <tr><td colSpan={8+days} style={{ textAlign:'center', padding:'40px', color:'var(--t3)', fontSize:'13px' }}>
+                  <tr><td colSpan={9+days} style={{ textAlign:'center', padding:'40px', color:'var(--t3)', fontSize:'13px' }}>
                     No campaigns this month.
                   </td></tr>
                 ) : sorted.map((c, rowIdx) => {
@@ -260,9 +262,10 @@ export default function CalendarPage() {
                       onMouseLeave={e => e.currentTarget.style.background='transparent'}
                     >
                       <td style={{ padding:'8px', fontSize:'12px', fontWeight:'500', color:'var(--t1)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', position:'sticky', left:0, background:'var(--cd)', zIndex:1 }}>{c.name}</td>
-                      <td style={{ padding:'6px', position:'sticky', left:'18%', background:'var(--cd)', zIndex:1 }}>
+                      <td style={{ padding:'6px' }}>
                         <span style={{ padding:'2px 7px', borderRadius:'20px', fontSize:'9px', fontWeight:'600', background:OBJ_STYLE[c.obj]?.bg, color:OBJ_STYLE[c.obj]?.color, whiteSpace:'nowrap' }}>{c.obj}</span>
                       </td>
+                      <td style={{ padding:'6px', fontSize:'11px', color:'var(--t2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'0' }}>{c.konten || '—'}</td>
                       <td style={{ padding:'6px', fontSize:'11px', color:'var(--t2)', textAlign:'right', whiteSpace:'nowrap' }}>{c.bh ? fmtRp(c.bh) : '—'}</td>
                       <td style={{ padding:'6px', fontSize:'11px', color:'var(--t2)', textAlign:'right', whiteSpace:'nowrap' }}>{c.mulai ? new Date(c.mulai).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '—'}</td>
                       <td style={{ padding:'6px', fontSize:'11px', color:'var(--t2)', textAlign:'right', whiteSpace:'nowrap' }}>{c.selesai ? new Date(c.selesai).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '—'}</td>
@@ -415,8 +418,11 @@ export default function CalendarPage() {
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
               />
               {(() => {
+                // Unique values saja, exclude yg sudah persis sama dengan input
                 const allKonten = [...new Set(campaigns.map(c => c.konten).filter(Boolean))];
-                const filtered = allKonten.filter(k => k.toLowerCase().includes((form.konten || '').toLowerCase()) && k !== form.konten);
+                const filtered = allKonten
+                  .filter(k => k.toLowerCase().includes((form.konten || '').toLowerCase()) && k.toLowerCase() !== (form.konten || '').toLowerCase())
+                  .slice(0, 5);
                 if (!showSuggestions || filtered.length === 0) return null;
                 return (
                   <div style={{
