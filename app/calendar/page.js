@@ -22,13 +22,14 @@ export default function CalendarPage() {
   const now = new Date();
   const [year, setYear]         = useState(now.getFullYear());
   const [month, setMonth]       = useState(now.getMonth());
-  const [showModal, setShowModal] = useState(false);
-  const [campaigns, setCampaigns] = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState(null);
-  const [form, setForm]         = useState(emptyForm);
-  const [editId, setEditId]     = useState(null);
-  const [tableKey, setTableKey] = useState(0); // trigger re-animate on month change
+  const [showModal, setShowModal]       = useState(false);
+  const [campaigns, setCampaigns]       = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState(null);
+  const [form, setForm]                 = useState(emptyForm);
+  const [editId, setEditId]             = useState(null);
+  const [tableKey, setTableKey]         = useState(0);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const today = { y: now.getFullYear(), m: now.getMonth(), d: now.getDate() };
   const days  = daysInMonth(year, month);
@@ -394,12 +395,57 @@ export default function CalendarPage() {
               <button onClick={() => setShowModal(false)} style={{ background:'none', border:'none', fontSize:'18px', cursor:'pointer', color:'var(--t3)', lineHeight:1 }}>✕</button>
             </div>
 
-            {[['Campaign Name','text','name','Enter campaign name...'],['Ad Content','text','konten','Instagram post, video, etc...']].map(([lbl,type,key,ph]) => (
-              <div key={key} style={{ marginBottom:'12px' }}>
-                <div style={{ fontSize:'11px', color:'var(--t3)', textTransform:'uppercase', letterSpacing:'.4px', marginBottom:'5px', fontWeight:'600' }}>{lbl}</div>
-                <input style={inp} type={type} placeholder={ph} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]:e.target.value }))}/>
-              </div>
-            ))}
+            {/* Campaign Name */}
+            <div style={{ marginBottom:'12px' }}>
+              <div style={{ fontSize:'11px', color:'var(--t3)', textTransform:'uppercase', letterSpacing:'.4px', marginBottom:'5px', fontWeight:'600' }}>Campaign Name</div>
+              <input style={inp} type="text" placeholder="Enter campaign name..." value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}/>
+            </div>
+
+            {/* Ad Content — dengan autocomplete */}
+            <div style={{ marginBottom:'12px', position:'relative' }}>
+              <div style={{ fontSize:'11px', color:'var(--t3)', textTransform:'uppercase', letterSpacing:'.4px', marginBottom:'5px', fontWeight:'600' }}>Ad Content</div>
+              <input
+                style={inp}
+                type="text"
+                placeholder="Instagram post, video, etc..."
+                value={form.konten}
+                autoComplete="off"
+                onChange={e => { setForm(f => ({ ...f, konten: e.target.value })); setShowSuggestions(true); }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+              />
+              {(() => {
+                const allKonten = [...new Set(campaigns.map(c => c.konten).filter(Boolean))];
+                const filtered = allKonten.filter(k => k.toLowerCase().includes((form.konten || '').toLowerCase()) && k !== form.konten);
+                if (!showSuggestions || filtered.length === 0) return null;
+                return (
+                  <div style={{
+                    position:'absolute', top:'100%', left:0, right:0, zIndex:100,
+                    background:'var(--cd)', border:'1px solid var(--br)',
+                    borderRadius:'8px', marginTop:'4px',
+                    boxShadow:'0 8px 24px rgba(0,0,0,0.3)',
+                    overflow:'hidden',
+                    animation:'wdScaleIn 0.15s cubic-bezier(0.4,0,0.2,1)',
+                  }}>
+                    {filtered.map((k, i) => (
+                      <div
+                        key={i}
+                        onMouseDown={() => { setForm(f => ({ ...f, konten: k })); setShowSuggestions(false); }}
+                        style={{
+                          padding:'9px 12px', fontSize:'13px', cursor:'pointer',
+                          color:'var(--t1)', borderTop: i > 0 ? '1px solid var(--br)' : 'none',
+                          transition:'background 0.1s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--sf)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        {k}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
 
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'12px' }}>
               <div>
