@@ -84,19 +84,35 @@ const OBJ_ORDER = ['Awareness', 'Traffic', 'Conversion'];
 
 export default function CampaignsPage() {
   const [selectedDate, setSelectedDate] = useState(dateOptions[6]); // this_month
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [showSubtotal, setShowSubtotal] = useState({ Awareness: true, Traffic: true, Conversion: true });
+  const [showDropdown, setShowDropdown]   = useState(false);
+  const [customSince, setCustomSince]     = useState('');
+  const [customUntil, setCustomUntil]     = useState('');
+  const [isCustom, setIsCustom]           = useState(false);
+  const [data, setData]                   = useState(null);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState(null);
+  const [showSubtotal, setShowSubtotal]   = useState({ Awareness: true, Traffic: true, Conversion: true });
 
-  useEffect(() => { fetchData(); }, [selectedDate]);
+  useEffect(() => { if (!isCustom) fetchData(); }, [selectedDate, isCustom]);
 
-  async function fetchData() {
+  // Tutup dropdown saat klik di luar
+  useEffect(() => {
+    if (!showDropdown) return;
+    const handler = (e) => {
+      if (!e.target.closest('[data-filter-dropdown]')) setShowDropdown(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showDropdown]);
+
+  async function fetchData(since = '', until = '') {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/meta?date_preset=${selectedDate.value}`);
+      const url = since && until
+        ? `/api/meta?since=${since}&until=${until}`
+        : `/api/meta?date_preset=${selectedDate.value}`;
+      const res  = await fetch(url);
       const json = await res.json();
       if (json.error) throw new Error(json.error);
       setData(json);
@@ -104,6 +120,30 @@ export default function CampaignsPage() {
       setError(err.message);
     }
     setLoading(false);
+  }
+
+  function applyCustomRange() {
+    if (!customSince || !customUntil) return;
+    setIsCustom(true);
+    setShowDropdown(false);
+    fetchData(customSince, customUntil);
+  }
+
+  function selectPreset(opt) {
+    setSelectedDate(opt);
+    setIsCustom(false);
+    setCustomSince('');
+    setCustomUntil('');
+    setShowDropdown(false);
+  }
+
+  // Label yang muncul di tombol filter
+  function filterLabel() {
+    if (isCustom && customSince && customUntil) {
+      const fmt = d => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
+      return `${fmt(customSince)} – ${fmt(customUntil)}`;
+    }
+    return selectedDate.label;
   }
 
   function toggleSubtotal(grp) {
@@ -278,24 +318,103 @@ export default function CampaignsPage() {
         <div>
           <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--t1)' }}>Campaign Performance</div>
           <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>
-            {loading ? 'Loading...' : `${campaignsWithData.length} campaigns · ${activeCampaigns.length} active · ${inactiveCampaigns.length} non-active · ${selectedDate.label}`}
+            {loading ? 'Loading...' : `${campaignsWithData.length} campaigns · ${activeCampaigns.length} active · ${inactiveCampaigns.length} non-active · ${filterLabel()}`}
           </div>
         </div>
-        <div style={{ position: 'relative' }}>
+
+        {/* Filter dropdown */}
+        <div style={{ position: 'relative' }} data-filter-dropdown>
           <button
-            onClick={() => setShowDropdown(!showDropdown)}
-            style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '7px 12px', fontSize: '13px', border: '1px solid var(--br)', borderRadius: '8px', background: 'var(--cd)', color: 'var(--t1)', cursor: 'pointer' }}>
-            📅 {selectedDate.label} ▾
+            onClick={() => setShowDropdown(d => !d)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '7px',
+              padding: '7px 12px', fontSize: '13px',
+              border: `1px solid ${isCustom ? 'var(--ac)' : 'var(--br)'}`,
+              borderRadius: '8px', background: 'var(--cd)', color: 'var(--t1)', cursor: 'pointer',
+              transition: 'border-color 0.15s',
+            }}>
+            📅 {filterLabel()} ▾
           </button>
+
           {showDropdown && (
-            <div style={{ position: 'absolute', top: '38px', right: 0, zIndex: 50, background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '8px', overflow: 'hidden', minWidth: '160px' }}>
-              {dateOptions.map(opt => (
-                <div key={opt.value}
-                  onClick={() => { setSelectedDate(opt); setShowDropdown(false); }}
-                  style={{ padding: '9px 14px', fontSize: '13px', cursor: 'pointer', color: opt.value === selectedDate.value ? 'var(--ac)' : 'var(--t2)', background: opt.value === selectedDate.value ? 'var(--sf)' : 'transparent' }}>
-                  {opt.label}
+            <div style={{
+              position: 'absolute', top: '38px', right: 0, zIndex: 50,
+              background: 'var(--cd)', border: '1px solid var(--br)',
+              borderRadius: '10px', minWidth: '220px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+              animation: 'wdScaleIn 0.18s cubic-bezier(0.4,0,0.2,1)',
+              overflow: 'hidden',
+            }}>
+              {/* Preset options */}
+              <div style={{ padding: '6px 0' }}>
+                {dateOptions.map(opt => (
+                  <div key={opt.value}
+                    onClick={() => selectPreset(opt)}
+                    style={{
+                      padding: '8px 14px', fontSize: '13px', cursor: 'pointer',
+                      color: (!isCustom && opt.value === selectedDate.value) ? 'var(--ac)' : 'var(--t2)',
+                      background: (!isCustom && opt.value === selectedDate.value) ? 'rgba(245,158,11,0.08)' : 'transparent',
+                      transition: 'background 0.1s',
+                    }}
+                    onMouseEnter={e => { if (isCustom || opt.value !== selectedDate.value) e.currentTarget.style.background = 'var(--sf)'; }}
+                    onMouseLeave={e => { if (isCustom || opt.value !== selectedDate.value) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    {opt.label}
+                  </div>
+                ))}
+              </div>
+
+              {/* Custom date range */}
+              <div style={{ borderTop: '1px solid var(--br)', padding: '12px 14px' }}>
+                <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '10px' }}>
+                  Custom range
                 </div>
-              ))}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+                  <div>
+                    <div style={{ fontSize: '10px', color: 'var(--t3)', marginBottom: '4px' }}>From</div>
+                    <input
+                      type="date"
+                      value={customSince}
+                      onChange={e => setCustomSince(e.target.value)}
+                      style={{
+                        width: '100%', padding: '6px 8px', fontSize: '12px',
+                        border: '1px solid var(--br)', borderRadius: '6px',
+                        background: 'var(--sf)', color: 'var(--t1)',
+                        outline: 'none', fontFamily: 'inherit',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '10px', color: 'var(--t3)', marginBottom: '4px' }}>To</div>
+                    <input
+                      type="date"
+                      value={customUntil}
+                      min={customSince}
+                      onChange={e => setCustomUntil(e.target.value)}
+                      style={{
+                        width: '100%', padding: '6px 8px', fontSize: '12px',
+                        border: '1px solid var(--br)', borderRadius: '6px',
+                        background: 'var(--sf)', color: 'var(--t1)',
+                        outline: 'none', fontFamily: 'inherit',
+                      }}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={applyCustomRange}
+                  disabled={!customSince || !customUntil}
+                  style={{
+                    width: '100%', padding: '7px', fontSize: '12px', fontWeight: '600',
+                    border: 'none', borderRadius: '6px',
+                    background: customSince && customUntil ? 'var(--ac)' : 'var(--sf)',
+                    color: customSince && customUntil ? '#fff' : 'var(--t3)',
+                    cursor: customSince && customUntil ? 'pointer' : 'default',
+                    transition: 'background 0.15s, color 0.15s',
+                  }}
+                >
+                  Apply range
+                </button>
+              </div>
             </div>
           )}
         </div>
