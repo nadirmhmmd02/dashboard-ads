@@ -297,11 +297,12 @@ export default function DashboardPage() {
         {!loading && !error && summary && (
           <>
             {/* ── 5 BIG CARDS ── */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(5, minmax(0,1fr))', gap:'10px', flexShrink:0 }}>
+            <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'repeat(5, minmax(0,1fr))', gap:'10px' }}>
               {BIG_CARDS.map((c, i) => (
                 <div key={c.label} style={{
                   background:'var(--cd)', border:'1px solid var(--br)',
-                  borderRadius:'12px', padding:'22px 22px 18px',
+                  borderRadius:'12px', padding:'0 22px',
+                  display:'flex', flexDirection:'column', justifyContent:'center',
                   animation:`wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) backwards`,
                   animationDelay: i * 0.06 + 's',
                   transition:'border-color 0.2s',
@@ -309,11 +310,11 @@ export default function DashboardPage() {
                 onMouseEnter={e => e.currentTarget.style.borderColor='rgba(255,255,255,0.1)'}
                 onMouseLeave={e => e.currentTarget.style.borderColor='var(--br)'}
                 >
-                  <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'14px' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'12px' }}>
                     <span style={{ width:'8px', height:'8px', borderRadius:'50%', background:c.dot, flexShrink:0 }}/>
                     <span style={{ fontSize:'12px', color:'var(--t2)', fontWeight:'500' }}>{c.label}</span>
                   </div>
-                  <div style={{ fontSize:'28px', fontWeight:'700', color:'var(--t1)', lineHeight:1, marginBottom:'10px', letterSpacing:'-0.8px' }}>
+                  <div style={{ fontSize:'32px', fontWeight:'700', color:'var(--t1)', lineHeight:1, marginBottom:'10px', letterSpacing:'-1px' }}>
                     <CountUp value={c.value} display={c.display} delay={200 + i * 60} />
                   </div>
                   <div style={{ fontSize:'11px', color:'var(--t3)' }}>{c.sub}</div>
@@ -326,12 +327,12 @@ export default function DashboardPage() {
               {SMALL_CARDS.map((c) => (
                 <div key={c.label} style={{
                   background:'var(--cd)', border:'1px solid var(--br)',
-                  borderRadius:'12px', padding:'16px 20px',
+                  borderRadius:'12px', padding:'14px 20px',
                   display:'flex', alignItems:'center', justifyContent:'space-between',
                 }}>
                   <div>
-                    <div style={{ fontSize:'11px', color:'var(--t3)', marginBottom:'6px', fontWeight:'500' }}>{c.label}</div>
-                    <div style={{ fontSize:'22px', fontWeight:'600', color:'var(--t1)', letterSpacing:'-0.4px' }}>{c.value}</div>
+                    <div style={{ fontSize:'11px', color:'var(--t3)', marginBottom:'5px', fontWeight:'500' }}>{c.label}</div>
+                    <div style={{ fontSize:'20px', fontWeight:'600', color:'var(--t1)', letterSpacing:'-0.3px' }}>{c.value}</div>
                   </div>
                   <div style={{ fontSize:'10px', color:'var(--t3)', textAlign:'right', maxWidth:'80px', lineHeight:1.3 }}>{c.sub}</div>
                 </div>
@@ -339,7 +340,7 @@ export default function DashboardPage() {
             </div>
 
             {/* ── BOTTOM: DONUT + BAR CHART BERDAMPINGAN ── */}
-            <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'260px 1fr', gap:'10px' }}>
+            <div style={{ height:'200px', flexShrink:0, display:'grid', gridTemplateColumns:'260px 1fr', gap:'10px' }}>
 
               {/* DONUT */}
               <div style={{
