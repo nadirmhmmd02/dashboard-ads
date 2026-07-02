@@ -222,7 +222,7 @@ function KpiCard({ label, display, value, icon: Icon, color, pct, spark, delay }
 /* ─── Main ─── */
 export default function DashboardPage() {
   const [hoverSeg, setHoverSeg]         = useState(null);
-  const [dateOpt, setDateOpt]           = useState(DATE_OPTIONS[4]); // Last 30 days
+  const [dateOpt, setDateOpt]           = useState(DATE_OPTIONS[5]); // This month
   const [showDropdown, setShowDropdown] = useState(false);
   const [customSince, setCustomSince]   = useState('');
   const [customUntil, setCustomUntil]   = useState('');
