@@ -123,12 +123,12 @@ export default function Sidebar() {
         <div style={{
           width: '28px', height: '28px',
           borderRadius: '7px',
-          background: '#f59e0b',
+          background: '#8BE34D',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,
-          animation: 'wdSpinGlow 3s ease-in-out infinite',
+          animation: 'wdSpinGlowGreen 3s ease-in-out infinite',
         }}>
-          <Zap size={17} color="#422006" fill="#422006" style={{ flexShrink: 0, minWidth: 17 }} />
+          <Zap size={17} color="#0A0F06" fill="#0A0F06" style={{ flexShrink: 0, minWidth: 17 }} />
         </div>
         <span style={{
           fontSize: '13px', fontWeight: '700',
