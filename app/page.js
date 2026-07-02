@@ -1,27 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, ChevronDown, GitCompare, Moon, Sun, TrendingUp } from 'lucide-react';
+import { Calendar, ChevronDown, GitCompare, Moon, Sun } from 'lucide-react';
 import CountUp from './components/CountUp';
 import BarChart from './components/BarChart';
 
-/* ─── Design tokens ─── */
+/* ─── Tokens ─── */
 const LIME     = '#a3e635';
-const LIME_DIM = 'rgba(163,230,53,0.10)';
-
-const CARD = {
+const LIME_DIM = 'rgba(163,230,53,0.08)';
+const CARD_BASE = {
   background:   '#111111',
   border:       '1px solid rgba(255,255,255,0.07)',
   borderRadius: '16px',
-  boxShadow:    '0 1px 4px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03)',
+  boxShadow:    '0 1px 3px rgba(0,0,0,0.5)',
 };
-
 const LABEL = {
   fontSize: '10px', fontWeight: '600',
-  textTransform: 'uppercase', letterSpacing: '1.4px', color: '#444',
+  textTransform: 'uppercase', letterSpacing: '1.4px', color: '#424242',
 };
 
-/* ─── Date options ─── */
 const DATE_OPTIONS = [
   { label: 'Today',        value: 'today' },
   { label: 'Yesterday',    value: 'yesterday' },
@@ -44,7 +41,7 @@ function getActionValue(actions, types) {
 
 function getCampaignType(name) {
   const n = name?.toUpperCase() || '';
-  if (n.includes('TRAFFIC'))                           return 'TRAFFIC';
+  if (n.includes('TRAFFIC'))                            return 'TRAFFIC';
   if (n.includes('PROSPEK') || n.includes('KONVERSI')) return 'CONVERSION';
   return 'AWARENESS';
 }
@@ -73,36 +70,87 @@ function buildChartData(daily) {
   return r;
 }
 
-/* ─── Sparkline component ─── */
-function Sparkline({ data, color = LIME, height = 36, width = 160 }) {
-  const pts = data.filter(v => v > 0);
+/* ─── Mini sparkline ─── */
+function Sparkline({ data, color, w = 100, h = 28 }) {
+  const pts = data.filter(v => v >= 0);
   if (pts.length < 2) return null;
-  const max   = Math.max(...pts);
+  const max   = Math.max(...pts) || 1;
   const min   = Math.min(...pts);
   const range = max - min || 1;
   const coords = pts.map((v, i) => {
-    const x = (i / (pts.length - 1)) * width;
-    const y = height - ((v - min) / range) * (height - 4) - 2;
+    const x = (i / (pts.length - 1)) * w;
+    const y = h - 2 - ((v - min) / range) * (h - 4);
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
   return (
-    <svg width={width} height={height} style={{ overflow: 'visible', display: 'block' }}>
-      <defs>
-        <linearGradient id="spk" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.3"/>
-          <stop offset="100%" stopColor={color} stopOpacity="0"/>
-        </linearGradient>
-      </defs>
+    <svg width={w} height={h} style={{ display:'block', overflow:'visible' }}>
       <polyline
         points={coords.join(' ')}
-        fill="none"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        opacity="0.8"
+        fill="none" stroke={color} strokeWidth="1.4"
+        strokeLinejoin="round" strokeLinecap="round"
+        style={{ opacity: 0.65 }}
       />
     </svg>
+  );
+}
+
+/* ─── KPI Card ─── */
+function KpiCard({ label, display, value, sub, dot, sparkData, sparkColor, isHero, delay }) {
+  return (
+    <div
+      style={{
+        ...CARD_BASE,
+        position: 'relative', overflow: 'hidden',
+        display: 'flex', flexDirection: 'column',
+        justifyContent: 'space-between',
+        padding: '18px 20px 14px',
+        animation: `wdFadeUp 0.38s cubic-bezier(0.4,0,0.2,1) ${delay}ms backwards`,
+        transition: 'border-color 0.2s, box-shadow 0.2s',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)';
+        e.currentTarget.style.boxShadow   = '0 4px 20px rgba(0,0,0,0.6)';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)';
+        e.currentTarget.style.boxShadow   = '0 1px 3px rgba(0,0,0,0.5)';
+      }}
+    >
+      {/* Subtle top accent line for hero */}
+      {isHero && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
+          background: `linear-gradient(90deg, ${LIME}66, ${LIME}22, transparent)`,
+        }}/>
+      )}
+
+      {/* Label */}
+      <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+        <span style={{ width:'6px', height:'6px', borderRadius:'50%', background: dot, flexShrink:0 }}/>
+        <span style={{ ...LABEL, color: isHero ? 'rgba(163,230,53,0.55)' : '#424242' }}>{label}</span>
+      </div>
+
+      {/* Value */}
+      <div style={{
+        fontSize: isHero ? 'clamp(26px, 2.2vw, 36px)' : 'clamp(20px, 1.7vw, 28px)',
+        fontWeight: 800,
+        color: '#f0f0f0',
+        letterSpacing: '-0.8px',
+        lineHeight: 1,
+      }}>
+        <CountUp value={value} display={display} delay={delay + 100}/>
+      </div>
+
+      {/* Sparkline + sub */}
+      <div>
+        {sparkData && sparkData.filter(v => v > 0).length > 1 && (
+          <div style={{ marginBottom: '8px' }}>
+            <Sparkline data={sparkData} color={sparkColor || dot} w={100} h={26}/>
+          </div>
+        )}
+        <div style={{ fontSize:'10px', color:'#333' }}>{sub}</div>
+      </div>
+    </div>
   );
 }
 
@@ -184,8 +232,8 @@ export default function DashboardPage() {
       if (awareSpend > 0)   segs.push({ color:'#8b5cf6', label:'Awareness',  pct: Math.round(awareSpend/total*100),   value: fmtSpend(awareSpend)   });
       if (trafficSpend > 0) segs.push({ color:'#f59e0b', label:'Traffic',    pct: Math.round(trafficSpend/total*100), value: fmtSpend(trafficSpend) });
       if (convSpend > 0)    segs.push({ color:'#10b981', label:'Conversion', pct: Math.round(convSpend/total*100),    value: fmtSpend(convSpend)    });
-      const otherSpend = Math.max(0, totalSpend - awareSpend - trafficSpend - convSpend);
-      if (otherSpend > 0)   segs.push({ color:'#3b82f6', label:'Other',      pct: Math.round(otherSpend/total*100),   value: fmtSpend(otherSpend)   });
+      const other = Math.max(0, totalSpend - awareSpend - trafficSpend - convSpend);
+      if (other > 0)        segs.push({ color:'#3b82f6', label:'Other',      pct: Math.round(other/total*100),        value: fmtSpend(other)        });
 
       const CIRC = 238.76;
       let offset = 0;
@@ -235,14 +283,13 @@ export default function DashboardPage() {
         padding:'0 24px', height:'52px', flexShrink:0,
         borderBottom:'1px solid rgba(255,255,255,0.05)',
       }}>
-        <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-          <h1 style={{ fontSize:'14px', fontWeight:'600', color:'rgba(255,255,255,0.85)', letterSpacing:'-0.2px' }}>
+        <div>
+          <h1 style={{ fontSize:'14px', fontWeight:'600', color:'rgba(255,255,255,0.8)', letterSpacing:'-0.2px' }}>
             Dashboard
           </h1>
-          <span style={{ color:'rgba(255,255,255,0.12)' }}>·</span>
-          <span style={{ fontSize:'11px', color:'#3a3a3a' }}>
-            {loading ? 'loading…' : `${activeCampaignCount} active campaigns`}
-          </span>
+          <p style={{ fontSize:'11px', color:'#383838', marginTop:'2px' }}>
+            {loading ? 'loading…' : `Meta Ads · ${activeCampaignCount} active campaigns`}
+          </p>
         </div>
 
         <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
@@ -252,9 +299,10 @@ export default function DashboardPage() {
               display:'flex', alignItems:'center', gap:'6px',
               padding:'6px 12px',
               background:'rgba(255,255,255,0.04)',
-              border:`1px solid ${isCustom ? LIME : 'rgba(255,255,255,0.09)'}`,
-              borderRadius:'8px', fontSize:'12px',
+              border:`1px solid ${isCustom ? LIME+'55' : 'rgba(255,255,255,0.09)'}`,
+              borderRadius:'9px', fontSize:'12px',
               color:'rgba(255,255,255,0.6)', cursor:'pointer',
+              transition:'border-color 0.15s',
             }}>
               <Calendar size={13} color="rgba(255,255,255,0.3)"/>
               {filterLabel()}
@@ -279,7 +327,6 @@ export default function DashboardPage() {
                         padding:'7px 11px', fontSize:'12px', cursor:'pointer', borderRadius:'7px',
                         color: active ? LIME : 'rgba(255,255,255,0.55)',
                         background: active ? LIME_DIM : 'transparent',
-                        transition:'background 0.1s',
                       }}
                       onMouseEnter={e => { if (!active) e.currentTarget.style.background='rgba(255,255,255,0.05)'; }}
                       onMouseLeave={e => { if (!active) e.currentTarget.style.background='transparent'; }}
@@ -292,7 +339,7 @@ export default function DashboardPage() {
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'10px' }}>
                     {[['From',customSince,setCustomSince,''],['To',customUntil,setCustomUntil,customSince]].map(([lbl,val,setter,min]) => (
                       <div key={lbl}>
-                        <div style={{ fontSize:'10px', color:'#3a3a3a', marginBottom:'4px' }}>{lbl}</div>
+                        <div style={{ fontSize:'10px', color:'#383838', marginBottom:'4px' }}>{lbl}</div>
                         <input type="date" value={val} min={min} onChange={e => setter(e.target.value)} style={{
                           width:'100%', padding:'5px 8px', fontSize:'11px',
                           border:'1px solid rgba(255,255,255,0.09)', borderRadius:'6px',
@@ -305,8 +352,9 @@ export default function DashboardPage() {
                     width:'100%', padding:'7px', fontSize:'12px', fontWeight:'600',
                     border:'none', borderRadius:'7px',
                     background: customSince && customUntil ? LIME : 'rgba(255,255,255,0.05)',
-                    color:      customSince && customUntil ? '#0a1200' : '#3a3a3a',
+                    color:      customSince && customUntil ? '#0a1200' : '#383838',
                     cursor:     customSince && customUntil ? 'pointer' : 'default',
+                    transition:'background 0.15s',
                   }}>Apply range</button>
                 </div>
               </div>
@@ -318,22 +366,22 @@ export default function DashboardPage() {
             padding:'6px 12px',
             background:'rgba(255,255,255,0.03)',
             border:'1px solid rgba(255,255,255,0.07)',
-            borderRadius:'8px', fontSize:'12px',
+            borderRadius:'9px', fontSize:'12px',
             color:'rgba(255,255,255,0.18)', cursor:'not-allowed',
           }} title="Coming soon">
             <GitCompare size={13}/> Compare
           </button>
 
-          <ThemeToggle />
+          <ThemeToggle/>
         </div>
       </header>
 
       {/* ══ CONTENT ══ */}
-      <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', padding:'14px 20px', gap:'10px', overflow:'hidden' }}>
+      <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', padding:'16px 22px', gap:'10px', overflow:'hidden' }}>
 
         {loading && (
-          <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'#3a3a3a', fontSize:'13px' }}>
-            Loading data…
+          <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'#303030', fontSize:'13px' }}>
+            Loading…
           </div>
         )}
 
@@ -345,153 +393,95 @@ export default function DashboardPage() {
 
         {!loading && !error && summary && (<>
 
-          {/* ══ ROW 1: HERO + 2×2 KPI GRID ══ */}
-          <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'2fr 3fr', gap:'10px' }}>
-
-            {/* HERO — Total Spend */}
-            <div style={{
-              position:'relative', overflow:'hidden',
-              background:'linear-gradient(145deg, #0c1a06 0%, #0d1608 60%, #0a0a0a 100%)',
-              border:'1px solid rgba(163,230,53,0.14)',
-              borderRadius:'18px',
-              padding:'26px 28px',
-              display:'flex', flexDirection:'column', justifyContent:'space-between',
-              animation:'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) backwards',
-            }}>
-              {/* Glow orb */}
-              <div style={{
-                position:'absolute', top:'-80px', right:'-80px',
-                width:'280px', height:'280px',
-                background:'radial-gradient(circle, rgba(163,230,53,0.07) 0%, transparent 65%)',
-                pointerEvents:'none',
-              }}/>
-              {/* Corner accent */}
-              <div style={{
-                position:'absolute', bottom:0, left:0, right:0, height:'2px',
-                background:'linear-gradient(90deg, transparent, rgba(163,230,53,0.3), transparent)',
-              }}/>
-
-              {/* Top */}
-              <div>
-                <div style={{ ...LABEL, color:'rgba(163,230,53,0.5)', marginBottom:'6px' }}>Total Spend</div>
-                <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
-                  <span style={{ width:'6px', height:'6px', borderRadius:'50%', background:LIME, boxShadow:`0 0 6px ${LIME}`, animation:'wdPulseDot 2s ease-in-out infinite' }}/>
-                  <span style={{ fontSize:'10px', color:'rgba(163,230,53,0.4)' }}>all campaigns</span>
-                </div>
-              </div>
-
-              {/* Value */}
-              <div>
-                <div style={{
-                  fontSize:'clamp(32px, 3.6vw, 58px)', fontWeight:900,
-                  color:'#ffffff', letterSpacing:'-2px', lineHeight:1,
-                  marginBottom:'8px',
-                  animation:'wdFadeUp 0.5s cubic-bezier(0.4,0,0.2,1) 0.1s backwards',
-                }}>
-                  <CountUp value={Math.round(summary.totalSpend)} display={fmtSpend(summary.totalSpend)} delay={200}/>
-                </div>
-              </div>
-
-              {/* Sparkline */}
-              <div>
-                {chartData.spend.filter(v => v > 0).length > 1 && (
-                  <div style={{ marginBottom:'10px', opacity:0.7 }}>
-                    <Sparkline data={chartData.spend} color={LIME} height={32} width={160}/>
-                  </div>
-                )}
-                <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.18)' }}>
-                  {filterLabel()} · {activeCampaignCount} active
-                </div>
-              </div>
-            </div>
-
-            {/* 2×2 KPI GRID — Reach, Impressions, Traffic, Leads */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gridTemplateRows:'1fr 1fr', gap:'10px' }}>
-              {[
-                { dot:'#3b82f6', label:'Reach',       value: Math.round(summary.totalReach),       display: fmtBigNum(summary.totalReach),       sub:'all campaigns', delay:80  },
-                { dot:'#8b5cf6', label:'Impressions',  value: Math.round(summary.totalImpressions),  display: fmtBigNum(summary.totalImpressions), sub:'all campaigns', delay:130 },
-                { dot:'#f59e0b', label:'Traffic',      value: summary.totalTraffic,                  display: fmtBigNum(summary.totalTraffic),     sub:'traffic only',  delay:180 },
-                { dot:'#10b981', label:'Leads',        value: summary.totalLeads,                    display: fmtBigNum(summary.totalLeads),       sub:'conversion',    delay:230 },
-              ].map((c, i) => (
-                <div key={c.label} style={{
-                  ...CARD,
-                  padding:'20px 22px',
-                  display:'flex', flexDirection:'column', justifyContent:'space-between',
-                  animation:`wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) ${c.delay}ms backwards`,
-                  transition:'border-color 0.2s, box-shadow 0.2s',
-                  cursor:'default',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.13)';
-                  e.currentTarget.style.boxShadow   = '0 4px 20px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)';
-                  e.currentTarget.style.boxShadow   = CARD.boxShadow;
-                }}
-                >
-                  <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
-                    <span style={{ width:'6px', height:'6px', borderRadius:'50%', background:c.dot, flexShrink:0 }}/>
-                    <span style={LABEL}>{c.label}</span>
-                  </div>
-                  <div style={{
-                    fontSize:'clamp(22px, 2.2vw, 36px)', fontWeight:800,
-                    color:'#f0f0f0', letterSpacing:'-0.8px', lineHeight:1,
-                  }}>
-                    <CountUp value={c.value} display={c.display} delay={300 + i * 60}/>
-                  </div>
-                  <div style={{ fontSize:'10px', color:'#353535' }}>{c.sub}</div>
-                </div>
-              ))}
-            </div>
+          {/* ══ ROW 1: PRIMARY KPI — 5 cards, total spend slightly wider ══ */}
+          <div style={{
+            height: '156px', flexShrink: 0,
+            display: 'grid',
+            gridTemplateColumns: '1.18fr 1fr 1fr 1fr 1fr',
+            gap: '10px',
+          }}>
+            <KpiCard
+              label="Total Spend" isHero
+              value={Math.round(summary.totalSpend)} display={fmtSpend(summary.totalSpend)}
+              sub="all campaigns" dot={LIME}
+              sparkData={chartData.spend} sparkColor={LIME}
+              delay={0}
+            />
+            <KpiCard
+              label="Reach"
+              value={Math.round(summary.totalReach)} display={fmtBigNum(summary.totalReach)}
+              sub="all campaigns" dot="#3b82f6"
+              delay={60}
+            />
+            <KpiCard
+              label="Impressions"
+              value={Math.round(summary.totalImpressions)} display={fmtBigNum(summary.totalImpressions)}
+              sub="all campaigns" dot="#8b5cf6"
+              sparkData={chartData.awareness} sparkColor="#8b5cf6"
+              delay={110}
+            />
+            <KpiCard
+              label="Traffic"
+              value={summary.totalTraffic} display={fmtBigNum(summary.totalTraffic)}
+              sub="traffic only" dot="#f59e0b"
+              sparkData={chartData.traffic} sparkColor="#f59e0b"
+              delay={160}
+            />
+            <KpiCard
+              label="Leads"
+              value={summary.totalLeads} display={fmtBigNum(summary.totalLeads)}
+              sub="conversion" dot="#10b981"
+              sparkData={chartData.leads} sparkColor="#10b981"
+              delay={210}
+            />
           </div>
 
-          {/* ══ ROW 2: METRIC STRIP — CPM, CPC, CPL, CTR ══ */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'10px', flexShrink:0, height:'58px' }}>
+          {/* ══ ROW 2: SECONDARY METRICS — single unified panel ══ */}
+          <div style={{
+            ...CARD_BASE,
+            flexShrink: 0, height: '62px',
+            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
+            overflow: 'hidden',
+            animation: 'wdFadeUp 0.38s cubic-bezier(0.4,0,0.2,1) 260ms backwards',
+          }}>
             {[
               { label:'CPM', value: summary.calcCPM ? fmtSpend(summary.calcCPM) : '—', sub:'cost / 1K impr.' },
-              { label:'CPC', value: summary.calcCPC ? fmtSpend(summary.calcCPC) : '—', sub:'traffic campaigns' },
-              { label:'CPL', value: summary.calcCPL ? fmtSpend(summary.calcCPL) : '—', sub:'conv. campaigns' },
-              { label:'CTR', value: summary.calcCTR ? summary.calcCTR.toFixed(2)+'%' : '—', sub:'conv. campaigns' },
-            ].map((c, i) => (
-              <div key={c.label} style={{
-                ...CARD,
-                display:'flex', alignItems:'center', justifyContent:'space-between',
-                padding:'0 20px',
-                animation:`wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) ${400 + i*50}ms backwards`,
-                transition:'border-color 0.2s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.borderColor='rgba(255,255,255,0.12)'}
-              onMouseLeave={e => e.currentTarget.style.borderColor='rgba(255,255,255,0.07)'}
-              >
-                <span style={LABEL}>{c.label}</span>
-                <div style={{ textAlign:'right' }}>
-                  <div style={{ fontSize:'16px', fontWeight:700, color:'#e8e8e8', letterSpacing:'-0.3px' }}>{c.value}</div>
-                  <div style={{ fontSize:'9px', color:'#303030', marginTop:'1px' }}>{c.sub}</div>
-                </div>
+              { label:'CPC', value: summary.calcCPC ? fmtSpend(summary.calcCPC) : '—', sub:'traffic camps' },
+              { label:'CPL', value: summary.calcCPL ? fmtSpend(summary.calcCPL) : '—', sub:'conversion camps' },
+              { label:'CTR', value: summary.calcCTR ? summary.calcCTR.toFixed(2)+'%' : '—', sub:'conversion camps' },
+            ].map((m, i) => (
+              <div key={m.label} style={{
+                display:'flex', flexDirection:'column', justifyContent:'center',
+                padding:'0 22px',
+                borderRight: i < 3 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+              }}>
+                <div style={{ ...LABEL, marginBottom:'5px' }}>{m.label}</div>
+                <div style={{ fontSize:'17px', fontWeight:700, color:'#e0e0e0', letterSpacing:'-0.4px' }}>{m.value}</div>
               </div>
             ))}
           </div>
 
-          {/* ══ ROW 3: CHARTS — Donut + Bar ══ */}
-          <div style={{ flexShrink:0, height:'178px', display:'grid', gridTemplateColumns:'220px 1fr', gap:'10px' }}>
+          {/* ══ ROW 3: CHARTS ══ */}
+          <div style={{
+            flex: 1, minHeight: 0,
+            display: 'grid', gridTemplateColumns: '240px 1fr', gap: '10px',
+          }}>
 
-            {/* Donut — Spend Breakdown */}
-            <div style={{ ...CARD, display:'flex', flexDirection:'column', overflow:'hidden' }}>
-              <div style={{ padding:'12px 16px 8px', flexShrink:0 }}>
-                <span style={LABEL}>Breakdown</span>
+            {/* Donut */}
+            <div style={{ ...CARD_BASE, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+              <div style={{ padding:'16px 20px 8px', flexShrink:0 }}>
+                <span style={LABEL}>Spend breakdown</span>
               </div>
               {donutSegs.length === 0 ? (
-                <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', color:'#333' }}>No data</div>
+                <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', color:'#303030' }}>No data</div>
               ) : (
-                <div style={{ flex:1, minHeight:0, display:'flex', alignItems:'center', gap:'12px', padding:'0 14px 12px', overflow:'hidden' }}>
-                  {/* Donut */}
-                  <div style={{ position:'relative', width:'90px', height:'90px', flexShrink:0 }}>
-                    <svg viewBox="0 0 100 100" style={{ width:'90px', height:'90px' }}>
-                      <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="14"/>
+                <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px', padding:'4px 16px 16px', overflow:'hidden' }}>
+                  <div style={{ position:'relative', width:'110px', height:'110px', flexShrink:0 }}>
+                    <svg viewBox="0 0 100 100" style={{ width:'110px', height:'110px' }}>
+                      <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="13"/>
                       {donutSegs.map((seg, i) => {
-                        let sw=14, op=1;
-                        if (hoverSeg!==null){ sw=hoverSeg===i?18:9; op=hoverSeg===i?1:0.2; }
+                        let sw=13, op=1;
+                        if (hoverSeg!==null){ sw=hoverSeg===i?17:9; op=hoverSeg===i?1:0.2; }
                         return (
                           <circle key={i} cx="50" cy="50" r="38" fill="none"
                             stroke={seg.color} strokeWidth={sw}
@@ -506,25 +496,29 @@ export default function DashboardPage() {
                       })}
                     </svg>
                     <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
-                      <div style={{ fontSize:'10px', fontWeight:700, color:'#e0e0e0', letterSpacing:'-0.3px' }}>{center.value}</div>
-                      <div style={{ fontSize:'8px', color:'#333', marginTop:'1px', textTransform:'uppercase', letterSpacing:'0.6px' }}>{center.label}</div>
+                      <div style={{ fontSize:'11px', fontWeight:700, color:'#e8e8e8', letterSpacing:'-0.3px' }}>{center.value}</div>
+                      <div style={{ fontSize:'8px', color:'#303030', marginTop:'2px', textTransform:'uppercase', letterSpacing:'0.8px' }}>{center.label}</div>
                     </div>
                   </div>
-                  {/* Legend */}
-                  <div style={{ flex:1, display:'flex', flexDirection:'column', gap:'4px', overflow:'hidden' }}>
+                  <div style={{ width:'100%', display:'flex', flexDirection:'column', gap:'4px', overflow:'auto' }}>
                     {donutSegs.map((seg, i) => (
                       <div key={i}
                         onMouseEnter={() => setHoverSeg(i)}
                         onMouseLeave={() => setHoverSeg(null)}
-                        style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'3px 6px', borderRadius:'6px', cursor:'pointer', background: hoverSeg===i?'rgba(255,255,255,0.04)':'transparent', transition:'background 0.15s' }}
+                        style={{
+                          display:'flex', alignItems:'center', justifyContent:'space-between',
+                          padding:'4px 8px', borderRadius:'7px', cursor:'pointer', flexShrink:0,
+                          background: hoverSeg===i ? 'rgba(255,255,255,0.04)' : 'transparent',
+                          transition:'background 0.15s',
+                        }}
                       >
-                        <div style={{ display:'flex', alignItems:'center', gap:'5px' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
                           <span style={{ width:'7px', height:'7px', borderRadius:'2px', background:seg.color, flexShrink:0 }}/>
-                          <span style={{ fontSize:'10px', color:'rgba(255,255,255,0.5)' }}>{seg.label}</span>
+                          <span style={{ fontSize:'11px', color:'rgba(255,255,255,0.5)' }}>{seg.label}</span>
                         </div>
                         <div style={{ textAlign:'right' }}>
-                          <div style={{ fontSize:'10px', fontWeight:600, color:'rgba(255,255,255,0.75)' }}>{seg.value}</div>
-                          <div style={{ fontSize:'9px', color:'#303030' }}>{seg.pct}%</div>
+                          <div style={{ fontSize:'11px', fontWeight:600, color:'rgba(255,255,255,0.72)' }}>{seg.value}</div>
+                          <div style={{ fontSize:'9px', color:'#2e2e2e' }}>{seg.pct}%</div>
                         </div>
                       </div>
                     ))}
@@ -533,7 +527,7 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Bar Chart */}
+            {/* Bar chart */}
             <div style={{ display:'flex', minHeight:0, overflow:'hidden' }}>
               <BarChart data={chartData} today={todayIdx} daysInMonth={chartData.spend.length}/>
             </div>
@@ -559,7 +553,7 @@ function ThemeToggle() {
       display:'flex', alignItems:'center', justifyContent:'center',
       background:'rgba(255,255,255,0.04)',
       border:'1px solid rgba(255,255,255,0.08)',
-      borderRadius:'8px', cursor:'pointer',
+      borderRadius:'9px', cursor:'pointer',
       transition:'border-color 0.15s',
     }}
     onMouseEnter={e => e.currentTarget.style.borderColor='rgba(255,255,255,0.16)'}
