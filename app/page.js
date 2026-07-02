@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Calendar, ChevronDown, GitCompare, RefreshCw, Moon, Sun,
+  Calendar, ChevronDown, RefreshCw, Moon, Sun,
   DollarSign, Users, Eye, LayoutGrid, User,
   ScanLine, MousePointerClick, UserPlus, Target,
 } from 'lucide-react';
 import CountUp from './components/CountUp';
 import AreaChart from './components/AreaChart';
+import ExportMenu from './components/ExportMenu';
 
 /* ─── Design tokens (Figma handoff) ─── */
 const BG      = '#090A0C';
@@ -467,13 +468,14 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <button style={{
-            display:'flex', alignItems:'center', gap:'7px', padding:'9px 14px',
-            background: CARD, border:`1px solid ${BORDER}`, borderRadius:'10px',
-            fontSize:'13px', color:'rgba(255,255,255,0.35)', cursor:'not-allowed',
-          }} title="Coming soon">
-            <GitCompare size={14}/> Compare
-          </button>
+          <ExportMenu
+            summary={summary}
+            donutSegs={donutSegs}
+            topCampaigns={topCampaigns}
+            chartData={chartData}
+            rangeLabel={filterLabel()}
+            activeCount={activeCampaignCount}
+          />
 
           <button onClick={refresh} title="Refresh" style={{
             width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center',
