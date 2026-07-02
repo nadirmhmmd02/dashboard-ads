@@ -11,6 +11,49 @@ function buildDateFilter(datePreset, since, until) {
   return { param: `date_preset=${datePreset}`, field: `date_preset(${datePreset})` };
 }
 
+/* ─── Date helpers untuk periode pembanding (growth badge) ─── */
+function ymd(d) { return d.toISOString().slice(0, 10); }
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return ymd(d);
+}
+function daysBetween(a, b) {
+  return Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 86400000) + 1;
+}
+
+// Terjemahkan date_preset → {since, until} eksplisit (untuk hitung periode sebelumnya)
+function presetToRange(preset) {
+  const now = new Date();
+  const today = ymd(now);
+  switch (preset) {
+    case 'today':     return { since: today, until: today };
+    case 'yesterday': return { since: addDays(today, -1), until: addDays(today, -1) };
+    case 'last_7d':   return { since: addDays(today, -7),  until: addDays(today, -1) };
+    case 'last_14d':  return { since: addDays(today, -14), until: addDays(today, -1) };
+    case 'last_30d':  return { since: addDays(today, -30), until: addDays(today, -1) };
+    case 'this_month': {
+      const first = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`;
+      return { since: first, until: today };
+    }
+    case 'last_month': {
+      const firstThis = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+      const lastPrev  = new Date(firstThis); lastPrev.setUTCDate(0);
+      const firstPrev = new Date(Date.UTC(lastPrev.getUTCFullYear(), lastPrev.getUTCMonth(), 1));
+      return { since: ymd(firstPrev), until: ymd(lastPrev) };
+    }
+    default: return { since: addDays(today, -30), until: addDays(today, -1) };
+  }
+}
+
+// Periode sebelumnya dengan panjang sama, tepat sebelum periode sekarang
+function previousRange(since, until) {
+  const len       = daysBetween(since, until);
+  const prevUntil = addDays(since, -1);
+  const prevSince = addDays(prevUntil, -(len - 1));
+  return { since: prevSince, until: prevUntil };
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const datePreset = searchParams.get('date_preset') || 'this_month';
@@ -22,17 +65,26 @@ export async function GET(request) {
 
   try {
     if (mode === 'dashboard') {
-      const [summaryRes, dailyRes, campaignsRes] = await Promise.all([
+      // Hitung periode pembanding (growth badge = perbandingan periode nyata)
+      const curRange  = since && until ? { since, until } : presetToRange(datePreset);
+      const prevRange = previousRange(curRange.since, curRange.until);
+      const prevParam = `time_range={'since':'${prevRange.since}','until':'${prevRange.until}'}`;
+
+      const [summaryRes, dailyRes, campaignsRes, prevRes] = await Promise.all([
         fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/insights?fields=spend,impressions,reach,clicks,cpm,cpc,ctr,actions&${dateParam}&access_token=${ACCESS_TOKEN}`),
         fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/insights?fields=spend,impressions,reach,clicks,actions&${dateParam}&time_increment=1&access_token=${ACCESS_TOKEN}&limit=90`),
-        fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/campaigns?fields=id,name,objective,status,insights.${dateField}{spend,impressions,reach,clicks,actions}&access_token=${ACCESS_TOKEN}&limit=50`),
+        fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/campaigns?fields=id,name,objective,status,insights.${dateField}{spend,impressions,reach,clicks,ctr,actions}&access_token=${ACCESS_TOKEN}&limit=50`),
+        fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/insights?fields=spend,impressions,reach,clicks,actions&${prevParam}&access_token=${ACCESS_TOKEN}`),
       ]);
-      const [summaryData, dailyData, campaignsData] = await Promise.all([summaryRes.json(), dailyRes.json(), campaignsRes.json()]);
+      const [summaryData, dailyData, campaignsData, prevData] = await Promise.all([
+        summaryRes.json(), dailyRes.json(), campaignsRes.json(), prevRes.json(),
+      ]);
 
       return NextResponse.json({
-        summary:   summaryData.data?.[0] || {},
-        daily:     dailyData.data || [],
-        campaigns: campaignsData.data || [],
+        summary:     summaryData.data?.[0] || {},
+        prevSummary: prevData.data?.[0] || {},
+        daily:       dailyData.data || [],
+        campaigns:   campaignsData.data || [],
       });
     }
 

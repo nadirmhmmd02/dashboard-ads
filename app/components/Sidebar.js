@@ -19,15 +19,15 @@ const NAV_ITEMS = [
   { href: '/reports',   label: 'Reports',   icon: FileChartColumn },
 ];
 
-const MIN_WIDTH       = 140;
+const MIN_WIDTH       = 180;
 const MAX_WIDTH       = 360;
-const DEFAULT_WIDTH   = 210;
-const COLLAPSED_WIDTH = 60;
+const DEFAULT_WIDTH   = 240;
+const COLLAPSED_WIDTH = 64;
 const EASE            = 'cubic-bezier(0.4,0,0.2,1)';
 
-const LIME    = '#a3e635';
-const LIME_BG = 'rgba(163,230,53,0.10)';
-const LIME_HV = 'rgba(163,230,53,0.06)';
+const LIME    = '#8BE34D';
+const LIME_BG = 'rgba(139,227,77,0.12)';
+const LIME_HV = 'rgba(139,227,77,0.06)';
 
 export default function Sidebar() {
   const pathname  = usePathname();
@@ -212,6 +212,29 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      {/* ── Data updated card ── */}
+      {!collapsed && (
+        <div style={{ padding: '0 10px 10px' }}>
+          <div style={{
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: '10px',
+            padding: '10px 12px',
+          }}>
+            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', marginBottom: '5px' }}>
+              Data updated
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+              <span style={{
+                width: '7px', height: '7px', borderRadius: '50%', background: LIME,
+                flexShrink: 0, animation: 'wdPulseDot 1.8s ease-in-out infinite',
+              }} />
+              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>2 minutes ago</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Collapse button ── */}
       <div style={{ padding: '8px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>

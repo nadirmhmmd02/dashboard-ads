@@ -33,32 +33,32 @@
   --card-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06);
 }
 
-/* ===== DARK MODE (AKTIF) ===== */
+/* ===== DARK MODE (AKTIF) — palet final Figma handoff ===== */
 html[data-theme="dark"] {
-  --pg: #0c0c0c;
-  --cd: #111111;
-  --sf: #0c0c0c;
-  --s2: #161616;
-  --br: rgba(255,255,255,0.07);
+  --pg: #090A0C;
+  --cd: #121417;
+  --sf: #0d0f12;
+  --s2: #16191d;
+  --br: #23262C;
   --bs: rgba(255,255,255,0.14);
-  --ac: #a3e635;
-  --t1: #f0f0f0;
-  --t2: #888888;
-  --t3: #505050;
-  --pos: #10b981;
+  --ac: #8BE34D;
+  --t1: #FFFFFF;
+  --t2: #9CA3AF;
+  --t3: #5B616B;
+  --pos: #8BE34D;
   --neg: #ef4444;
-  --nav: #080808;
-  --pr-bg: rgba(163,230,53,0.10);
-  --pr-tx: #a3e635;
+  --nav: #0B0C0E;
+  --pr-bg: rgba(139,227,77,0.12);
+  --pr-tx: #8BE34D;
   --pd-bg: rgba(255,255,255,0.04);
   --pd-tx: #666666;
 
-  --blue: #3b82f6;
-  --green: #10b981;
+  --blue: #3B82F6;
+  --green: #8BE34D;
   --red: #ef4444;
-  --purple: #8b5cf6;
-  --amber: #f59e0b;
-  --lime: #a3e635;
+  --purple: #8B5CF6;
+  --amber: #F59E0B;
+  --lime: #8BE34D;
   --card-shadow: 0 1px 4px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
 }
 
@@ -122,6 +122,10 @@ button {
 @keyframes wdCountUp {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes wdSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
 /* scrollbar tipis */
