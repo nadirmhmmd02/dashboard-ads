@@ -160,7 +160,7 @@ export default function BarChart({ data, today, daysInMonth }) {
                     top: (i / 4) * 100 + '%',
                     left: 0,
                     right: 0,
-                    borderTop: '1px solid #242424',
+                    borderTop: '1px solid rgba(255,255,255,0.04)',
                   }}
                 />
               ))}

@@ -4,7 +4,7 @@
   padding: 0;
 }
 
-/* ===== LIGHT MODE (dipakai nanti utk toggle, belum aktif) ===== */
+/* ===== LIGHT MODE ===== */
 :root {
   --pg: #f5f5f5;
   --cd: #ffffff;
@@ -12,54 +12,54 @@
   --s2: #f0f0f0;
   --br: rgba(0,0,0,0.08);
   --bs: rgba(0,0,0,0.16);
-  --ac: #f59e0b;
+  --ac: #65a30d;
   --t1: #1a1a1a;
   --t2: #525252;
   --t3: #8a8a8a;
   --pos: #10b981;
   --neg: #ef4444;
   --nav: #141414;
-  --pr-bg: rgba(16,185,129,0.12);
-  --pr-tx: #059669;
+  --pr-bg: rgba(101,163,13,0.10);
+  --pr-tx: #65a30d;
   --pd-bg: rgba(0,0,0,0.05);
   --pd-tx: #737373;
 
-  /* aksen mockup */
   --blue: #3b82f6;
-  --amber: #f59e0b;
   --green: #10b981;
   --red: #ef4444;
   --purple: #8b5cf6;
-  --amber-active: #f5b53f;
+  --amber: #f59e0b;
+  --lime: #a3e635;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06);
 }
 
-/* ===== DARK MODE (AKTIF — palet abu mockup v5) ===== */
+/* ===== DARK MODE (AKTIF) ===== */
 html[data-theme="dark"] {
-  --pg: #1a1a1a;
-  --cd: #222222;
-  --sf: #1a1a1a;
-  --s2: #252525;
-  --br: #2a2a2a;
-  --bs: #333333;
-  --ac: #f59e0b;
-  --t1: #e5e5e5;
-  --t2: #a3a3a3;
-  --t3: #737373;
+  --pg: #0c0c0c;
+  --cd: #111111;
+  --sf: #0c0c0c;
+  --s2: #161616;
+  --br: rgba(255,255,255,0.07);
+  --bs: rgba(255,255,255,0.14);
+  --ac: #a3e635;
+  --t1: #f0f0f0;
+  --t2: #888888;
+  --t3: #505050;
   --pos: #10b981;
   --neg: #ef4444;
-  --nav: #141414;
-  --pr-bg: rgba(16,185,129,0.14);
-  --pr-tx: #34d399;
-  --pd-bg: rgba(255,255,255,0.06);
-  --pd-tx: #8a8a8a;
+  --nav: #080808;
+  --pr-bg: rgba(163,230,53,0.10);
+  --pr-tx: #a3e635;
+  --pd-bg: rgba(255,255,255,0.04);
+  --pd-tx: #666666;
 
-  /* aksen mockup */
   --blue: #3b82f6;
-  --amber: #f59e0b;
   --green: #10b981;
   --red: #ef4444;
   --purple: #8b5cf6;
-  --amber-active: #f5b53f;
+  --amber: #f59e0b;
+  --lime: #a3e635;
+  --card-shadow: 0 1px 4px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
 }
 
 html, body {
@@ -70,7 +70,7 @@ html, body {
 body {
   background: var(--pg);
   color: var(--t1);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
 }
 
 a {
@@ -83,48 +83,49 @@ button {
   cursor: pointer;
 }
 
-/* ===== ANIMASI (DNA project) ===== */
+/* ===== ANIMASI ===== */
 @keyframes wdSpinGlow {
   0%, 100% { box-shadow: 0 0 8px 0 rgba(245,158,11,0.4); }
-  50% { box-shadow: 0 0 16px 3px rgba(245,158,11,0.7); }
+  50%       { box-shadow: 0 0 16px 3px rgba(245,158,11,0.7); }
 }
-
+@keyframes wdLimeGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(163,230,53,0); }
+  50%       { box-shadow: 0 0 20px 2px rgba(163,230,53,0.18); }
+}
 @keyframes wdGrowBar {
   from { height: 0; }
 }
-
 @keyframes wdFadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
-@keyframes wdPulseDot {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.4); opacity: 0.5; }
-}
-
-@keyframes wdSweep {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(300%); }
-}
-
-@keyframes wdGrowX {
-  from { transform: scaleX(0); }
-  to   { transform: scaleX(1); }
-}
-
 @keyframes wdFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-
 @keyframes wdScaleIn {
-  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
+@keyframes wdPulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.4); opacity: 0.5; }
+}
+@keyframes wdSweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+@keyframes wdGrowX {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+@keyframes wdCountUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
-/* scrollbar tipis biar nyatu sama tema gelap */
-::-webkit-scrollbar { width: 10px; height: 10px; }
+/* scrollbar tipis */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #333; border-radius: 5px; }
-::-webkit-scrollbar-thumb:hover { background: #444; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }

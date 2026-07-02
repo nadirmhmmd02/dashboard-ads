@@ -13,29 +13,33 @@ import {
 } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/',          label: 'Dashboard', icon: LayoutDashboard },
   { href: '/campaigns', label: 'Campaigns', icon: Megaphone },
-  { href: '/calendar', label: 'Calendar', icon: CalendarDays },
-  { href: '/reports', label: 'Reports', icon: FileChartColumn },
+  { href: '/calendar',  label: 'Calendar',  icon: CalendarDays },
+  { href: '/reports',   label: 'Reports',   icon: FileChartColumn },
 ];
 
-const MIN_WIDTH = 130;
-const MAX_WIDTH = 360;
-const DEFAULT_WIDTH = 200;
-const COLLAPSED_WIDTH = 64;
-const EASE = 'cubic-bezier(0.4,0,0.2,1)';
+const MIN_WIDTH       = 140;
+const MAX_WIDTH       = 360;
+const DEFAULT_WIDTH   = 210;
+const COLLAPSED_WIDTH = 60;
+const EASE            = 'cubic-bezier(0.4,0,0.2,1)';
+
+const LIME    = '#a3e635';
+const LIME_BG = 'rgba(163,230,53,0.10)';
+const LIME_HV = 'rgba(163,230,53,0.06)';
 
 export default function Sidebar() {
-  const pathname = usePathname();
+  const pathname  = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const [width, setWidth] = useState(DEFAULT_WIDTH);
-  const [hovered, setHovered] = useState(null);
+  const [width, setWidth]         = useState(DEFAULT_WIDTH);
+  const [hovered, setHovered]     = useState(null);
   const [dragHover, setDragHover] = useState(false);
+  const [animate, setAnimate]     = useState(true);
 
-  const lastWidth = useRef(DEFAULT_WIDTH);
-  const dragging = useRef(false);
+  const lastWidth  = useRef(DEFAULT_WIDTH);
+  const dragging   = useRef(false);
   const sidebarRef = useRef(null);
-  const [animate, setAnimate] = useState(true);
 
   function isActive(href) {
     if (href === '/') return pathname === '/';
@@ -86,15 +90,15 @@ export default function Sidebar() {
     e.preventDefault();
   }
 
-  const textOpacity = collapsed ? 0 : 1;
+  const textVisible = !collapsed;
 
   return (
     <aside
       ref={sidebarRef}
       style={{
         width: width + 'px',
-        background: '#141414',
-        borderRight: '1px solid #2a2a2a',
+        background: 'var(--nav)',
+        borderRight: '1px solid rgba(255,255,255,0.05)',
         display: 'flex',
         flexDirection: 'column',
         position: 'sticky',
@@ -104,81 +108,59 @@ export default function Sidebar() {
         height: '100vh',
       }}
     >
-      {/* Logo */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'flex-start',
-          gap: collapsed ? '0' : '11px',
-          padding: collapsed ? '18px 0' : '18px 16px',
-          borderBottom: '1px solid #2a2a2a',
-          overflow: 'hidden',
-          whiteSpace: 'nowrap',
-          transition: `gap 0.28s ${EASE}, padding 0.28s ${EASE}`,
-        }}
-      >
-        <div
-          style={{
-            width: '30px',
-            height: '30px',
-            borderRadius: '8px',
-            background: '#f59e0b',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            animation: 'wdSpinGlow 3s ease-in-out infinite',
-          }}
-        >
-          <Zap size={19} color="#412402" fill="#412402" style={{ flexShrink: 0, minWidth: 19 }} />
+      {/* ── Logo ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: collapsed ? 'center' : 'flex-start',
+        gap: collapsed ? '0' : '10px',
+        padding: collapsed ? '20px 0' : '20px 18px',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        overflow: 'hidden',
+        whiteSpace: 'nowrap',
+        transition: `gap 0.28s ${EASE}, padding 0.28s ${EASE}`,
+      }}>
+        <div style={{
+          width: '28px', height: '28px',
+          borderRadius: '7px',
+          background: '#f59e0b',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+          animation: 'wdSpinGlow 3s ease-in-out infinite',
+        }}>
+          <Zap size={17} color="#422006" fill="#422006" style={{ flexShrink: 0, minWidth: 17 }} />
         </div>
-        <span
-          style={{
-            fontSize: '15px',
-            fontWeight: 500,
-            letterSpacing: '0.5px',
-            color: '#e5e5e5',
-            opacity: textOpacity,
-            width: collapsed ? 0 : 'auto',
-            overflow: 'hidden',
-            transition: 'opacity 0.2s',
-          }}
-        >
+        <span style={{
+          fontSize: '13px', fontWeight: '700',
+          letterSpacing: '0.8px', color: '#e5e5e5',
+          opacity: textVisible ? 1 : 0,
+          width: collapsed ? 0 : 'auto',
+          overflow: 'hidden',
+          transition: 'opacity 0.2s',
+          textTransform: 'uppercase',
+        }}>
           WILL OF D
         </span>
       </div>
 
-      {/* Nav */}
-      <nav
-        style={{
-          flex: 1,
-          padding: '12px 10px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '4px',
-        }}
-      >
+      {/* ── Nav ── */}
+      <nav style={{ flex: 1, padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+
+        {/* Section label */}
+        {!collapsed && (
+          <div style={{
+            fontSize: '9px', fontWeight: '700', letterSpacing: '1.4px',
+            color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase',
+            padding: '6px 10px 8px',
+          }}>
+            Menu
+          </div>
+        )}
+
         {NAV_ITEMS.map((item) => {
-          const active = isActive(item.href);
+          const active  = isActive(item.href);
           const isHover = hovered === item.href && !active;
-          const Icon = item.icon;
-
-          let bg = 'transparent';
-          let color = '#a3a3a3';
-          let iconColor = '#a3a3a3';
-          let padLeft = 12;
-
-          if (active) {
-            bg = 'rgba(245,158,11,0.16)';
-            color = '#f5b53f';
-            iconColor = '#f5b53f';
-          } else if (isHover) {
-            bg = 'rgba(245,158,11,0.09)';
-            color = '#d9a441';
-            iconColor = '#d9a441';
-            padLeft = collapsed ? 12 : 16;
-          }
+          const Icon    = item.icon;
 
           return (
             <Link
@@ -190,30 +172,40 @@ export default function Sidebar() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: collapsed ? 'center' : 'flex-start',
-                gap: collapsed ? '0' : '13px',
-                padding: collapsed ? '10px 0' : `10px 12px 10px ${padLeft}px`,
-                borderRadius: '8px',
-                background: bg,
-                color: color,
+                gap: collapsed ? '0' : '10px',
+                padding: collapsed ? '11px 0' : '9px 10px',
+                borderRadius: '9px',
+                background: active ? LIME_BG : isHover ? LIME_HV : 'transparent',
+                color: active ? LIME : isHover ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.38)',
+                fontSize: '13px',
+                fontWeight: active ? '600' : '400',
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
-                transition: `background 0.22s ${EASE}, color 0.22s, padding-left 0.18s, gap 0.28s ${EASE}`,
+                transition: `background 0.18s ${EASE}, color 0.18s`,
+                position: 'relative',
               }}
             >
+              {/* Active indicator line */}
+              {active && !collapsed && (
+                <span style={{
+                  position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
+                  width: '3px', height: '60%', borderRadius: '0 2px 2px 0',
+                  background: LIME,
+                }} />
+              )}
               <Icon
-                size={20}
-                color={iconColor}
-                style={{ flexShrink: 0, minWidth: 20, transition: 'color 0.22s' }}
+                size={18}
+                color={active ? LIME : isHover ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.35)'}
+                style={{ flexShrink: 0, minWidth: 18, transition: 'color 0.18s' }}
               />
-              <span
-                style={{
-                  opacity: textOpacity,
-                  width: collapsed ? 0 : 'auto',
-                  overflow: 'hidden',
-                  transition: 'opacity 0.2s',
-                }}
-              >
+              <span style={{
+                opacity: textVisible ? 1 : 0,
+                width: collapsed ? 0 : 'auto',
+                overflow: 'hidden',
+                transition: 'opacity 0.2s',
+                letterSpacing: '-0.1px',
+              }}>
                 {item.label}
               </span>
             </Link>
@@ -221,58 +213,60 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Collapse button */}
-      <div style={{ padding: '12px 10px', borderTop: '1px solid #2a2a2a' }}>
+      {/* ── Collapse button ── */}
+      <div style={{ padding: '8px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
         <button
           onClick={toggleCollapse}
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: collapsed ? 'center' : 'flex-start',
-            gap: collapsed ? '0' : '13px',
+            gap: collapsed ? '0' : '10px',
             width: '100%',
-            padding: collapsed ? '10px 0' : '10px 12px',
-            borderRadius: '8px',
+            padding: collapsed ? '11px 0' : '9px 10px',
+            borderRadius: '9px',
             background: 'transparent',
             border: 'none',
-            color: '#a3a3a3',
+            color: 'rgba(255,255,255,0.3)',
+            fontSize: '13px',
             cursor: 'pointer',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
-            transition: `gap 0.28s ${EASE}`,
+            transition: `gap 0.28s ${EASE}, color 0.18s`,
           }}
+          onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.6)'}
+          onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
         >
           <ChevronsLeft
-            size={20}
-            color="#a3a3a3"
+            size={18}
             style={{
-              flexShrink: 0,
-              minWidth: 20,
+              flexShrink: 0, minWidth: 18,
               transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',
               transition: `transform 0.28s ${EASE}`,
             }}
           />
-          <span style={{ opacity: textOpacity, width: collapsed ? 0 : 'auto', overflow: 'hidden', transition: 'opacity 0.2s' }}>
+          <span style={{
+            opacity: textVisible ? 1 : 0,
+            width: collapsed ? 0 : 'auto',
+            overflow: 'hidden',
+            transition: 'opacity 0.2s',
+          }}>
             Collapse
           </span>
         </button>
       </div>
 
-      {/* Drag handle - hilang total saat collapsed */}
+      {/* ── Drag handle ── */}
       {!collapsed && (
         <div
           onMouseDown={startDrag}
           onMouseEnter={() => setDragHover(true)}
           onMouseLeave={() => setDragHover(false)}
           style={{
-            position: 'absolute',
-            top: 0,
-            right: '-3px',
-            width: '6px',
-            height: '100%',
-            cursor: 'col-resize',
-            zIndex: 10,
-            background: dragHover ? '#f59e0b' : 'transparent',
+            position: 'absolute', top: 0, right: '-3px',
+            width: '6px', height: '100%',
+            cursor: 'col-resize', zIndex: 10,
+            background: dragHover ? 'rgba(163,230,53,0.5)' : 'transparent',
             transition: 'background 0.15s',
           }}
         />
