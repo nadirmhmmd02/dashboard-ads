@@ -72,15 +72,60 @@ function pctChange(cur, prev) {
   return ((cur - prev) / prev) * 100;
 }
 
-function buildChartData(daily) {
-  const r = { spend: [], awareness: [], traffic: [], leads: [] };
+/* ─── Date helpers (untuk sumbu chart sebulan penuh) ─── */
+function addDaysStr(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function daysBetweenStr(a, b) {
+  return Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 86400000) + 1;
+}
+
+// Bangun array chart selebar rentang (range); slot tanpa data = null,
+// jadi garis hanya muncul di hari yang punya data. Label = tanggal (day-of-month).
+function buildChartData(daily, range) {
+  // Fallback: tanpa range, susun kontigu seperti semula
+  if (!range || !range.since || !range.until) {
+    const r = { spend: [], awareness: [], traffic: [], leads: [] };
+    const dates = [];
+    daily.forEach((d, i) => {
+      r.spend    .push(Math.round(parseFloat(d.spend || 0)));
+      r.awareness.push(Math.round(parseFloat(d.impressions || 0)));
+      r.traffic  .push(getActionValue(d.actions, ['link_click']));
+      r.leads    .push(getActionValue(d.actions, ['lead','onsite_conversion.lead_grouped']));
+      dates.push(d.date_start ? parseInt(d.date_start.slice(8, 10), 10) : i + 1);
+    });
+    return { data: r, dates, todayIdx: -1 };
+  }
+
+  const { since, until } = range;
+  const n = Math.max(1, daysBetweenStr(since, until));
+  const data = {
+    spend:     Array(n).fill(null),
+    awareness: Array(n).fill(null),
+    traffic:   Array(n).fill(null),
+    leads:     Array(n).fill(null),
+  };
+  const dates = [];
+  for (let i = 0; i < n; i++) {
+    const ds = addDaysStr(since, i);
+    dates.push(parseInt(ds.slice(8, 10), 10)); // tanggal (1..31)
+  }
+
   daily.forEach(d => {
-    r.spend    .push(Math.round(parseFloat(d.spend || 0)));
-    r.awareness.push(Math.round(parseFloat(d.impressions || 0)));
-    r.traffic  .push(getActionValue(d.actions, ['link_click']));
-    r.leads    .push(getActionValue(d.actions, ['lead','onsite_conversion.lead_grouped']));
+    if (!d.date_start) return;
+    const idx = daysBetweenStr(since, d.date_start) - 1;
+    if (idx < 0 || idx >= n) return;
+    data.spend[idx]     = Math.round(parseFloat(d.spend || 0));
+    data.awareness[idx] = Math.round(parseFloat(d.impressions || 0));
+    data.traffic[idx]   = getActionValue(d.actions, ['link_click']);
+    data.leads[idx]     = getActionValue(d.actions, ['lead','onsite_conversion.lead_grouped']);
   });
-  return r;
+
+  const todayStr  = new Date().toISOString().slice(0, 10);
+  const todayIdx  = daysBetweenStr(since, todayStr) - 1;
+  return { data, dates, todayIdx: (todayIdx >= 0 && todayIdx < n) ? todayIdx : -1 };
 }
 
 /* ─── Growth badge (real prev-period comparison) ─── */
@@ -103,7 +148,7 @@ function Badge({ pct }) {
 
 /* ─── Mini sparkline ─── */
 function Sparkline({ data, color, h = 30 }) {
-  const pts = (data || []).filter(v => v >= 0);
+  const pts = (data || []).filter(v => v != null && v >= 0);
   if (pts.length < 2) return <div style={{ height: h }} />;
   const max = Math.max(...pts) || 1;
   const min = Math.min(...pts);
@@ -186,6 +231,7 @@ export default function DashboardPage() {
   const [error, setError]               = useState(null);
   const [summary, setSummary]           = useState(null);
   const [chartData, setChartData]       = useState({ spend:[], awareness:[], traffic:[], leads:[] });
+  const [chartDates, setChartDates]     = useState([]);
   const [donutSegs, setDonutSegs]       = useState([]);
   const [donutTotal, setDonutTotal]     = useState({ value:'—', label:'Total Spend' });
   const [todayIdx, setTodayIdx]         = useState(0);
@@ -211,10 +257,11 @@ export default function DashboardPage() {
       const json = await res.json();
       if (json.error) throw new Error(json.error);
 
-      const sum       = json.summary     || {};
-      const prev      = json.prevSummary || {};
-      const daily     = json.daily       || [];
-      const campaigns = json.campaigns   || [];
+      const sum        = json.summary     || {};
+      const prev       = json.prevSummary || {};
+      const daily      = json.daily       || [];
+      const campaigns  = json.campaigns   || [];
+      const chartRange = json.chartRange  || null;
 
       const totalSpend       = parseFloat(sum.spend || 0);
       const totalReach       = parseFloat(sum.reach || 0);
@@ -259,8 +306,10 @@ export default function DashboardPage() {
         pctLeads:       pctChange(curLeadsAcc, prevLeads),
       });
 
-      setChartData(buildChartData(daily));
-      setTodayIdx(daily.length);
+      const built = buildChartData(daily, chartRange);
+      setChartData(built.data);
+      setChartDates(built.dates);
+      setTodayIdx(built.todayIdx);
 
       // Top campaigns (by spend) — Campaign · Spend · Leads · CTR · CPL
       const DOT = [GREEN, BLUE, PURPLE, ORANGE, '#EF4444'];
@@ -504,7 +553,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ══ ROW 3: ANALYTICS — 30% / 40% / 30% ══ */}
-          <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'3fr 4fr 3fr', gap:'16px' }}>
+          <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'2.55fr 4.45fr 3fr', gap:'16px' }}>
 
             {/* Spend Breakdown (donut) */}
             <div style={{ ...CARD_BASE, display:'flex', flexDirection:'column', overflow:'hidden', padding:'18px 20px' }}>
@@ -556,7 +605,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Daily Spend (area chart) */}
-            <AreaChart data={chartData} today={todayIdx}/>
+            <AreaChart data={chartData} dates={chartDates} today={todayIdx}/>
 
             {/* Top Campaigns */}
             <div style={{ ...CARD_BASE, display:'flex', flexDirection:'column', overflow:'hidden', padding:'18px 20px' }}>

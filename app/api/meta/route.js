@@ -70,6 +70,16 @@ export async function GET(request) {
       const prevRange = previousRange(curRange.since, curRange.until);
       const prevParam = `time_range={'since':'${prevRange.since}','until':'${prevRange.until}'}`;
 
+      // Rentang sumbu chart: preset "this month" direntang ke akhir bulan
+      // (sumbu-X tampil sebulan penuh, garis hanya di hari yang ada datanya)
+      let chartRange = curRange;
+      if (!(since && until) && datePreset === 'this_month') {
+        const now   = new Date();
+        const first = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`;
+        const last  = ymd(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)));
+        chartRange = { since: first, until: last };
+      }
+
       const [summaryRes, dailyRes, campaignsRes, prevRes] = await Promise.all([
         fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/insights?fields=spend,impressions,reach,clicks,cpm,cpc,ctr,actions&${dateParam}&access_token=${ACCESS_TOKEN}`),
         fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/insights?fields=spend,impressions,reach,clicks,actions&${dateParam}&time_increment=1&access_token=${ACCESS_TOKEN}&limit=90`),
@@ -85,6 +95,7 @@ export async function GET(request) {
         prevSummary: prevData.data?.[0] || {},
         daily:       dailyData.data || [],
         campaigns:   campaignsData.data || [],
+        chartRange,
       });
     }
 

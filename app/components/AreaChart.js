@@ -54,44 +54,51 @@ function smoothPath(pts) {
   return d;
 }
 
-export default function AreaChart({ data, today }) {
+export default function AreaChart({ data, dates, today }) {
   const [metric, setMetric] = useState('spend');
   const [hover, setHover]   = useState(null); // { idx, xPct, yPct }
   const wrapRef = useRef(null);
 
-  const arr = data[metric] || [];
-  const n   = arr.length;
-  const max = Math.max.apply(null, arr.length ? arr : [1]) || 1;
-  const col = COLORS[metric];
+  const arr   = data[metric] || [];
+  const n     = arr.length;
+  const col   = COLORS[metric];
+  const dayOf = (i) => (dates && dates[i] != null ? dates[i] : i + 1);
 
-  // Titik dalam koordinat 0..100 (viewBox), y disisakan 8% padding atas
-  const pts = arr.map((v, i) => ({
-    x: n > 1 ? (i / (n - 1)) * 100 : 50,
-    y: 92 - (v / max) * 84,
-    v,
-    i,
-  }));
+  // Hanya slot yang punya data jadi titik garis; posisi-x tetap ikut indeks
+  // penuh, jadi hari yang belum ada datanya tampil sebagai ruang kosong.
+  const valid = [];
+  arr.forEach((v, i) => { if (v != null) valid.push({ v, i, x: n > 1 ? (i / (n - 1)) * 100 : 50 }); });
+  const max = Math.max.apply(null, valid.length ? valid.map(p => p.v) : [1]) || 1;
+  const pts = valid.map(p => ({ ...p, y: 92 - (p.v / max) * 84 }));
+
   const line = smoothPath(pts);
-  const area = line ? `${line} L 100 100 L 0 100 Z` : '';
+  let area = '';
+  if (pts.length >= 2) {
+    area = `${line} L ${pts[pts.length - 1].x.toFixed(2)} 100 L ${pts[0].x.toFixed(2)} 100 Z`;
+  }
 
   const yLabels = [];
   for (let s = 4; s >= 0; s--) yLabels.push(fmtAxis(metric, (max * s) / 4));
 
-  // Label sumbu-x: kira-kira tiap 3 hari
+  // Sumbu-x: tampilkan semua tanggal kalau ≤31 hari, selebihnya di-sampling
   const xTicks = [];
   if (n > 0) {
-    const step = Math.max(1, Math.round(n / 10));
-    for (let i = 0; i < n; i += step) xTicks.push(i);
-    if (xTicks[xTicks.length - 1] !== n - 1) xTicks.push(n - 1);
+    if (n <= 31) {
+      for (let i = 0; i < n; i++) xTicks.push(i);
+    } else {
+      const step = Math.max(1, Math.round(n / 12));
+      for (let i = 0; i < n; i += step) xTicks.push(i);
+      if (xTicks[xTicks.length - 1] !== n - 1) xTicks.push(n - 1);
+    }
   }
 
   function onMove(e) {
-    if (!wrapRef.current || n === 0) return;
+    if (!wrapRef.current || pts.length === 0) return;
     const r = wrapRef.current.getBoundingClientRect();
-    const ratio = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-    const idx = Math.round(ratio * (n - 1));
-    const p = pts[idx];
-    if (p) setHover({ idx, xPct: p.x, yPct: p.y, clientX: e.clientX, clientY: e.clientY });
+    const ratio = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * 100;
+    let best = pts[0];
+    for (const p of pts) if (Math.abs(p.x - ratio) < Math.abs(best.x - ratio)) best = p;
+    setHover({ idx: best.i, xPct: best.x, yPct: best.y, clientX: e.clientX, clientY: e.clientY });
   }
 
   return (
@@ -183,6 +190,15 @@ export default function AreaChart({ data, today }) {
               )}
             </svg>
 
+            {/* Titik data (tampil saat hari aktif masih sedikit) */}
+            {pts.length <= 7 && pts.map((p) => (
+              <div key={p.i} style={{
+                position: 'absolute', left: p.x + '%', top: p.y + '%',
+                width: '8px', height: '8px', borderRadius: '50%', background: col,
+                border: '2px solid #121417', transform: 'translate(-50%,-50%)', pointerEvents: 'none',
+              }} />
+            ))}
+
             {/* Hover guide */}
             {hover && (
               <>
@@ -203,13 +219,13 @@ export default function AreaChart({ data, today }) {
           {/* X axis */}
           <div style={{ position: 'relative', height: '14px', marginTop: '6px' }}>
             {xTicks.map((i) => {
-              const isToday = i === today - 1;
+              const isToday = i === today;
               return (
                 <span key={i} style={{
                   position: 'absolute', left: (n > 1 ? (i / (n - 1)) * 100 : 50) + '%',
-                  transform: 'translateX(-50%)', fontSize: '9px',
+                  transform: 'translateX(-50%)', fontSize: n > 20 ? '8px' : '9px',
                   color: isToday ? COLORS.spend : '#4B5563', fontWeight: isToday ? 700 : 400,
-                }}>{i + 1}</span>
+                }}>{dayOf(i)}</span>
               );
             })}
           </div>
@@ -225,7 +241,7 @@ export default function AreaChart({ data, today }) {
           boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
         }}>
           <div style={{ fontSize: '10px', color: '#9CA3AF', marginBottom: '3px' }}>
-            Day {hover.idx + 1}{hover.idx === today - 1 ? ' · today' : ''}
+            Day {dayOf(hover.idx)}{hover.idx === today ? ' · today' : ''}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: col }} />
