@@ -127,6 +127,21 @@ button {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+/* Chart line "menggambar" dari kiri ke kanan (butuh pathLength="1") */
+@keyframes wdDrawLine {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+/* Area fill tumbuh dari bawah + fade in */
+@keyframes wdAreaGrow {
+  from { opacity: 0; transform: scaleY(0.6); }
+  to   { opacity: 1; transform: scaleY(1); }
+}
+/* Fade halus untuk judul saat ganti metrik */
+@keyframes wdSoftIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 /* scrollbar tipis */
 ::-webkit-scrollbar       { width: 6px; height: 6px; }

@@ -108,7 +108,10 @@ export default function AreaChart({ data, today }) {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-          <span style={{ fontSize: '15px', fontWeight: 600, color: '#FFFFFF' }}>{TITLES[metric]}</span>
+          <span key={metric} style={{
+            fontSize: '15px', fontWeight: 600, color: '#FFFFFF',
+            animation: 'wdSoftIn 0.35s cubic-bezier(0.4,0,0.2,1)',
+          }}>{TITLES[metric]}</span>
           <Info size={13} color="#4B5563" />
         </div>
         <div style={{ display: 'flex', gap: '3px', background: 'rgba(255,255,255,0.03)', padding: '3px', borderRadius: '9px' }}>
@@ -162,11 +165,21 @@ export default function AreaChart({ data, today }) {
                   <stop offset="100%" stopColor={col} stopOpacity="0" />
                 </linearGradient>
               </defs>
-              {area && <path d={area} fill={`url(#fill-${metric})`} stroke="none" />}
+              {area && (
+                <path key={`a-${metric}`} d={area} fill={`url(#fill-${metric})`} stroke="none"
+                  style={{
+                    transformOrigin: 'bottom',
+                    animation: 'wdAreaGrow 0.6s cubic-bezier(0.4,0,0.2,1)',
+                  }} />
+              )}
               {line && (
-                <path d={line} fill="none" stroke={col} strokeWidth="2"
+                <path key={`l-${metric}`} d={line} fill="none" stroke={col} strokeWidth="2"
+                  pathLength="1" strokeDasharray="1"
                   vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round"
-                  style={{ filter: `drop-shadow(0 2px 5px ${col}55)` }} />
+                  style={{
+                    filter: `drop-shadow(0 2px 5px ${col}55)`,
+                    animation: 'wdDrawLine 0.7s cubic-bezier(0.4,0,0.2,1)',
+                  }} />
               )}
             </svg>
 
