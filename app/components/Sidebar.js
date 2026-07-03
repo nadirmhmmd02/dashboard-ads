@@ -25,9 +25,10 @@ const DEFAULT_WIDTH   = 240;
 const COLLAPSED_WIDTH = 64;
 const EASE            = 'cubic-bezier(0.4,0,0.2,1)';
 
-const LIME    = '#8BE34D';
-const LIME_BG = 'rgba(139,227,77,0.12)';
-const LIME_HV = 'rgba(139,227,77,0.06)';
+const ACCENT    = '#8BE34D';                 // logo tile & dot (aksen, sama di kedua tema)
+const ACTIVE_BG = 'var(--accent-soft)';
+const ACTIVE_HV = 'var(--accent-hover)';
+const ACTIVE_FG = 'var(--accent-fg)';
 
 export default function Sidebar() {
   const pathname  = usePathname();
@@ -98,7 +99,7 @@ export default function Sidebar() {
       style={{
         width: width + 'px',
         background: 'var(--nav)',
-        borderRight: '1px solid rgba(255,255,255,0.05)',
+        borderRight: '1px solid var(--divider)',
         display: 'flex',
         flexDirection: 'column',
         position: 'sticky',
@@ -115,7 +116,7 @@ export default function Sidebar() {
         justifyContent: collapsed ? 'center' : 'flex-start',
         gap: collapsed ? '0' : '10px',
         padding: collapsed ? '20px 0' : '20px 18px',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        borderBottom: '1px solid var(--divider)',
         overflow: 'hidden',
         whiteSpace: 'nowrap',
         transition: `gap 0.28s ${EASE}, padding 0.28s ${EASE}`,
@@ -123,7 +124,7 @@ export default function Sidebar() {
         <div style={{
           width: '28px', height: '28px',
           borderRadius: '7px',
-          background: '#8BE34D',
+          background: ACCENT,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,
           animation: 'wdSpinGlowGreen 3s ease-in-out infinite',
@@ -132,7 +133,7 @@ export default function Sidebar() {
         </div>
         <span style={{
           fontSize: '13px', fontWeight: '700',
-          letterSpacing: '0.8px', color: '#e5e5e5',
+          letterSpacing: '0.8px', color: 'var(--logo-text)',
           opacity: textVisible ? 1 : 0,
           width: collapsed ? 0 : 'auto',
           overflow: 'hidden',
@@ -150,7 +151,7 @@ export default function Sidebar() {
         {!collapsed && (
           <div style={{
             fontSize: '9px', fontWeight: '700', letterSpacing: '1.4px',
-            color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase',
+            color: 'var(--menu-label)', textTransform: 'uppercase',
             padding: '6px 10px 8px',
           }}>
             Menu
@@ -175,8 +176,8 @@ export default function Sidebar() {
                 gap: collapsed ? '0' : '10px',
                 padding: collapsed ? '11px 0' : '9px 10px',
                 borderRadius: '9px',
-                background: active ? LIME_BG : isHover ? LIME_HV : 'transparent',
-                color: active ? LIME : isHover ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.38)',
+                background: active ? ACTIVE_BG : isHover ? ACTIVE_HV : 'transparent',
+                color: active ? ACTIVE_FG : isHover ? 'var(--nav-hover-tx)' : 'var(--nav-tx)',
                 fontSize: '13px',
                 fontWeight: active ? '600' : '400',
                 cursor: 'pointer',
@@ -191,12 +192,12 @@ export default function Sidebar() {
                 <span style={{
                   position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
                   width: '3px', height: '60%', borderRadius: '0 2px 2px 0',
-                  background: LIME,
+                  background: ACTIVE_FG,
                 }} />
               )}
               <Icon
                 size={18}
-                color={active ? LIME : isHover ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.35)'}
+                color={active ? ACTIVE_FG : isHover ? 'var(--nav-hover-tx)' : 'var(--nav-icon)'}
                 style={{ flexShrink: 0, minWidth: 18, transition: 'color 0.18s' }}
               />
               <span style={{
@@ -217,27 +218,27 @@ export default function Sidebar() {
       {!collapsed && (
         <div style={{ padding: '0 10px 10px' }}>
           <div style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.06)',
+            background: 'var(--data-bg)',
+            border: '1px solid var(--data-br)',
             borderRadius: '10px',
             padding: '10px 12px',
           }}>
-            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', marginBottom: '5px' }}>
+            <div style={{ fontSize: '10px', color: 'var(--data-label)', marginBottom: '5px' }}>
               Data updated
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
               <span style={{
-                width: '7px', height: '7px', borderRadius: '50%', background: LIME,
+                width: '7px', height: '7px', borderRadius: '50%', background: ACCENT,
                 flexShrink: 0, animation: 'wdPulseDot 1.8s ease-in-out infinite',
               }} />
-              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>2 minutes ago</span>
+              <span style={{ fontSize: '12px', color: 'var(--data-time)' }}>2 minutes ago</span>
             </div>
           </div>
         </div>
       )}
 
       {/* ── Collapse button ── */}
-      <div style={{ padding: '8px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ padding: '8px', borderTop: '1px solid var(--divider)' }}>
         <button
           onClick={toggleCollapse}
           style={{
@@ -250,15 +251,15 @@ export default function Sidebar() {
             borderRadius: '9px',
             background: 'transparent',
             border: 'none',
-            color: 'rgba(255,255,255,0.3)',
+            color: 'var(--collapse-tx)',
             fontSize: '13px',
             cursor: 'pointer',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             transition: `gap 0.28s ${EASE}, color 0.18s`,
           }}
-          onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.6)'}
-          onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
+          onMouseEnter={e => e.currentTarget.style.color = 'var(--data-time)'}
+          onMouseLeave={e => e.currentTarget.style.color = 'var(--collapse-tx)'}
         >
           <ChevronsLeft
             size={18}
@@ -289,7 +290,7 @@ export default function Sidebar() {
             position: 'absolute', top: 0, right: '-3px',
             width: '6px', height: '100%',
             cursor: 'col-resize', zIndex: 10,
-            background: dragHover ? 'rgba(163,230,53,0.5)' : 'transparent',
+            background: dragHover ? 'rgba(139,227,77,0.5)' : 'transparent',
             transition: 'background 0.15s',
           }}
         />

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Download, ChevronDown, FileText, Image as ImageIcon, Zap, Loader2 } from 'lucide-react';
 
-/* ─── Tokens (samain sama dashboard) ─── */
+/* ─── Report palette — SELALU dark (artefak laporan, tidak ikut tema) ─── */
 const BG     = '#090A0C';
 const CARD   = '#121417';
 const BORDER = '#23262C';
@@ -14,6 +14,15 @@ const GREEN  = '#8BE34D';
 const BLUE   = '#3B82F6';
 const PURPLE = '#8B5CF6';
 const ORANGE = '#F59E0B';
+
+/* ─── UI palette (tombol + dropdown di header) — ikut tema dashboard ─── */
+const UI_CARD   = 'var(--cd)';
+const UI_BORDER = 'var(--br)';
+const UI_BRS    = 'var(--br-strong)';
+const UI_TXT    = 'var(--t1)';
+const UI_SUB    = 'var(--t2)';
+const UI_MUTE   = 'var(--t3)';
+const UI_HOVER  = 'var(--hover)';
 
 /* ─── Format helpers ─── */
 function fmtSpend(n) {
@@ -156,27 +165,27 @@ export default function ExportMenu({ summary, chartData = {}, rangeLabel = '', a
         onClick={() => !busy && setOpen(o => !o)}
         style={{
           display: 'flex', alignItems: 'center', gap: '7px', padding: '9px 14px',
-          background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px',
-          fontSize: '13px', color: busy ? SUB : TXT, cursor: busy ? 'default' : 'pointer', transition: 'border-color 0.15s',
+          background: UI_CARD, border: `1px solid ${UI_BORDER}`, borderRadius: '10px',
+          fontSize: '13px', color: busy ? UI_SUB : UI_TXT, cursor: busy ? 'default' : 'pointer', transition: 'border-color 0.15s',
         }}
-        onMouseEnter={e => { if (!busy) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; }}
-        onMouseLeave={e => e.currentTarget.style.borderColor = BORDER}
+        onMouseEnter={e => { if (!busy) e.currentTarget.style.borderColor = UI_BRS; }}
+        onMouseLeave={e => e.currentTarget.style.borderColor = UI_BORDER}
       >
         {busy
-          ? <Loader2 size={14} color={SUB} style={{ animation: 'wdSpin 0.8s linear infinite' }} />
-          : <Download size={14} color={SUB} />}
+          ? <Loader2 size={14} color={UI_SUB} style={{ animation: 'wdSpin 0.8s linear infinite' }} />
+          : <Download size={14} color={UI_SUB} />}
         {busy ? 'Exporting…' : 'Export'}
-        {!busy && <ChevronDown size={13} color={SUB} />}
+        {!busy && <ChevronDown size={13} color={UI_SUB} />}
       </button>
 
       {/* ── Dropdown format ── */}
       {open && !busy && (
         <div style={{
           position: 'absolute', top: '46px', right: 0, zIndex: 50,
-          background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', minWidth: '190px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.7)', animation: 'wdScaleIn 0.15s cubic-bezier(0.4,0,0.2,1)', overflow: 'hidden', padding: '6px',
+          background: UI_CARD, border: `1px solid ${UI_BORDER}`, borderRadius: '12px', minWidth: '190px',
+          boxShadow: 'var(--pop-shadow)', animation: 'wdScaleIn 0.15s cubic-bezier(0.4,0,0.2,1)', overflow: 'hidden', padding: '6px',
         }}>
-          <div style={{ ...sectionLabel, padding: '6px 10px 8px' }}>Export as</div>
+          <div style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '1.4px', color: UI_MUTE, textTransform: 'uppercase', padding: '6px 10px 8px' }}>Export as</div>
           {[
             { type: 'pdf', label: 'PDF Document', icon: FileText, hint: '.pdf' },
             { type: 'jpg', label: 'JPG Image',    icon: ImageIcon, hint: '.jpg' },
@@ -184,14 +193,14 @@ export default function ExportMenu({ summary, chartData = {}, rangeLabel = '', a
             const Ic = o.icon;
             return (
               <div key={o.type} onClick={() => runExport(o.type)} style={{
-                display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', color: SUB,
+                display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', color: UI_SUB,
               }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = TXT; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = SUB; }}
+                onMouseEnter={e => { e.currentTarget.style.background = UI_HOVER; e.currentTarget.style.color = UI_TXT; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = UI_SUB; }}
               >
                 <Ic size={16} />
                 <span style={{ flex: 1 }}>{o.label}</span>
-                <span style={{ fontSize: '11px', color: MUTE }}>{o.hint}</span>
+                <span style={{ fontSize: '11px', color: UI_MUTE }}>{o.hint}</span>
               </div>
             );
           })}

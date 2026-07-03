@@ -4,54 +4,60 @@
   padding: 0;
 }
 
-/* ===== LIGHT MODE ===== */
+/* ===== LIGHT MODE — SaaS light (off-white + green accent) ===== */
 :root {
-  --pg: #f5f5f5;
-  --cd: #ffffff;
-  --sf: #fafafa;
-  --s2: #f0f0f0;
-  --br: rgba(0,0,0,0.08);
-  --bs: rgba(0,0,0,0.16);
+  --pg: #F7F8FA;
+  --cd: #FFFFFF;
+  --sf: #FFFFFF;
+  --s2: #F3F4F6;
+  --nav: #FFFFFF;
+  --br: #E5E7EB;
+  --br-strong: #D1D5DB;
+  --bs: #D1D5DB;
+  --divider: #EEF1F4;
+  --hover: rgba(17,24,39,0.035);
+  --grid: rgba(17,24,39,0.06);
+  --track: #EDEFF2;
+  --shadow: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06);
+  --card-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06);
+  --pop-shadow: 0 12px 32px rgba(16,24,40,0.14);
+
+  --t1: #111827;
+  --t2: #6B7280;
+  --t3: #9CA3AF;
+  --t4: #9CA3AF;
+
   --ac: #65a30d;
-  --t1: #1a1a1a;
-  --t2: #525252;
-  --t3: #8a8a8a;
   --pos: #10b981;
   --neg: #ef4444;
-  --nav: #141414;
+  --accent-soft: rgba(139,227,77,0.20);
+  --accent-hover: rgba(139,227,77,0.11);
+  --accent-fg: #4D7C0F;
+  --pos-soft: rgba(101,163,13,0.14);
+  --neg-soft: rgba(239,68,68,0.11);
+
   --pr-bg: rgba(101,163,13,0.10);
-  --pr-tx: #65a30d;
+  --pr-tx: #4D7C0F;
   --pd-bg: rgba(0,0,0,0.05);
-  --pd-tx: #737373;
+  --pd-tx: #6B7280;
 
-  --blue: #3b82f6;
-  --green: #10b981;
-  --red: #ef4444;
-  --purple: #8b5cf6;
-  --amber: #f59e0b;
-  --lime: #a3e635;
-  --card-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06);
-}
+  /* sidebar */
+  --menu-label: #9CA3AF;
+  --nav-tx: #6B7280;
+  --nav-icon: #6B7280;
+  --nav-hover-tx: #111827;
+  --logo-text: #111827;
+  --data-bg: #F7F8FA;
+  --data-br: #EBEDF0;
+  --data-label: #6B7280;
+  --data-time: #374151;
+  --collapse-tx: #6B7280;
 
-/* ===== DARK MODE (AKTIF) — palet final Figma handoff ===== */
-html[data-theme="dark"] {
-  --pg: #090A0C;
-  --cd: #121417;
-  --sf: #0d0f12;
-  --s2: #16191d;
-  --br: #23262C;
-  --bs: rgba(255,255,255,0.14);
-  --ac: #8BE34D;
-  --t1: #FFFFFF;
-  --t2: #9CA3AF;
-  --t3: #5B616B;
-  --pos: #8BE34D;
-  --neg: #ef4444;
-  --nav: #0B0C0E;
-  --pr-bg: rgba(139,227,77,0.12);
-  --pr-tx: #8BE34D;
-  --pd-bg: rgba(255,255,255,0.04);
-  --pd-tx: #666666;
+  /* tooltip + misc */
+  --tooltip-bg: #111827;
+  --tooltip-br: #111827;
+  --tooltip-tx: #FFFFFF;
+  --icon-muted: #C7CBD1;
 
   --blue: #3B82F6;
   --green: #8BE34D;
@@ -59,7 +65,77 @@ html[data-theme="dark"] {
   --purple: #8B5CF6;
   --amber: #F59E0B;
   --lime: #8BE34D;
+}
+
+/* ===== DARK MODE — palet final (JANGAN diubah) ===== */
+html[data-theme="dark"] {
+  --pg: #090A0C;
+  --cd: #121417;
+  --sf: #0d0f12;
+  --s2: #16191d;
+  --nav: #0B0C0E;
+  --br: #23262C;
+  --br-strong: rgba(255,255,255,0.14);
+  --bs: rgba(255,255,255,0.14);
+  --divider: rgba(255,255,255,0.05);
+  --hover: rgba(255,255,255,0.04);
+  --grid: rgba(255,255,255,0.035);
+  --track: rgba(255,255,255,0.05);
+  --shadow: 0 1px 3px rgba(0,0,0,0.4);
   --card-shadow: 0 1px 4px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+  --pop-shadow: 0 20px 60px rgba(0,0,0,0.7);
+
+  --t1: #FFFFFF;
+  --t2: #9CA3AF;
+  --t3: #5B616B;
+  --t4: rgba(255,255,255,0.22);
+
+  --ac: #8BE34D;
+  --pos: #8BE34D;
+  --neg: #ef4444;
+  --accent-soft: rgba(139,227,77,0.12);
+  --accent-hover: rgba(139,227,77,0.06);
+  --accent-fg: #8BE34D;
+  --pos-soft: rgba(139,227,77,0.12);
+  --neg-soft: rgba(239,68,68,0.12);
+
+  --pr-bg: rgba(139,227,77,0.12);
+  --pr-tx: #8BE34D;
+  --pd-bg: rgba(255,255,255,0.04);
+  --pd-tx: #666666;
+
+  /* sidebar */
+  --menu-label: rgba(255,255,255,0.22);
+  --nav-tx: rgba(255,255,255,0.38);
+  --nav-icon: rgba(255,255,255,0.35);
+  --nav-hover-tx: rgba(255,255,255,0.7);
+  --logo-text: #e5e5e5;
+  --data-bg: rgba(255,255,255,0.03);
+  --data-br: rgba(255,255,255,0.06);
+  --data-label: rgba(255,255,255,0.35);
+  --data-time: rgba(255,255,255,0.6);
+  --collapse-tx: rgba(255,255,255,0.3);
+
+  /* tooltip + misc */
+  --tooltip-bg: #0A0C0E;
+  --tooltip-br: #23262C;
+  --tooltip-tx: #FFFFFF;
+  --icon-muted: #3A3F47;
+
+  --blue: #3B82F6;
+  --green: #8BE34D;
+  --red: #ef4444;
+  --purple: #8B5CF6;
+  --amber: #F59E0B;
+  --lime: #8BE34D;
+}
+
+/* Saat ganti tema: matikan semua transition sekejap supaya var() ter-resolve
+   ulang (fix Chromium: transition membekukan nilai var saat tema berganti) */
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
 }
 
 html, body {

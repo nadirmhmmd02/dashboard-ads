@@ -10,12 +10,13 @@ import CountUp from './components/CountUp';
 import AreaChart from './components/AreaChart';
 import ExportMenu from './components/ExportMenu';
 
-/* ─── Design tokens (Figma handoff) ─── */
-const BG      = '#090A0C';
-const CARD    = '#121417';
-const BORDER  = '#23262C';
-const TXT      = '#FFFFFF';
-const SUB      = '#9CA3AF';
+/* ─── Design tokens: netral = CSS var (ikut tema), aksen = literal (sama di 2 tema) ─── */
+const BG      = 'var(--pg)';
+const CARD    = 'var(--cd)';
+const BORDER  = 'var(--br)';
+const TXT     = 'var(--t1)';
+const SUB     = 'var(--t2)';
+const MUTE    = 'var(--t3)';
 const GREEN   = '#8BE34D';
 const BLUE    = '#3B82F6';
 const PURPLE  = '#8B5CF6';
@@ -25,7 +26,7 @@ const CARD_BASE = {
   background: CARD,
   border: `1px solid ${BORDER}`,
   borderRadius: '18px',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+  boxShadow: 'var(--shadow)',
 };
 
 const DATE_OPTIONS = [
@@ -133,13 +134,12 @@ function buildChartData(daily, range) {
 function Badge({ pct }) {
   if (pct === null || pct === undefined) return null;
   const up = pct >= 0;
-  const c  = up ? GREEN : '#EF4444';
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: '3px',
       padding: '2px 7px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-      background: up ? 'rgba(139,227,77,0.12)' : 'rgba(239,68,68,0.12)',
-      color: c,
+      background: up ? 'var(--pos-soft)' : 'var(--neg-soft)',
+      color: up ? 'var(--accent-fg)' : '#EF4444',
     }}>
       <span style={{ fontSize: '8px' }}>{up ? '▲' : '▼'}</span>
       {Math.abs(pct).toFixed(1)}%
@@ -177,7 +177,7 @@ function KpiCard({ label, display, value, icon: Icon, color, pct, spark, delay }
       onMouseLeave={() => setHover(false)}
       style={{
         ...CARD_BASE,
-        borderColor: hover ? 'rgba(255,255,255,0.14)' : BORDER,
+        borderColor: hover ? 'var(--br-strong)' : BORDER,
         height: '145px', overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
         padding: '16px 18px 10px',
@@ -208,7 +208,7 @@ function KpiCard({ label, display, value, icon: Icon, color, pct, spark, delay }
       <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '8px' }}>
         <Badge pct={pct} />
         {pct !== null && pct !== undefined && (
-          <span style={{ fontSize: '11px', color: '#5B616B' }}>vs prev period</span>
+          <span style={{ fontSize: '11px', color: MUTE }}>vs prev period</span>
         )}
       </div>
 
@@ -424,7 +424,7 @@ export default function DashboardPage() {
                 position:'absolute', top:'46px', right:0, zIndex:50,
                 background: CARD, border:`1px solid ${BORDER}`,
                 borderRadius:'12px', minWidth:'220px',
-                boxShadow:'0 20px 60px rgba(0,0,0,0.7)',
+                boxShadow:'var(--pop-shadow)',
                 animation:'wdScaleIn 0.15s cubic-bezier(0.4,0,0.2,1)', overflow:'hidden',
               }}>
                 <div style={{ padding:'6px' }}>
@@ -433,10 +433,10 @@ export default function DashboardPage() {
                     return (
                       <div key={opt.value} onClick={() => selectPreset(opt)} style={{
                         padding:'8px 11px', fontSize:'13px', cursor:'pointer', borderRadius:'7px',
-                        color: active ? GREEN : SUB,
-                        background: active ? 'rgba(139,227,77,0.10)' : 'transparent',
+                        color: active ? 'var(--accent-fg)' : SUB,
+                        background: active ? 'var(--accent-soft)' : 'transparent',
                       }}
-                      onMouseEnter={e => { if (!active) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}
+                      onMouseEnter={e => { if (!active) e.currentTarget.style.background='var(--hover)'; }}
                       onMouseLeave={e => { if (!active) e.currentTarget.style.background='transparent'; }}
                       >{opt.label}</div>
                     );
@@ -459,7 +459,7 @@ export default function DashboardPage() {
                   <button onClick={applyCustomRange} disabled={!customSince || !customUntil} style={{
                     width:'100%', padding:'8px', fontSize:'12px', fontWeight:600,
                     border:'none', borderRadius:'7px',
-                    background: customSince && customUntil ? GREEN : 'rgba(255,255,255,0.05)',
+                    background: customSince && customUntil ? GREEN : 'var(--hover)',
                     color:      customSince && customUntil ? '#0A0F06' : SUB,
                     cursor:     customSince && customUntil ? 'pointer' : 'default',
                   }}>Apply range</button>
@@ -479,7 +479,7 @@ export default function DashboardPage() {
             width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center',
             background: CARD, border:`1px solid ${BORDER}`, borderRadius:'10px', cursor:'pointer',
           }}
-          onMouseEnter={e => e.currentTarget.style.borderColor='rgba(255,255,255,0.2)'}
+          onMouseEnter={e => e.currentTarget.style.borderColor='var(--br-strong)'}
           onMouseLeave={e => e.currentTarget.style.borderColor=BORDER}
           >
             <RefreshCw size={15} color={SUB} style={loading ? { animation:'wdSpin 0.8s linear infinite' } : undefined}/>
@@ -544,9 +544,9 @@ export default function DashboardPage() {
                   <div>
                     <div style={{ fontSize:'12px', color:SUB, marginBottom:'3px' }}>{m.label}</div>
                     <div style={{ fontSize:'20px', fontWeight:700, color:TXT, letterSpacing:'-0.5px', lineHeight:1 }}>{m.value}</div>
-                    <div style={{ fontSize:'11px', color:'#5B616B', marginTop:'3px' }}>{m.sub}</div>
+                    <div style={{ fontSize:'11px', color:MUTE, marginTop:'3px' }}>{m.sub}</div>
                   </div>
-                  <Ic size={18} color="#3A3F47"/>
+                  <Ic size={18} color="var(--icon-muted)"/>
                 </div>
               );
             })}
@@ -564,7 +564,7 @@ export default function DashboardPage() {
                 <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'16px', overflow:'hidden' }}>
                   <div style={{ position:'relative', width:'150px', height:'150px', flexShrink:0 }}>
                     <svg viewBox="0 0 100 100" style={{ width:'150px', height:'150px' }}>
-                      <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="12"/>
+                      <circle cx="50" cy="50" r="38" fill="none" stroke="var(--track)" strokeWidth="12"/>
                       {donutSegs.map((seg, i) => {
                         let sw=12, op=1;
                         if (hoverSeg!==null){ sw=hoverSeg===i?15:8; op=hoverSeg===i?1:0.25; }
@@ -588,14 +588,14 @@ export default function DashboardPage() {
                       <div key={i} onMouseEnter={() => setHoverSeg(i)} onMouseLeave={() => setHoverSeg(null)}
                         style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
                           padding:'2px 4px', borderRadius:'7px', cursor:'pointer', flexShrink:0,
-                          background: hoverSeg===i ? 'rgba(255,255,255,0.04)' : 'transparent', transition:'background 0.15s' }}>
+                          background: hoverSeg===i ? 'var(--hover)' : 'transparent', transition:'background 0.15s' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
                           <span style={{ width:'9px', height:'9px', borderRadius:'3px', background:seg.color, flexShrink:0 }}/>
                           <span style={{ fontSize:'13px', color:SUB }}>{seg.label}</span>
                         </div>
                         <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
                           <span style={{ fontSize:'13px', fontWeight:600, color:TXT }}>{seg.value}</span>
-                          <span style={{ fontSize:'12px', color:'#5B616B' }}>{seg.pct}%</span>
+                          <span style={{ fontSize:'12px', color:MUTE }}>{seg.pct}%</span>
                         </div>
                       </div>
                     ))}
@@ -625,8 +625,12 @@ export default function DashboardPage() {
                 {topCampaigns.length === 0 ? (
                   <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', color:SUB }}>No data</div>
                 ) : topCampaigns.map((c, i) => (
-                  <div key={i} style={{ display:'grid', gridTemplateColumns:'1.7fr 1fr 0.7fr 0.8fr 1fr', gap:'6px',
-                    alignItems:'center', padding:'11px 0', borderBottom: i < topCampaigns.length-1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                  <div key={i}
+                    onMouseEnter={e => e.currentTarget.style.background='var(--hover)'}
+                    onMouseLeave={e => e.currentTarget.style.background='transparent'}
+                    style={{ display:'grid', gridTemplateColumns:'1.7fr 1fr 0.7fr 0.8fr 1fr', gap:'6px',
+                    alignItems:'center', padding:'11px 8px', margin:'0 -8px', borderRadius:'8px', transition:'background 0.15s',
+                    borderBottom: i < topCampaigns.length-1 ? '1px solid var(--divider)' : 'none' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:'8px', minWidth:0 }}>
                       <span style={{ width:'7px', height:'7px', borderRadius:'50%', background:c.color, flexShrink:0 }}/>
                       <span style={{ fontSize:'12px', color:TXT, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={c.name}>{c.name}</span>
@@ -636,8 +640,8 @@ export default function DashboardPage() {
                     <span style={{ fontSize:'12px', color:SUB, textAlign:'right' }}>{c.ctr.toFixed(2)}%</span>
                     <span style={{ textAlign:'right' }}>
                       <span style={{ display:'inline-block', padding:'3px 8px', borderRadius:'6px', fontSize:'11px', fontWeight:600,
-                        background: c.cpl !== null ? 'rgba(139,227,77,0.12)' : 'rgba(245,158,11,0.12)',
-                        color: c.cpl !== null ? GREEN : ORANGE }}>
+                        background: c.cpl !== null ? 'var(--pos-soft)' : 'rgba(245,158,11,0.14)',
+                        color: c.cpl !== null ? 'var(--accent-fg)' : ORANGE }}>
                         {c.cpl !== null ? fmtSpend(c.cpl) : '—'}
                       </span>
                     </span>
@@ -653,24 +657,39 @@ export default function DashboardPage() {
   );
 }
 
-/* ─── Theme toggle ─── */
+/* ─── Theme toggle (persist pilihan di localStorage) ─── */
 function ThemeToggle() {
   const [dark, setDark] = useState(true);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('wd-theme');
+    const isDark = saved ? saved === 'dark' : true;
+    setDark(isDark);
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  }, []);
+
   function toggle() {
     const next = !dark;
+    const root = document.documentElement;
+    // matikan transition sesaat agar var() ter-resolve ulang tanpa stale value
+    root.classList.add('theme-switching');
+    root.setAttribute('data-theme', next ? 'dark' : 'light');
+    // paksa reflow (var() ter-resolve saat transition mati) lalu nyalakan lagi
+    void root.offsetHeight;
+    setTimeout(() => root.classList.remove('theme-switching'), 60);
     setDark(next);
-    document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
+    try { localStorage.setItem('wd-theme', next ? 'dark' : 'light'); } catch (e) {}
   }
   return (
-    <button onClick={toggle} style={{
+    <button onClick={toggle} title={dark ? 'Switch to light' : 'Switch to dark'} style={{
       width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center',
       background: CARD, border:`1px solid ${BORDER}`, borderRadius:'10px', cursor:'pointer',
       transition:'border-color 0.15s',
     }}
-    onMouseEnter={e => e.currentTarget.style.borderColor='rgba(255,255,255,0.2)'}
+    onMouseEnter={e => e.currentTarget.style.borderColor='var(--br-strong)'}
     onMouseLeave={e => e.currentTarget.style.borderColor=BORDER}
     >
-      {dark ? <Moon size={15} color={SUB}/> : <Sun size={15} color={GREEN}/>}
+      {dark ? <Moon size={15} color={SUB}/> : <Sun size={15} color={ORANGE}/>}
     </button>
   );
 }

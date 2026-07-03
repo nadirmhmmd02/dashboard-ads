@@ -103,9 +103,10 @@ export default function AreaChart({ data, dates, today }) {
 
   return (
     <div style={{
-      background: '#121417',
-      border: '1px solid #23262C',
+      background: 'var(--cd)',
+      border: '1px solid var(--br)',
       borderRadius: '18px',
+      boxShadow: 'var(--shadow)',
       padding: '18px 20px',
       display: 'flex',
       flexDirection: 'column',
@@ -116,19 +117,19 @@ export default function AreaChart({ data, dates, today }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
           <span key={metric} style={{
-            fontSize: '15px', fontWeight: 600, color: '#FFFFFF',
+            fontSize: '15px', fontWeight: 600, color: 'var(--t1)',
             animation: 'wdSoftIn 0.35s cubic-bezier(0.4,0,0.2,1)',
           }}>{TITLES[metric]}</span>
-          <Info size={13} color="#4B5563" />
+          <Info size={13} color="var(--t3)" />
         </div>
-        <div style={{ display: 'flex', gap: '3px', background: 'rgba(255,255,255,0.03)', padding: '3px', borderRadius: '9px' }}>
+        <div style={{ display: 'flex', gap: '3px', background: 'var(--hover)', padding: '3px', borderRadius: '9px' }}>
           {METRICS.map((m) => {
             const active = metric === m.key;
             return (
               <button key={m.key} onClick={() => setMetric(m.key)} style={{
                 padding: '5px 12px', border: 'none', borderRadius: '7px', fontSize: '12px', fontWeight: 500,
                 background: active ? COLORS[m.key] : 'transparent',
-                color: active ? '#0A0F06' : '#9CA3AF',
+                color: active ? '#0A0F06' : 'var(--t2)',
                 cursor: 'pointer', transition: 'all 0.18s',
               }}>{m.label}</button>
             );
@@ -141,7 +142,7 @@ export default function AreaChart({ data, dates, today }) {
         {/* Y axis */}
         <div style={{
           display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-          fontSize: '10px', color: '#4B5563', textAlign: 'right', minWidth: '36px', paddingBottom: '20px',
+          fontSize: '10px', color: 'var(--t3)', textAlign: 'right', minWidth: '36px', paddingBottom: '20px',
         }}>
           {yLabels.map((l, i) => <div key={i}>{l}</div>)}
         </div>
@@ -159,7 +160,7 @@ export default function AreaChart({ data, dates, today }) {
               {[0, 1, 2, 3, 4].map((i) => (
                 <div key={i} style={{
                   position: 'absolute', top: (i / 4) * 100 + '%', left: 0, right: 0,
-                  borderTop: '1px solid rgba(255,255,255,0.035)',
+                  borderTop: '1px solid var(--grid)',
                 }} />
               ))}
             </div>
@@ -195,7 +196,7 @@ export default function AreaChart({ data, dates, today }) {
               <div key={p.i} style={{
                 position: 'absolute', left: p.x + '%', top: p.y + '%',
                 width: '8px', height: '8px', borderRadius: '50%', background: col,
-                border: '2px solid #121417', transform: 'translate(-50%,-50%)', pointerEvents: 'none',
+                border: '2px solid var(--cd)', transform: 'translate(-50%,-50%)', pointerEvents: 'none',
               }} />
             ))}
 
@@ -204,12 +205,12 @@ export default function AreaChart({ data, dates, today }) {
               <>
                 <div style={{
                   position: 'absolute', top: 0, bottom: 0, left: hover.xPct + '%',
-                  width: '1px', background: 'rgba(255,255,255,0.14)', pointerEvents: 'none',
+                  width: '1px', background: 'var(--br-strong)', pointerEvents: 'none',
                 }} />
                 <div style={{
                   position: 'absolute', left: hover.xPct + '%', top: hover.yPct + '%',
                   width: '9px', height: '9px', borderRadius: '50%', background: col,
-                  border: '2px solid #121417', transform: 'translate(-50%,-50%)',
+                  border: '2px solid var(--cd)', transform: 'translate(-50%,-50%)',
                   boxShadow: `0 0 8px ${col}`, pointerEvents: 'none',
                 }} />
               </>
@@ -224,7 +225,7 @@ export default function AreaChart({ data, dates, today }) {
                 <span key={i} style={{
                   position: 'absolute', left: (n > 1 ? (i / (n - 1)) * 100 : 50) + '%',
                   transform: 'translateX(-50%)', fontSize: n > 20 ? '8px' : '9px',
-                  color: isToday ? COLORS.spend : '#4B5563', fontWeight: isToday ? 700 : 400,
+                  color: isToday ? COLORS.spend : 'var(--t3)', fontWeight: isToday ? 700 : 400,
                 }}>{dayOf(i)}</span>
               );
             })}
@@ -236,16 +237,16 @@ export default function AreaChart({ data, dates, today }) {
       {hover && arr[hover.idx] !== undefined && (
         <div style={{
           position: 'fixed', left: hover.clientX + 14, top: hover.clientY - 44,
-          background: '#0A0C0E', border: '1px solid #23262C', borderRadius: '8px',
+          background: 'var(--tooltip-bg)', border: '1px solid var(--tooltip-br)', borderRadius: '8px',
           padding: '7px 11px', pointerEvents: 'none', zIndex: 100, whiteSpace: 'nowrap',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+          boxShadow: 'var(--pop-shadow)',
         }}>
-          <div style={{ fontSize: '10px', color: '#9CA3AF', marginBottom: '3px' }}>
+          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.65)', marginBottom: '3px' }}>
             Day {dayOf(hover.idx)}{hover.idx === today ? ' · today' : ''}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: col }} />
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#FFFFFF' }}>{fmtVal(metric, arr[hover.idx])}</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--tooltip-tx)' }}>{fmtVal(metric, arr[hover.idx])}</span>
           </div>
         </div>
       )}
