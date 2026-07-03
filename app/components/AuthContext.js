@@ -7,8 +7,8 @@ import { useRouter } from 'next/navigation';
    Ganti username/password di sini kalau perlu. Ini auth sisi-klien
    (tanpa backend) — cocok untuk demo/internal, bukan keamanan produksi. */
 const CREDENTIALS = {
-  admin: { password: 'admin123', role: 'admin' },
-  user:  { password: 'user123',  role: 'user'  },
+  dozan:    { password: 'Dozan213',    role: 'admin' },
+  babarafi: { password: 'babarafi123', role: 'user'  },
 };
 
 const DEFAULT_THEME = { admin: 'dark', user: 'light' };
