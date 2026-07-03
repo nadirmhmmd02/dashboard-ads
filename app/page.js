@@ -470,8 +470,6 @@ export default function DashboardPage() {
 
           <ExportMenu
             summary={summary}
-            donutSegs={donutSegs}
-            topCampaigns={topCampaigns}
             chartData={chartData}
             rangeLabel={filterLabel()}
             activeCount={activeCampaignCount}
