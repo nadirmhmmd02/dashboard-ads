@@ -9,6 +9,7 @@ import {
 import CountUp from './components/CountUp';
 import AreaChart from './components/AreaChart';
 import ExportMenu from './components/ExportMenu';
+import { useAuth } from './components/AuthContext';
 
 /* ─── Design tokens: netral = CSS var (ikut tema), aksen = literal (sama di 2 tema) ─── */
 const BG      = 'var(--pg)';
@@ -657,31 +658,12 @@ export default function DashboardPage() {
   );
 }
 
-/* ─── Theme toggle (persist pilihan di localStorage) ─── */
+/* ─── Theme toggle (role-aware, dikelola AuthContext) ─── */
 function ThemeToggle() {
-  const [dark, setDark] = useState(true);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('wd-theme');
-    const isDark = saved ? saved === 'dark' : true;
-    setDark(isDark);
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-  }, []);
-
-  function toggle() {
-    const next = !dark;
-    const root = document.documentElement;
-    // matikan transition sesaat agar var() ter-resolve ulang tanpa stale value
-    root.classList.add('theme-switching');
-    root.setAttribute('data-theme', next ? 'dark' : 'light');
-    // paksa reflow (var() ter-resolve saat transition mati) lalu nyalakan lagi
-    void root.offsetHeight;
-    setTimeout(() => root.classList.remove('theme-switching'), 60);
-    setDark(next);
-    try { localStorage.setItem('wd-theme', next ? 'dark' : 'light'); } catch (e) {}
-  }
+  const { theme, toggleTheme } = useAuth();
+  const dark = theme !== 'light';
   return (
-    <button onClick={toggle} title={dark ? 'Switch to light' : 'Switch to dark'} style={{
+    <button onClick={toggleTheme} title={dark ? 'Switch to light' : 'Switch to dark'} style={{
       width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center',
       background: CARD, border:`1px solid ${BORDER}`, borderRadius:'10px', cursor:'pointer',
       transition:'border-color 0.15s',

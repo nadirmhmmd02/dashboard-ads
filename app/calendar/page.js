@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
+import { useAuth } from '../components/AuthContext';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const OBJ_ORDER = ['Awareness','Traffic','Conversion'];
@@ -19,6 +20,7 @@ function fmtRp(v){ if(!v)return'—'; if(v>=1000000)return'Rp '+(v/1000000).toFi
 const emptyForm = { name:'', obj:'Awareness', konten:'', bh:'', mulai:'', selesai:'', status:'Draft' };
 
 export default function CalendarPage() {
+  const { isAdmin } = useAuth();
   const now = new Date();
   const [year, setYear]         = useState(now.getFullYear());
   const [month, setMonth]       = useState(now.getMonth());
@@ -178,16 +180,18 @@ export default function CalendarPage() {
           onMouseLeave={e => { e.currentTarget.style.color='var(--t2)'; e.currentTarget.style.borderColor='var(--br)'; }}
           >↓ Export</button>
 
-          <button onClick={openAdd} style={{
-            display:'flex', alignItems:'center', gap:'6px',
-            padding:'7px 16px', fontSize:'13px',
-            border:'none', borderRadius:'8px',
-            background:'var(--ac)', color:'#fff', cursor:'pointer', fontWeight:'500',
-            transition:'opacity 0.15s',
-          }}
-          onMouseEnter={e => e.currentTarget.style.opacity='0.85'}
-          onMouseLeave={e => e.currentTarget.style.opacity='1'}
-          >+ Add Campaign</button>
+          {isAdmin && (
+            <button onClick={openAdd} style={{
+              display:'flex', alignItems:'center', gap:'6px',
+              padding:'7px 16px', fontSize:'13px',
+              border:'none', borderRadius:'8px',
+              background:'var(--ac)', color:'#fff', cursor:'pointer', fontWeight:'500',
+              transition:'opacity 0.15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.opacity='0.85'}
+            onMouseLeave={e => e.currentTarget.style.opacity='1'}
+            >+ Add Campaign</button>
+          )}
         </div>
       </div>
 
@@ -228,7 +232,7 @@ export default function CalendarPage() {
                   <th style={{ ...thBase, textAlign:'right' }}>End</th>
                   <th style={{ ...thBase, textAlign:'right' }}>Total Bgt</th>
                   <th style={{ ...thBase, textAlign:'left' }}>Status</th>
-                  <th style={{ ...thBase, textAlign:'left' }}>Action</th>
+                  {isAdmin && <th style={{ ...thBase, textAlign:'left' }}>Action</th>}
                   {Array.from({ length:days }, (_,i) => i+1).map(d => {
                     const isToday = year===today.y && month===today.m && d===today.d;
                     return (
@@ -281,20 +285,22 @@ export default function CalendarPage() {
                           {st==='Running' ? '▶' : st==='Done' ? '✓' : '✏'} {st}
                         </span>
                       </td>
-                      <td style={{ padding:'6px 4px', whiteSpace:'nowrap' }}>
-                        <button
-                          onClick={() => openEdit(c)}
-                          style={{ fontSize:'10px', padding:'3px 7px', borderRadius:'6px', border:'1px solid var(--br)', background:'transparent', color:'var(--t2)', cursor:'pointer', marginRight:'3px', transition:'border-color 0.15s, color 0.15s' }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor='var(--t2)'; e.currentTarget.style.color='var(--t1)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor='var(--br)'; e.currentTarget.style.color='var(--t2)'; }}
-                        >✏</button>
-                        <button
-                          onClick={() => handleDelete(c.id)}
-                          style={{ fontSize:'10px', padding:'3px 7px', borderRadius:'6px', border:'1px solid rgba(239,68,68,0.25)', background:'transparent', color:'#ef4444', cursor:'pointer', transition:'border-color 0.15s' }}
-                          onMouseEnter={e => e.currentTarget.style.borderColor='rgba(239,68,68,0.6)'}
-                          onMouseLeave={e => e.currentTarget.style.borderColor='rgba(239,68,68,0.25)'}
-                        >🗑</button>
-                      </td>
+                      {isAdmin && (
+                        <td style={{ padding:'6px 4px', whiteSpace:'nowrap' }}>
+                          <button
+                            onClick={() => openEdit(c)}
+                            style={{ fontSize:'10px', padding:'3px 7px', borderRadius:'6px', border:'1px solid var(--br)', background:'transparent', color:'var(--t2)', cursor:'pointer', marginRight:'3px', transition:'border-color 0.15s, color 0.15s' }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor='var(--t2)'; e.currentTarget.style.color='var(--t1)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor='var(--br)'; e.currentTarget.style.color='var(--t2)'; }}
+                          >✏</button>
+                          <button
+                            onClick={() => handleDelete(c.id)}
+                            style={{ fontSize:'10px', padding:'3px 7px', borderRadius:'6px', border:'1px solid rgba(239,68,68,0.25)', background:'transparent', color:'#ef4444', cursor:'pointer', transition:'border-color 0.15s' }}
+                            onMouseEnter={e => e.currentTarget.style.borderColor='rgba(239,68,68,0.6)'}
+                            onMouseLeave={e => e.currentTarget.style.borderColor='rgba(239,68,68,0.25)'}
+                          >🗑</button>
+                        </td>
+                      )}
                       {Array.from({ length:days }, (_,i) => i+1).map((d, di) => {
                         const isToday = year===today.y && month===today.m && d===today.d;
                         const active  = isActive(c, year, month, d);
@@ -369,7 +375,7 @@ export default function CalendarPage() {
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
                   <span style={{ fontSize:'11px', color:'var(--t3)' }}>Belum ada tanggal</span>
-                  <button onClick={() => openEdit(c)} style={{ fontSize:'10px', padding:'3px 8px', borderRadius:'6px', border:'1px solid var(--br)', background:'transparent', color:'var(--ac)', cursor:'pointer' }}>Set tanggal</button>
+                  {isAdmin && <button onClick={() => openEdit(c)} style={{ fontSize:'10px', padding:'3px 8px', borderRadius:'6px', border:'1px solid var(--br)', background:'transparent', color:'var(--ac)', cursor:'pointer' }}>Set tanggal</button>}
                 </div>
               </div>
             ))}

@@ -10,7 +10,9 @@ import {
   CalendarDays,
   FileChartColumn,
   ChevronsLeft,
+  LogOut,
 } from 'lucide-react';
+import { useAuth } from './AuthContext';
 
 const NAV_ITEMS = [
   { href: '/',          label: 'Dashboard', icon: LayoutDashboard },
@@ -32,6 +34,7 @@ const ACTIVE_FG = 'var(--accent-fg)';
 
 export default function Sidebar() {
   const pathname  = usePathname();
+  const { user, role, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [width, setWidth]         = useState(DEFAULT_WIDTH);
   const [hovered, setHovered]     = useState(null);
@@ -213,6 +216,47 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      {/* ── User + logout ── */}
+      {user && (
+        <div style={{ padding: collapsed ? '0 0 8px' : '0 10px 8px' }}>
+          {!collapsed ? (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '8px 10px', borderRadius: '10px',
+              background: 'var(--data-bg)', border: '1px solid var(--data-br)',
+            }}>
+              <div style={{
+                width: '30px', height: '30px', borderRadius: '9px', flexShrink: 0,
+                background: ACTIVE_BG, color: ACTIVE_FG,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '13px', fontWeight: 700, textTransform: 'uppercase',
+              }}>{user.username?.[0] || '?'}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--t1)', textTransform: 'capitalize',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.username}</div>
+                <div style={{ fontSize: '10px', color: ACTIVE_FG, fontWeight: 600, textTransform: 'capitalize' }}>{role}</div>
+              </div>
+              <button onClick={logout} title="Logout" style={{
+                background: 'none', border: 'none', display: 'flex', cursor: 'pointer', padding: '5px',
+                borderRadius: '7px', color: 'var(--nav-tx)', flexShrink: 0, transition: 'color 0.15s, background 0.15s',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.color = '#EF4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.10)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--nav-tx)'; e.currentTarget.style.background = 'none'; }}
+              ><LogOut size={16} /></button>
+            </div>
+          ) : (
+            <button onClick={logout} title="Logout" style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '11px 0', borderRadius: '9px', background: 'transparent', border: 'none',
+              color: 'var(--nav-tx)', cursor: 'pointer', transition: 'color 0.15s, background 0.15s',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#EF4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.10)'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--nav-tx)'; e.currentTarget.style.background = 'transparent'; }}
+            ><LogOut size={18} /></button>
+          )}
+        </div>
+      )}
 
       {/* ── Data updated card ── */}
       {!collapsed && (
