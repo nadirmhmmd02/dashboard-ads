@@ -27,10 +27,9 @@ const DEFAULT_WIDTH   = 240;
 const COLLAPSED_WIDTH = 64;
 const EASE            = 'cubic-bezier(0.4,0,0.2,1)';
 
-const ACCENT    = '#8BE34D';                 // logo tile & dot (aksen, sama di kedua tema)
-const ACTIVE_BG = 'var(--accent-soft)';
-const ACTIVE_HV = 'var(--accent-hover)';
-const ACTIVE_FG = 'var(--accent-fg)';
+const ACTIVE_BG = 'var(--nav-accent-soft)';   // hijau (dark) / amber (light)
+const ACTIVE_HV = 'var(--nav-accent-hover)';
+const ACTIVE_FG = 'var(--nav-accent-fg)';
 
 export default function Sidebar() {
   const pathname  = usePathname();
@@ -124,15 +123,14 @@ export default function Sidebar() {
         whiteSpace: 'nowrap',
         transition: `gap 0.28s ${EASE}, padding 0.28s ${EASE}`,
       }}>
-        <div style={{
+        <div className="wd-logo" style={{
           width: '28px', height: '28px',
           borderRadius: '7px',
-          background: ACCENT,
+          background: 'var(--nav-logo-bg)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,
-          animation: 'wdSpinGlowGreen 3s ease-in-out infinite',
         }}>
-          <Zap size={17} color="#0A0F06" fill="#0A0F06" style={{ flexShrink: 0, minWidth: 17 }} />
+          <Zap size={17} color="var(--nav-logo-fg)" fill="var(--nav-logo-fg)" style={{ flexShrink: 0, minWidth: 17 }} />
         </div>
         <span style={{
           fontSize: '13px', fontWeight: '700',
@@ -272,7 +270,7 @@ export default function Sidebar() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
               <span style={{
-                width: '7px', height: '7px', borderRadius: '50%', background: ACCENT,
+                width: '7px', height: '7px', borderRadius: '50%', background: 'var(--nav-dot)',
                 flexShrink: 0, animation: 'wdPulseDot 1.8s ease-in-out infinite',
               }} />
               <span style={{ fontSize: '12px', color: 'var(--data-time)' }}>2 minutes ago</span>
@@ -334,7 +332,7 @@ export default function Sidebar() {
             position: 'absolute', top: 0, right: '-3px',
             width: '6px', height: '100%',
             cursor: 'col-resize', zIndex: 10,
-            background: dragHover ? 'rgba(139,227,77,0.5)' : 'transparent',
+            background: dragHover ? 'var(--nav-drag)' : 'transparent',
             transition: 'background 0.15s',
           }}
         />

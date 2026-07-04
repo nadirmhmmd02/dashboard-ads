@@ -52,6 +52,14 @@
   --data-label: #6B7280;
   --data-time: #374151;
   --collapse-tx: #6B7280;
+  /* sidebar accent — LIGHT = amber (seperti halaman login) */
+  --nav-accent-fg: #B45309;
+  --nav-accent-soft: rgba(245,158,11,0.16);
+  --nav-accent-hover: rgba(245,158,11,0.10);
+  --nav-logo-bg: linear-gradient(135deg, #FBBF24, #F59E0B);
+  --nav-logo-fg: #FFFFFF;
+  --nav-dot: #F59E0B;
+  --nav-drag: rgba(245,158,11,0.6);
 
   /* tooltip + misc */
   --tooltip-bg: #111827;
@@ -115,6 +123,14 @@ html[data-theme="dark"] {
   --data-label: rgba(255,255,255,0.35);
   --data-time: rgba(255,255,255,0.6);
   --collapse-tx: rgba(255,255,255,0.3);
+  /* sidebar accent — DARK = green (tidak diubah) */
+  --nav-accent-fg: #8BE34D;
+  --nav-accent-soft: rgba(139,227,77,0.12);
+  --nav-accent-hover: rgba(139,227,77,0.06);
+  --nav-logo-bg: #8BE34D;
+  --nav-logo-fg: #0A0F06;
+  --nav-dot: #8BE34D;
+  --nav-drag: rgba(139,227,77,0.5);
 
   /* tooltip + misc */
   --tooltip-bg: #0A0C0E;
@@ -137,6 +153,10 @@ html.theme-switching *::before,
 html.theme-switching *::after {
   transition: none !important;
 }
+
+/* Logo sidebar: glow amber di light, glow hijau di dark */
+.wd-logo { animation: wdSpinGlow 3s ease-in-out infinite; }
+html[data-theme="dark"] .wd-logo { animation: wdSpinGlowGreen 3s ease-in-out infinite; }
 
 html, body {
   height: 100%;
