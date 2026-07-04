@@ -169,16 +169,18 @@ export default function CalendarPage() {
         </div>
 
         <div style={{ display:'flex', gap:'8px' }}>
-          <button style={{
-            display:'flex', alignItems:'center', gap:'6px',
-            padding:'7px 14px', fontSize:'13px',
-            border:'1px solid var(--br)', borderRadius:'8px',
-            background:'var(--cd)', color:'var(--t2)', cursor:'pointer',
-            transition:'color 0.15s, border-color 0.15s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.color='var(--t1)'; e.currentTarget.style.borderColor='var(--t2)'; }}
-          onMouseLeave={e => { e.currentTarget.style.color='var(--t2)'; e.currentTarget.style.borderColor='var(--br)'; }}
-          >↓ Export</button>
+          {isAdmin && (
+            <button style={{
+              display:'flex', alignItems:'center', gap:'6px',
+              padding:'7px 14px', fontSize:'13px',
+              border:'1px solid var(--br)', borderRadius:'8px',
+              background:'var(--cd)', color:'var(--t2)', cursor:'pointer',
+              transition:'color 0.15s, border-color 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color='var(--t1)'; e.currentTarget.style.borderColor='var(--t2)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color='var(--t2)'; e.currentTarget.style.borderColor='var(--br)'; }}
+            >↓ Export</button>
+          )}
 
           {isAdmin && (
             <button onClick={openAdd} style={{

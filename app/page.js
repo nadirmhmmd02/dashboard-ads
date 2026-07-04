@@ -223,6 +223,7 @@ function KpiCard({ label, display, value, icon: Icon, color, pct, spark, delay }
 
 /* ─── Main ─── */
 export default function DashboardPage() {
+  const { isAdmin } = useAuth();
   const [hoverSeg, setHoverSeg]         = useState(null);
   const [dateOpt, setDateOpt]           = useState(DATE_OPTIONS[5]); // This month
   const [showDropdown, setShowDropdown] = useState(false);
@@ -469,12 +470,14 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <ExportMenu
-            summary={summary}
-            chartData={chartData}
-            rangeLabel={filterLabel()}
-            activeCount={activeCampaignCount}
-          />
+          {isAdmin && (
+            <ExportMenu
+              summary={summary}
+              chartData={chartData}
+              rangeLabel={filterLabel()}
+              activeCount={activeCampaignCount}
+            />
+          )}
 
           <button onClick={refresh} title="Refresh" style={{
             width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center',
