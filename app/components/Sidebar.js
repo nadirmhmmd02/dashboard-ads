@@ -256,29 +256,6 @@ export default function Sidebar() {
         </div>
       )}
 
-      {/* ── Data updated card ── */}
-      {!collapsed && (
-        <div style={{ padding: '0 10px 10px' }}>
-          <div style={{
-            background: 'var(--data-bg)',
-            border: '1px solid var(--data-br)',
-            borderRadius: '10px',
-            padding: '10px 12px',
-          }}>
-            <div style={{ fontSize: '10px', color: 'var(--data-label)', marginBottom: '5px' }}>
-              Data updated
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-              <span style={{
-                width: '7px', height: '7px', borderRadius: '50%', background: 'var(--nav-dot)',
-                flexShrink: 0, animation: 'wdPulseDot 1.8s ease-in-out infinite',
-              }} />
-              <span style={{ fontSize: '12px', color: 'var(--data-time)' }}>2 minutes ago</span>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── Collapse button ── */}
       <div style={{ padding: '8px', borderTop: '1px solid var(--divider)' }}>
         <button
