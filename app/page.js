@@ -179,7 +179,7 @@ function KpiCard({ label, display, value, icon: Icon, color, pct, spark, delay }
       style={{
         ...CARD_BASE,
         borderColor: hover ? 'var(--br-strong)' : BORDER,
-        height: '145px', overflow: 'hidden',
+        height: '100%', overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
         padding: '16px 18px 10px',
         animation: `wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) ${delay}ms backwards`,
@@ -509,7 +509,7 @@ export default function DashboardPage() {
         {!loading && !error && summary && (<>
 
           {/* ══ ROW 1: KPI — 5 equal cards ══ */}
-          <div style={{ flexShrink:0, display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:'16px' }}>
+          <div style={{ flex:'1 1 0', minHeight:'150px', maxHeight:'190px', display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:'16px' }}>
             <KpiCard label="Total Spend"  icon={DollarSign} color={GREEN}
               value={Math.round(summary.totalSpend)} display={fmtSpend(summary.totalSpend)}
               pct={summary.pctSpend} spark={chartData.spend} delay={0}/>
@@ -529,7 +529,7 @@ export default function DashboardPage() {
 
           {/* ══ ROW 2: SECONDARY METRICS ══ */}
           <div style={{
-            ...CARD_BASE, flexShrink:0, height:'78px',
+            ...CARD_BASE, flex:'1 1 0', minHeight:'74px', maxHeight:'92px',
             display:'grid', gridTemplateColumns:'repeat(4, 1fr)', overflow:'hidden',
             animation:'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 260ms backwards',
           }}>
@@ -557,7 +557,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ══ ROW 3: ANALYTICS — 30% / 40% / 30% ══ */}
-          <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'2.55fr 4.45fr 3fr', gap:'16px' }}>
+          <div style={{ flex:'1 1 0', minHeight:'260px', maxHeight:'500px', display:'grid', gridTemplateColumns:'2.55fr 4.45fr 3fr', gap:'16px' }}>
 
             {/* Spend Breakdown (donut) */}
             <div style={{ ...CARD_BASE, display:'flex', flexDirection:'column', overflow:'hidden', padding:'18px 20px' }}>
