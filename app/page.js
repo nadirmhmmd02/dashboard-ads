@@ -70,12 +70,10 @@ function fmtSpend(n) {
   return 'Rp ' + Math.round(n);
 }
 
-// Cost per result — bisa sangat kecil (awareness/impressions), format aman
+// Cost per result — angka penuh (tanpa singkatan K/M), pakai pemisah ribuan
 function fmtCPR(v) {
   if (v == null) return '—';
-  if (v >= 1000) return fmtSpend(v);
-  if (v >= 1)    return 'Rp ' + Math.round(v);
-  return 'Rp ' + v.toFixed(2);
+  return 'Rp ' + Math.round(v).toLocaleString('id-ID');
 }
 
 // Buang prefix tipe iklan ("KTBR AWR - ", dst) → tampilkan nama setelah "-"
@@ -355,7 +353,8 @@ export default function DashboardPage() {
             type,
             spend: sp,
             result,
-            cpr:   result > 0 ? sp / result : null,
+            // Awareness → CPM (per 1.000 impressions); Traffic/Conversion → per result
+            cpr:   result > 0 ? (type === 'AWARENESS' ? (sp / result) * 1000 : sp / result) : null,
             ctr:   impr > 0 ? (clk / impr) * 100 : 0,
             color: TYPE_COLOR[type],
           };
