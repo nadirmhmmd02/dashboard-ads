@@ -76,6 +76,16 @@ function fmtCPR(v) {
   return 'Rp ' + Math.round(v).toLocaleString('id-ID');
 }
 
+// Spend full format — tanpa abbreviation, dengan pemisah ribuan
+function fmtSpendFull(n) {
+  return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+}
+
+// Angka penuh (Reach/Impressions/Traffic/Leads) — pemisah ribuan, tanpa singkatan
+function fmtNumFull(n) {
+  return Math.round(n).toLocaleString('id-ID');
+}
+
 // Buang prefix tipe iklan ("KTBR AWR - ", dst) → tampilkan nama setelah "-"
 function stripCampPrefix(name) {
   const i = (name || '').indexOf('-');
@@ -365,11 +375,11 @@ export default function DashboardPage() {
       // Donut spend breakdown
       const total = totalSpend || 1;
       const segs  = [];
-      if (awareSpend > 0)   segs.push({ color: PURPLE, label:'Awareness',  pct: Math.round(awareSpend/total*100),   value: fmtSpend(awareSpend)   });
-      if (trafficSpend > 0) segs.push({ color: ORANGE, label:'Traffic',    pct: Math.round(trafficSpend/total*100), value: fmtSpend(trafficSpend) });
-      if (convSpend > 0)    segs.push({ color: GREEN,  label:'Conversion', pct: Math.round(convSpend/total*100),    value: fmtSpend(convSpend)    });
+      if (awareSpend > 0)   segs.push({ color: PURPLE, label:'Awareness',  pct: Math.round(awareSpend/total*100),   value: fmtSpendFull(awareSpend)   });
+      if (trafficSpend > 0) segs.push({ color: ORANGE, label:'Traffic',    pct: Math.round(trafficSpend/total*100), value: fmtSpendFull(trafficSpend) });
+      if (convSpend > 0)    segs.push({ color: GREEN,  label:'Conversion', pct: Math.round(convSpend/total*100),    value: fmtSpendFull(convSpend)    });
       const other = Math.max(0, totalSpend - awareSpend - trafficSpend - convSpend);
-      if (other > 0)        segs.push({ color: BLUE,   label:'Other',      pct: Math.round(other/total*100),        value: fmtSpend(other)        });
+      if (other > 0)        segs.push({ color: BLUE,   label:'Other',      pct: Math.round(other/total*100),        value: fmtSpendFull(other)        });
 
       const CIRC = 238.76;
       let offset = 0;
@@ -379,7 +389,7 @@ export default function DashboardPage() {
         offset += dash;
         return s;
       }));
-      setDonutTotal({ value: fmtSpend(totalSpend), label: 'Total Spend' });
+      setDonutTotal({ value: fmtSpendFull(totalSpend), label: 'Total Spend' });
     } catch (err) {
       setError(err.message);
     }
@@ -537,19 +547,19 @@ export default function DashboardPage() {
           {/* ══ ROW 1: KPI — 5 equal cards ══ */}
           <div style={{ flex:'1 1 0', minHeight:'150px', maxHeight:'190px', display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:'16px' }}>
             <KpiCard label="Total Spend"  icon={DollarSign} color={GREEN}
-              value={Math.round(summary.totalSpend)} display={fmtSpend(summary.totalSpend)}
+              value={Math.round(summary.totalSpend)} display={fmtSpendFull(summary.totalSpend)}
               pct={summary.pctSpend} spark={chartData.spend} delay={0}/>
             <KpiCard label="Reach"        icon={Users} color={BLUE}
-              value={Math.round(summary.totalReach)} display={fmtBigNum(summary.totalReach)}
+              value={Math.round(summary.totalReach)} display={fmtNumFull(summary.totalReach)}
               pct={summary.pctReach} spark={chartData.awareness} delay={60}/>
             <KpiCard label="Impressions"  icon={Eye} color={PURPLE}
-              value={Math.round(summary.totalImpressions)} display={fmtBigNum(summary.totalImpressions)}
+              value={Math.round(summary.totalImpressions)} display={fmtNumFull(summary.totalImpressions)}
               pct={summary.pctImpressions} spark={chartData.awareness} delay={110}/>
             <KpiCard label="Traffic"      icon={LayoutGrid} color={ORANGE}
-              value={summary.totalTraffic} display={fmtBigNum(summary.totalTraffic)}
+              value={summary.totalTraffic} display={fmtNumFull(summary.totalTraffic)}
               pct={summary.pctTraffic} spark={chartData.traffic} delay={160}/>
             <KpiCard label="Leads"        icon={User} color={GREEN}
-              value={summary.totalLeads} display={fmtBigNum(summary.totalLeads)}
+              value={summary.totalLeads} display={fmtNumFull(summary.totalLeads)}
               pct={summary.pctLeads} spark={chartData.leads} delay={210}/>
           </div>
 
@@ -560,9 +570,9 @@ export default function DashboardPage() {
             animation:'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 260ms backwards',
           }}>
             {[
-              { label:'CPM', value: summary.calcCPM ? fmtSpend(summary.calcCPM) : '—', sub:'cost per 1K impressions', icon: ScanLine },
-              { label:'CPC', value: summary.calcCPC ? fmtSpend(summary.calcCPC) : '—', sub:'cost per click',          icon: MousePointerClick },
-              { label:'CPL', value: summary.calcCPL ? fmtSpend(summary.calcCPL) : '—', sub:'cost per lead',           icon: UserPlus },
+              { label:'CPM', value: summary.calcCPM ? fmtSpendFull(summary.calcCPM) : '—', sub:'cost per 1K impressions', icon: ScanLine },
+              { label:'CPC', value: summary.calcCPC ? fmtSpendFull(summary.calcCPC) : '—', sub:'cost per click',          icon: MousePointerClick },
+              { label:'CPL', value: summary.calcCPL ? fmtSpendFull(summary.calcCPL) : '—', sub:'cost per lead',           icon: UserPlus },
               { label:'CTR', value: summary.calcCTR ? summary.calcCTR.toFixed(2)+'%' : '—', sub:'click through rate',  icon: Target },
             ].map((m, i) => {
               const Ic = m.icon;
@@ -591,13 +601,13 @@ export default function DashboardPage() {
               {donutSegs.length === 0 ? (
                 <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', color:SUB }}>No data</div>
               ) : (
-                <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'16px', overflow:'hidden' }}>
-                  <div style={{ position:'relative', width:'150px', height:'150px', flexShrink:0 }}>
-                    <svg viewBox="0 0 100 100" style={{ width:'150px', height:'150px' }}>
-                      <circle cx="50" cy="50" r="38" fill="none" stroke="var(--track)" strokeWidth="12"/>
+                <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'20px', overflow:'hidden' }}>
+                  <div style={{ position:'relative', width:'200px', height:'200px', flexShrink:0 }}>
+                    <svg viewBox="0 0 100 100" style={{ width:'200px', height:'200px' }}>
+                      <circle cx="50" cy="50" r="38" fill="none" stroke="var(--track)" strokeWidth="16"/>
                       {donutSegs.map((seg, i) => {
-                        let sw=12, op=1;
-                        if (hoverSeg!==null){ sw=hoverSeg===i?15:8; op=hoverSeg===i?1:0.25; }
+                        let sw=16, op=1;
+                        if (hoverSeg!==null){ sw=hoverSeg===i?19:12; op=hoverSeg===i?1:0.25; }
                         return (
                           <circle key={i} cx="50" cy="50" r="38" fill="none"
                             stroke={seg.color} strokeWidth={sw}
@@ -609,8 +619,8 @@ export default function DashboardPage() {
                       })}
                     </svg>
                     <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
-                      <div style={{ fontSize:'17px', fontWeight:700, color:TXT, letterSpacing:'-0.4px' }}>{center.value}</div>
-                      <div style={{ fontSize:'10px', color:SUB, marginTop:'3px' }}>{center.label}</div>
+                      <div style={{ fontSize:'20px', fontWeight:700, color:TXT, letterSpacing:'-0.5px', lineHeight:1 }}>{center.value}</div>
+                      <div style={{ fontSize:'11px', color:SUB, marginTop:'4px' }}>{center.label}</div>
                     </div>
                   </div>
                   <div style={{ width:'100%', display:'flex', flexDirection:'column', gap:'8px', overflow:'auto' }}>
