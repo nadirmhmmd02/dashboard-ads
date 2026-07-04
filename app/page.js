@@ -70,6 +70,30 @@ function fmtSpend(n) {
   return 'Rp ' + Math.round(n);
 }
 
+// Cost per result — bisa sangat kecil (awareness/impressions), format aman
+function fmtCPR(v) {
+  if (v == null) return '—';
+  if (v >= 1000) return fmtSpend(v);
+  if (v >= 1)    return 'Rp ' + Math.round(v);
+  return 'Rp ' + v.toFixed(2);
+}
+
+// Buang prefix tipe iklan ("KTBR AWR - ", dst) → tampilkan nama setelah "-"
+function stripCampPrefix(name) {
+  const i = (name || '').indexOf('-');
+  return i >= 0 ? name.slice(i + 1).trim() : (name || '—');
+}
+
+// Result per campaign sesuai tipe (logika bisnis CLAUDE.md)
+function getCampaignResult(name, ins) {
+  const type = getCampaignType(name);
+  if (type === 'TRAFFIC')    return getActionValue(ins.actions, ['link_click']);
+  if (type === 'CONVERSION') return getActionValue(ins.actions, ['lead','onsite_conversion.lead_grouped']);
+  const n = (name || '').toUpperCase();
+  if (n.includes('AWR REACH')) return parseFloat(ins.reach || 0);
+  return parseFloat(ins.impressions || 0); // AWARENESS default → impressions
+}
+
 function pctChange(cur, prev) {
   if (!prev || prev <= 0) return null;
   return ((cur - prev) / prev) * 100;
@@ -314,26 +338,29 @@ export default function DashboardPage() {
       setChartDates(built.dates);
       setTodayIdx(built.todayIdx);
 
-      // Top campaigns (by spend) — Campaign · Spend · Leads · CTR · CPL
-      const DOT = [GREEN, BLUE, PURPLE, ORANGE, '#EF4444'];
+      // Top campaigns — Campaign · Spend · Result · Cost/Result · CTR
+      // Urutan: Awareness → Traffic → Conversion (lalu spend desc). Warna per tipe.
+      const TYPE_ORDER = { AWARENESS: 0, TRAFFIC: 1, CONVERSION: 2 };
+      const TYPE_COLOR = { AWARENESS: PURPLE, TRAFFIC: ORANGE, CONVERSION: GREEN };
       const tops = campsWithData
         .map(c => {
-          const ins  = c.insights?.data?.[0] || {};
-          const sp   = parseFloat(ins.spend || 0);
-          const impr = parseFloat(ins.impressions || 0);
-          const clk  = parseFloat(ins.clicks || 0);
-          const lds  = getActionValue(ins.actions, ['lead','onsite_conversion.lead_grouped']);
+          const ins    = c.insights?.data?.[0] || {};
+          const sp     = parseFloat(ins.spend || 0);
+          const impr   = parseFloat(ins.impressions || 0);
+          const clk    = parseFloat(ins.clicks || 0);
+          const type   = getCampaignType(c.name);
+          const result = getCampaignResult(c.name, ins);
           return {
-            name: c.name || '—',
+            name:  stripCampPrefix(c.name),
+            type,
             spend: sp,
-            leads: lds,
-            ctr: impr > 0 ? (clk / impr) * 100 : 0,
-            cpl: lds > 0 ? sp / lds : null,
+            result,
+            cpr:   result > 0 ? sp / result : null,
+            ctr:   impr > 0 ? (clk / impr) * 100 : 0,
+            color: TYPE_COLOR[type],
           };
         })
-        .sort((a, b) => b.spend - a.spend)
-        .slice(0, 5)
-        .map((c, i) => ({ ...c, color: DOT[i % DOT.length] }));
+        .sort((a, b) => (TYPE_ORDER[a.type] - TYPE_ORDER[b.type]) || (b.spend - a.spend));
       setTopCampaigns(tops);
 
       // Donut spend breakdown
@@ -617,13 +644,13 @@ export default function DashboardPage() {
                 <span style={{ fontSize:'15px', fontWeight:600, color:TXT }}>Top Campaigns</span>
               </div>
               {/* header row */}
-              <div style={{ display:'grid', gridTemplateColumns:'1.7fr 1fr 0.7fr 0.8fr 1fr', gap:'6px',
+              <div style={{ display:'grid', gridTemplateColumns:'1.4fr 0.9fr 0.8fr 1.05fr 0.7fr', gap:'6px',
                 fontSize:'11px', color:SUB, paddingBottom:'10px', borderBottom:`1px solid ${BORDER}`, flexShrink:0 }}>
                 <span>Campaign</span>
                 <span style={{ textAlign:'right' }}>Spend</span>
-                <span style={{ textAlign:'right' }}>Leads</span>
+                <span style={{ textAlign:'right' }}>Result</span>
+                <span style={{ textAlign:'right' }}>Cost/Result</span>
                 <span style={{ textAlign:'right' }}>CTR</span>
-                <span style={{ textAlign:'right' }}>CPL</span>
               </div>
               <div style={{ flex:1, minHeight:0, overflow:'auto', display:'flex', flexDirection:'column' }}>
                 {topCampaigns.length === 0 ? (
@@ -632,7 +659,7 @@ export default function DashboardPage() {
                   <div key={i}
                     onMouseEnter={e => e.currentTarget.style.background='var(--hover)'}
                     onMouseLeave={e => e.currentTarget.style.background='transparent'}
-                    style={{ display:'grid', gridTemplateColumns:'1.7fr 1fr 0.7fr 0.8fr 1fr', gap:'6px',
+                    style={{ display:'grid', gridTemplateColumns:'1.4fr 0.9fr 0.8fr 1.05fr 0.7fr', gap:'6px',
                     alignItems:'center', padding:'11px 8px', margin:'0 -8px', borderRadius:'8px', transition:'background 0.15s',
                     borderBottom: i < topCampaigns.length-1 ? '1px solid var(--divider)' : 'none' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:'8px', minWidth:0 }}>
@@ -640,15 +667,9 @@ export default function DashboardPage() {
                       <span style={{ fontSize:'12px', color:TXT, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={c.name}>{c.name}</span>
                     </div>
                     <span style={{ fontSize:'12px', color:SUB, textAlign:'right' }}>{fmtSpend(c.spend)}</span>
-                    <span style={{ fontSize:'12px', color:SUB, textAlign:'right' }}>{c.leads.toLocaleString('id-ID')}</span>
+                    <span style={{ fontSize:'12px', color:SUB, textAlign:'right' }}>{fmtBigNum(c.result)}</span>
+                    <span style={{ fontSize:'12px', color:TXT, textAlign:'right', fontWeight:500 }}>{fmtCPR(c.cpr)}</span>
                     <span style={{ fontSize:'12px', color:SUB, textAlign:'right' }}>{c.ctr.toFixed(2)}%</span>
-                    <span style={{ textAlign:'right' }}>
-                      <span style={{ display:'inline-block', padding:'3px 8px', borderRadius:'6px', fontSize:'11px', fontWeight:600,
-                        background: c.cpl !== null ? 'var(--pos-soft)' : 'rgba(245,158,11,0.14)',
-                        color: c.cpl !== null ? 'var(--accent-fg)' : ORANGE }}>
-                        {c.cpl !== null ? fmtSpend(c.cpl) : '—'}
-                      </span>
-                    </span>
                   </div>
                 ))}
               </div>
