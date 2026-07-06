@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Calendar, ChevronDown, RefreshCw, Moon, Sun,
+  Calendar, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Moon, Sun,
   DollarSign, Users, Eye, LayoutGrid, User,
   ScanLine, MousePointerClick, UserPlus, Target,
 } from 'lucide-react';
@@ -115,6 +115,26 @@ function addDaysStr(dateStr, n) {
 }
 function daysBetweenStr(a, b) {
   return Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 86400000) + 1;
+}
+
+/* ─── Calendar UI helpers (murni tampilan — tidak menyentuh logika filter) ─── */
+const CAL_DOW = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+const CAL_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function pad2(n) { return String(n).padStart(2, '0'); }
+function toYMD(y, m, d) { return `${y}-${pad2(m + 1)}-${pad2(d)}`; } // m 0-based
+function monthGrid(y, m) {
+  const start = new Date(y, m, 1).getDay();      // 0=Min
+  const days  = new Date(y, m + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < start; i++) cells.push(null);
+  for (let d = 1; d <= days; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
+function fmtNice(s) {
+  if (!s) return '—';
+  const [y, m, d] = s.split('-').map(Number);
+  return `${d} ${CAL_MON[m - 1]} ${y}`;
 }
 
 // Bangun array chart selebar rentang (range); slot tanpa data = null,
@@ -273,6 +293,11 @@ export default function DashboardPage() {
   const [topCampaigns, setTopCampaigns] = useState([]);
   const [activeCampaignCount, setActiveCampaignCount] = useState(0);
 
+  // Bulan kiri kalender (UI only). Default: bulan lalu, jadi tampil "bulan lalu + bulan ini".
+  const _initCal = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+  const [calY, setCalY] = useState(_initCal.getFullYear());
+  const [calM, setCalM] = useState(_initCal.getMonth());
+
   useEffect(() => { if (!isCustom) fetchData(); }, [dateOpt, isCustom]);
 
   useEffect(() => {
@@ -408,6 +433,74 @@ export default function DashboardPage() {
     setShowDropdown(false);
   }
 
+  // ── Kalender (UI only) ──
+  function openFilter() {
+    const next = !showDropdown;
+    if (next && customSince) { // buka: lompat ke bulan tanggal mulai
+      const p = customSince.split('-');
+      setCalY(+p[0]); setCalM(+p[1] - 1);
+    }
+    setShowDropdown(next);
+  }
+  function shiftCal(delta) {
+    const dt = new Date(calY, calM + delta, 1);
+    setCalY(dt.getFullYear()); setCalM(dt.getMonth());
+  }
+  // Bangun range di customSince/customUntil (dipakai applyCustomRange yang sudah ada)
+  function pickDay(ds) {
+    if (!customSince || (customSince && customUntil)) { setCustomSince(ds); setCustomUntil(''); }
+    else if (ds < customSince) { setCustomUntil(customSince); setCustomSince(ds); }
+    else setCustomUntil(ds);
+  }
+  // Render satu bulan (dow + grid tanggal) dengan highlight range
+  function renderMonth(y, m) {
+    const todayStr = toYMD(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+    return (
+      <div style={{ width:'232px' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', rowGap:'2px' }}>
+          {CAL_DOW.map(d => (
+            <div key={d} style={{ textAlign:'center', fontSize:'11px', color:MUTE, paddingBottom:'8px' }}>{d}</div>
+          ))}
+          {monthGrid(y, m).map((d, i) => {
+            if (!d) return <div key={i} />;
+            const ds       = toYMD(y, m, d);
+            const isStart  = ds === customSince;
+            const isEnd    = ds === customUntil;
+            const inRange  = customSince && customUntil && ds > customSince && ds < customUntil;
+            const isToday  = ds === todayStr;
+            const endpoint = isStart || isEnd;
+            const hasLeft  = customUntil && (isEnd || inRange);   // band menyambung ke kiri
+            const hasRight = customUntil && (isStart || inRange); // band menyambung ke kanan
+            return (
+              <div key={i} style={{ position:'relative', height:'32px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                {(hasLeft || hasRight) && (
+                  <span style={{ position:'absolute', top:'3px', bottom:'3px',
+                    left: hasLeft ? 0 : '50%', right: hasRight ? 0 : '50%',
+                    background:'var(--cal-range)' }} />
+                )}
+                {endpoint && (
+                  <span style={{ position:'absolute', width:'30px', height:'30px', borderRadius:'50%',
+                    background: GREEN, boxShadow:'0 2px 8px rgba(139,227,77,0.35)' }} />
+                )}
+                <button onClick={() => pickDay(ds)} style={{
+                  position:'relative', width:'30px', height:'30px', borderRadius:'50%',
+                  border: isToday && !endpoint ? `1px solid ${GREEN}` : '1px solid transparent',
+                  background:'transparent', cursor:'pointer', fontSize:'12.5px', fontFamily:'inherit',
+                  fontWeight: endpoint ? 700 : 400,
+                  color: endpoint ? '#0A0F06' : isToday ? GREEN : inRange ? TXT : SUB,
+                  transition:'background 0.12s, color 0.12s',
+                }}
+                onMouseEnter={e => { if (!endpoint) e.currentTarget.style.background='var(--hover)'; }}
+                onMouseLeave={e => { if (!endpoint) e.currentTarget.style.background='transparent'; }}
+                >{d}</button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   function refresh() {
     if (isCustom && customSince && customUntil) fetchData(customSince, customUntil);
     else fetchData();
@@ -444,7 +537,7 @@ export default function DashboardPage() {
         <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
           {/* Date filter */}
           <div style={{ position:'relative' }} data-filter>
-            <button onClick={() => setShowDropdown(d => !d)} style={{
+            <button onClick={openFilter} style={{
               display:'flex', alignItems:'center', gap:'8px',
               padding:'9px 14px',
               background: CARD,
@@ -457,53 +550,106 @@ export default function DashboardPage() {
               <ChevronDown size={13} color={SUB}/>
             </button>
 
-            {showDropdown && (
+            {showDropdown && (() => {
+              const rd = new Date(calY, calM + 1, 1);       // bulan kanan = bulan kiri + 1
+              const rY = rd.getFullYear(), rM = rd.getMonth();
+              const navBtn = {
+                width:'30px', height:'30px', display:'flex', alignItems:'center', justifyContent:'center',
+                border:`1px solid ${BORDER}`, borderRadius:'8px', background:'transparent',
+                cursor:'pointer', flexShrink:0, transition:'background 0.12s',
+              };
+              const rangeReady = customSince && customUntil;
+              return (
               <div data-filter style={{
                 position:'absolute', top:'46px', right:0, zIndex:50,
                 background: CARD, border:`1px solid ${BORDER}`,
-                borderRadius:'12px', minWidth:'220px',
-                boxShadow:'var(--pop-shadow)',
-                animation:'wdScaleIn 0.15s cubic-bezier(0.4,0,0.2,1)', overflow:'hidden',
+                borderRadius:'14px', boxShadow:'var(--pop-shadow)', overflow:'hidden',
+                animation:'wdScaleIn 0.15s cubic-bezier(0.4,0,0.2,1)',
+                display:'flex', flexDirection:'column',
               }}>
-                <div style={{ padding:'6px' }}>
-                  {DATE_OPTIONS.map(opt => {
-                    const active = !isCustom && opt.value === dateOpt.value;
-                    return (
-                      <div key={opt.value} onClick={() => selectPreset(opt)} style={{
-                        padding:'8px 11px', fontSize:'13px', cursor:'pointer', borderRadius:'7px',
-                        color: active ? 'var(--accent-fg)' : SUB,
-                        background: active ? 'var(--accent-soft)' : 'transparent',
-                      }}
-                      onMouseEnter={e => { if (!active) e.currentTarget.style.background='var(--hover)'; }}
-                      onMouseLeave={e => { if (!active) e.currentTarget.style.background='transparent'; }}
-                      >{opt.label}</div>
-                    );
-                  })}
-                </div>
-                <div style={{ borderTop:`1px solid ${BORDER}`, padding:'12px' }}>
-                  <div style={{ fontSize:'10px', fontWeight:600, letterSpacing:'1.2px', color:SUB, textTransform:'uppercase', marginBottom:'10px' }}>Custom range</div>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'10px' }}>
-                    {[['From',customSince,setCustomSince,''],['To',customUntil,setCustomUntil,customSince]].map(([lbl,val,setter,min]) => (
-                      <div key={lbl}>
-                        <div style={{ fontSize:'10px', color:SUB, marginBottom:'4px' }}>{lbl}</div>
-                        <input type="date" value={val} min={min} onChange={e => setter(e.target.value)} style={{
-                          width:'100%', padding:'6px 8px', fontSize:'11px',
-                          border:`1px solid ${BORDER}`, borderRadius:'6px',
-                          background: BG, color: TXT, outline:'none', fontFamily:'inherit',
-                        }}/>
+                <div style={{ display:'flex' }}>
+                  {/* ── Presets kiri ── */}
+                  <div style={{ width:'178px', borderRight:`1px solid ${BORDER}`, padding:'10px', display:'flex', flexDirection:'column', flexShrink:0 }}>
+                    {DATE_OPTIONS.map(opt => {
+                      const active = !isCustom && opt.value === dateOpt.value;
+                      return (
+                        <div key={opt.value} onClick={() => selectPreset(opt)} style={{
+                          padding:'9px 12px', fontSize:'13px', cursor:'pointer', borderRadius:'8px',
+                          color: active ? 'var(--accent-fg)' : SUB,
+                          background: active ? 'var(--accent-soft)' : 'transparent',
+                          fontWeight: active ? 600 : 400, transition:'background 0.12s',
+                        }}
+                        onMouseEnter={e => { if (!active) e.currentTarget.style.background='var(--hover)'; }}
+                        onMouseLeave={e => { if (!active) e.currentTarget.style.background='transparent'; }}
+                        >{opt.label}</div>
+                      );
+                    })}
+                    <div style={{ borderTop:`1px solid ${BORDER}`, margin:'8px 4px 0' }} />
+                    <div style={{ fontSize:'10px', fontWeight:600, letterSpacing:'1.2px', color:MUTE, textTransform:'uppercase', padding:'12px 8px 8px' }}>Custom Range</div>
+                    <div style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 12px', borderRadius:'10px',
+                      border:`1px solid ${isCustom ? GREEN+'55' : BORDER}`, background:'var(--data-bg)' }}>
+                      <Calendar size={15} color={SUB} style={{ flexShrink:0 }}/>
+                      <div style={{ fontSize:'12px', lineHeight:1.55 }}>
+                        <div style={{ color: customSince ? TXT : MUTE }}>{fmtNice(customSince)}</div>
+                        <div style={{ color: customUntil ? TXT : MUTE }}>{fmtNice(customUntil)}</div>
                       </div>
-                    ))}
+                    </div>
                   </div>
-                  <button onClick={applyCustomRange} disabled={!customSince || !customUntil} style={{
-                    width:'100%', padding:'8px', fontSize:'12px', fontWeight:600,
-                    border:'none', borderRadius:'7px',
-                    background: customSince && customUntil ? GREEN : 'var(--hover)',
-                    color:      customSince && customUntil ? '#0A0F06' : SUB,
-                    cursor:     customSince && customUntil ? 'pointer' : 'default',
-                  }}>Apply range</button>
+
+                  {/* ── Kalender kanan ── */}
+                  <div style={{ padding:'14px 16px' }}>
+                    <div style={{ display:'flex', alignItems:'center', marginBottom:'12px' }}>
+                      <button onClick={() => shiftCal(-1)} style={navBtn}
+                        onMouseEnter={e => e.currentTarget.style.background='var(--hover)'}
+                        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                        <ChevronLeft size={17} color={SUB}/>
+                      </button>
+                      <div style={{ flex:1, textAlign:'center', fontSize:'13px', fontWeight:600, color:TXT }}>
+                        {CAL_MON[calM]} <span style={{ color:SUB, fontWeight:400 }}>{calY}</span>
+                      </div>
+                      <div style={{ width:'16px', flexShrink:0 }} />
+                      <div style={{ flex:1, textAlign:'center', fontSize:'13px', fontWeight:600, color:TXT }}>
+                        {CAL_MON[rM]} <span style={{ color:SUB, fontWeight:400 }}>{rY}</span>
+                      </div>
+                      <button onClick={() => shiftCal(1)} style={navBtn}
+                        onMouseEnter={e => e.currentTarget.style.background='var(--hover)'}
+                        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                        <ChevronRight size={17} color={SUB}/>
+                      </button>
+                    </div>
+                    <div style={{ display:'flex', gap:'16px' }}>
+                      {renderMonth(calY, calM)}
+                      {renderMonth(rY, rM)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Footer ── */}
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
+                  padding:'12px 16px', borderTop:`1px solid ${BORDER}` }}>
+                  <div style={{ fontSize:'13px', fontWeight:600, color: customSince ? TXT : MUTE }}>
+                    {customSince ? `${fmtNice(customSince)}${customUntil ? '  –  ' + fmtNice(customUntil) : ''}` : 'Select a date range'}
+                  </div>
+                  <div style={{ display:'flex', gap:'8px' }}>
+                    <button onClick={() => setShowDropdown(false)} style={{
+                      padding:'8px 18px', fontSize:'13px', fontWeight:500, borderRadius:'9px',
+                      border:`1px solid ${BORDER}`, background:'transparent', color:TXT, cursor:'pointer',
+                      transition:'background 0.12s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background='var(--hover)'}
+                    onMouseLeave={e => e.currentTarget.style.background='transparent'}
+                    >Cancel</button>
+                    <button onClick={applyCustomRange} disabled={!rangeReady} style={{
+                      padding:'8px 22px', fontSize:'13px', fontWeight:600, borderRadius:'9px', border:'none',
+                      background: rangeReady ? GREEN : 'var(--hover)',
+                      color:      rangeReady ? '#0A0F06' : SUB,
+                      cursor:     rangeReady ? 'pointer' : 'default',
+                    }}>Apply</button>
+                  </div>
                 </div>
               </div>
-            )}
+              );
+            })()}
           </div>
 
           {isAdmin && (

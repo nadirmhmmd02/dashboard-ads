@@ -73,6 +73,9 @@
   --purple: #8B5CF6;
   --amber: #F59E0B;
   --lime: #8BE34D;
+
+  /* calendar range band (light) */
+  --cal-range: rgba(139,227,77,0.22);
 }
 
 /* ===== DARK MODE — palet final (JANGAN diubah) ===== */
@@ -144,6 +147,9 @@ html[data-theme="dark"] {
   --purple: #8B5CF6;
   --amber: #F59E0B;
   --lime: #8BE34D;
+
+  /* calendar range band (dark) */
+  --cal-range: rgba(139,227,77,0.13);
 }
 
 /* Saat ganti tema: matikan semua transition sekejap supaya var() ter-resolve
