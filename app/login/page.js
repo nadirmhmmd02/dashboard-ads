@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Zap, User, Lock, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, Eye, EyeOff } from 'lucide-react';
+import Logo from '../components/Logo';
 import { useAuth } from '../components/AuthContext';
 
 /* Login page — light + amber accent (mengikuti desain referensi).
@@ -79,7 +80,7 @@ export default function LoginPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 8px 22px rgba(245,158,11,0.35)',
           }}>
-            <Zap size={30} color="#fff" fill="#fff" />
+            <Logo size={34} color="#fff" />
           </div>
         </div>
 

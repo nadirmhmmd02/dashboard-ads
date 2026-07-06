@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Zap,
   LayoutDashboard,
   Megaphone,
   CalendarDays,
@@ -12,6 +11,7 @@ import {
   ChevronsLeft,
   LogOut,
 } from 'lucide-react';
+import Logo from './Logo';
 import { useAuth } from './AuthContext';
 
 const NAV_ITEMS = [
@@ -130,7 +130,7 @@ export default function Sidebar() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,
         }}>
-          <Zap size={17} color="var(--nav-logo-fg)" fill="var(--nav-logo-fg)" style={{ flexShrink: 0, minWidth: 17 }} />
+          <Logo size={18} color="var(--nav-logo-fg)" style={{ flexShrink: 0, minWidth: 18 }} />
         </div>
         <span style={{
           fontSize: '13px', fontWeight: '700',

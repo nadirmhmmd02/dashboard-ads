@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Download, ChevronDown, FileText, Image as ImageIcon, Zap, Loader2 } from 'lucide-react';
+import { Download, ChevronDown, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
+import Logo from './Logo';
 
 /* ─── Report palette — SELALU dark (artefak laporan, tidak ikut tema) ─── */
 const BG     = '#090A0C';
@@ -218,7 +219,7 @@ export default function ExportMenu({ summary, chartData = {}, rangeLabel = '', a
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '20px', borderBottom: `1px solid ${BORDER}`, flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Zap size={25} color="#0A0F06" fill="#0A0F06" />
+              <Logo size={26} color="#0A0F06" />
             </div>
             <div style={{ fontSize: '30px', fontWeight: 700, letterSpacing: '-0.6px' }}>Performance Marketing Report</div>
           </div>
