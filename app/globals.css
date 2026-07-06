@@ -74,8 +74,13 @@
   --amber: #F59E0B;
   --lime: #8BE34D;
 
-  /* calendar range band (light) */
-  --cal-range: rgba(139,227,77,0.22);
+  /* calendar / date-filter accent (LIGHT = amber, seperti sidebar/login) */
+  --cal-accent: #F59E0B;
+  --cal-accent-fg: #FFFFFF;
+  --cal-accent-soft: rgba(245,158,11,0.16);
+  --cal-accent-line: #B45309;
+  --cal-glow: rgba(245,158,11,0.35);
+  --cal-range: rgba(245,158,11,0.20);
 }
 
 /* ===== DARK MODE — palet final (JANGAN diubah) ===== */
@@ -148,7 +153,12 @@ html[data-theme="dark"] {
   --amber: #F59E0B;
   --lime: #8BE34D;
 
-  /* calendar range band (dark) */
+  /* calendar / date-filter accent (DARK = green, sesuai referensi) */
+  --cal-accent: #8BE34D;
+  --cal-accent-fg: #0A0F06;
+  --cal-accent-soft: rgba(139,227,77,0.14);
+  --cal-accent-line: #8BE34D;
+  --cal-glow: rgba(139,227,77,0.30);
   --cal-range: rgba(139,227,77,0.13);
 }
 

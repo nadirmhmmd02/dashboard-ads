@@ -480,14 +480,14 @@ export default function DashboardPage() {
                 )}
                 {endpoint && (
                   <span style={{ position:'absolute', width:'30px', height:'30px', borderRadius:'50%',
-                    background: GREEN, boxShadow:'0 2px 8px rgba(139,227,77,0.35)' }} />
+                    background:'var(--cal-accent)', boxShadow:'0 2px 8px var(--cal-glow)' }} />
                 )}
                 <button onClick={() => pickDay(ds)} style={{
                   position:'relative', width:'30px', height:'30px', borderRadius:'50%',
-                  border: isToday && !endpoint ? `1px solid ${GREEN}` : '1px solid transparent',
+                  border: isToday && !endpoint ? '1px solid var(--cal-accent-line)' : '1px solid transparent',
                   background:'transparent', cursor:'pointer', fontSize:'12.5px', fontFamily:'inherit',
                   fontWeight: endpoint ? 700 : 400,
-                  color: endpoint ? '#0A0F06' : isToday ? GREEN : inRange ? TXT : SUB,
+                  color: endpoint ? 'var(--cal-accent-fg)' : isToday ? 'var(--cal-accent-line)' : inRange ? TXT : SUB,
                   transition:'background 0.12s, color 0.12s',
                 }}
                 onMouseEnter={e => { if (!endpoint) e.currentTarget.style.background='var(--hover)'; }}
@@ -575,8 +575,8 @@ export default function DashboardPage() {
                       return (
                         <div key={opt.value} onClick={() => selectPreset(opt)} style={{
                           padding:'9px 12px', fontSize:'13px', cursor:'pointer', borderRadius:'8px',
-                          color: active ? 'var(--accent-fg)' : SUB,
-                          background: active ? 'var(--accent-soft)' : 'transparent',
+                          color: active ? 'var(--cal-accent-line)' : SUB,
+                          background: active ? 'var(--cal-accent-soft)' : 'transparent',
                           fontWeight: active ? 600 : 400, transition:'background 0.12s',
                         }}
                         onMouseEnter={e => { if (!active) e.currentTarget.style.background='var(--hover)'; }}
@@ -587,7 +587,7 @@ export default function DashboardPage() {
                     <div style={{ borderTop:`1px solid ${BORDER}`, margin:'8px 4px 0' }} />
                     <div style={{ fontSize:'10px', fontWeight:600, letterSpacing:'1.2px', color:MUTE, textTransform:'uppercase', padding:'12px 8px 8px' }}>Custom Range</div>
                     <div style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 12px', borderRadius:'10px',
-                      border:`1px solid ${isCustom ? GREEN+'55' : BORDER}`, background:'var(--data-bg)' }}>
+                      border:`1px solid ${isCustom ? 'var(--cal-accent-line)' : BORDER}`, background:'var(--data-bg)' }}>
                       <Calendar size={15} color={SUB} style={{ flexShrink:0 }}/>
                       <div style={{ fontSize:'12px', lineHeight:1.55 }}>
                         <div style={{ color: customSince ? TXT : MUTE }}>{fmtNice(customSince)}</div>
@@ -641,8 +641,8 @@ export default function DashboardPage() {
                     >Cancel</button>
                     <button onClick={applyCustomRange} disabled={!rangeReady} style={{
                       padding:'8px 22px', fontSize:'13px', fontWeight:600, borderRadius:'9px', border:'none',
-                      background: rangeReady ? GREEN : 'var(--hover)',
-                      color:      rangeReady ? '#0A0F06' : SUB,
+                      background: rangeReady ? 'var(--cal-accent)' : 'var(--hover)',
+                      color:      rangeReady ? 'var(--cal-accent-fg)' : SUB,
                       cursor:     rangeReady ? 'pointer' : 'default',
                     }}>Apply</button>
                   </div>
