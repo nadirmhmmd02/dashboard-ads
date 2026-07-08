@@ -14,21 +14,21 @@ export default function ThemeToggle({ size = 40, iconSize = 15 }) {
     busy.current = true;
 
     const root = document.documentElement;
-    root.style.transition = 'opacity 0.18s ease-out';
+    root.style.transition = 'opacity 0.1s ease-out';
     root.style.opacity = '0';
 
     setTimeout(() => {
       toggleTheme();
       requestAnimationFrame(() => {
-        root.style.transition = 'opacity 0.35s ease-in';
+        root.style.transition = 'opacity 0.15s ease-in';
         root.style.opacity = '1';
         setTimeout(() => {
           root.style.transition = '';
           root.style.opacity = '';
           busy.current = false;
-        }, 380);
+        }, 180);
       });
-    }, 200);
+    }, 110);
   }, [toggleTheme]);
 
   return (
