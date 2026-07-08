@@ -331,6 +331,7 @@ export default function CampaignsPage() {
         <td style={tdStyle()}>{fmtRp(cCPM)}</td>
         <td style={tdStyle()}>{fmtRp(cCPC)}</td>
         <td style={tdStyle()}>{fmtRp(cCPL)}</td>
+        <td style={{ ...tdStyle(), fontWeight: '600', color: 'var(--t1)' }}>{fmtRp(ci.spend)}</td>
       </tr>
     );
   }
@@ -355,7 +356,7 @@ export default function CampaignsPage() {
 
     return [
       <tr key={key + '-hdr'} style={{ background: 'var(--s2)' }}>
-        <td colSpan={11} style={{ padding: '6px 14px' }}>
+        <td colSpan={12} style={{ padding: '6px 14px' }}>
           <span style={{ fontSize: '10px', fontWeight: '600', color: 'var(--t2)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ padding: '2px 9px', borderRadius: '20px', fontSize: '10px', fontWeight: '500', background: OBJ_STYLE[grp]?.bg || 'var(--sf)', color: OBJ_STYLE[grp]?.color || 'var(--t2)' }}>{grp}</span>
             {rows.length} campaign{rows.length > 1 ? 's' : ''}
@@ -382,12 +383,13 @@ export default function CampaignsPage() {
           <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subCPM)}</td>
           <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subCPC)}</td>
           <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subCPL)}</td>
+          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '700', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subSpend)}</td>
         </tr>
       ),
 
       isActive && (
         <tr key={key + '-toggle'} style={{ borderTop: '0.5px solid var(--br)', background: 'var(--sf)' }}>
-          <td colSpan={11} style={{ padding: '4px 14px', textAlign: 'center' }}>
+          <td colSpan={12} style={{ padding: '4px 14px', textAlign: 'center' }}>
             <button
               onClick={() => toggleSubtotal(grp)}
               style={{ fontSize: '10px', padding: '2px 14px', borderRadius: '6px', border: '1px solid var(--bs)', background: 'transparent', color: 'var(--t3)', cursor: 'pointer' }}>
@@ -559,6 +561,7 @@ export default function CampaignsPage() {
                   <th style={thStyle()}>CPM</th>
                   <th style={thStyle()}>CPC</th>
                   <th style={thStyle()}>CPL</th>
+                  <th style={thStyle()}>Total Spend</th>
                 </tr>
               </thead>
               <tbody>
@@ -571,7 +574,7 @@ export default function CampaignsPage() {
                       return renderGroup(grp, rows, activeRows);
                     })
                   : (
-                    <tr><td colSpan={11} style={{ padding: '32px', textAlign: 'center', color: 'var(--t3)', fontSize: '13px' }}>
+                    <tr><td colSpan={12} style={{ padding: '32px', textAlign: 'center', color: 'var(--t3)', fontSize: '13px' }}>
                       No campaign data for {selectedDate.label}
                     </td></tr>
                   )
