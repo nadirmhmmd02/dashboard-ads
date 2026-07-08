@@ -223,6 +223,10 @@ button {
   from { opacity: 0; transform: scale(0.96) translateY(6px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
+@keyframes wdSlideUp {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
 @keyframes wdPulseDot {
   0%, 100% { transform: scale(1); opacity: 1; }
   50%       { transform: scale(1.4); opacity: 0.5; }
