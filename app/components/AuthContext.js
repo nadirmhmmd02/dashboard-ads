@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
    (tanpa backend) — cocok untuk demo/internal, bukan keamanan produksi. */
 const CREDENTIALS = {
   dozan:    { password: 'Dozan213',    role: 'admin' },
-  babarafi: { password: 'babarafi123', role: 'user'  },
+  user:     { password: 'babarafi123', role: 'user'  },
 };
 
 const DEFAULT_THEME = { admin: 'dark', user: 'light' };
