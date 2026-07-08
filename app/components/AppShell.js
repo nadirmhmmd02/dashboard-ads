@@ -20,15 +20,12 @@ export default function AppShell({ children }) {
     if (user && isLogin)   router.replace('/');
   }, [ready, user, isLogin, router]);
 
-  // Halaman login: full-screen, tanpa sidebar
   if (isLogin) return children;
-
-  // Belum tahu status auth / belum login → jangan flash dashboard
   if (!ready || !user) return null;
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', position: 'relative' }}>
-      <Sidebar onOpenSuggest={() => setIsSuggestOpen(true)} />
+      <Sidebar />
       <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {children}
       </main>
@@ -53,12 +50,15 @@ export default function AppShell({ children }) {
         </button>
       )}
 
-      <SuggestionsModal
-        isOpen={isSuggestOpen}
-        onClose={() => setIsSuggestOpen(false)}
-        isAdmin={role === 'admin'}
-        user={user}
-      />
+      {/* User suggestion modal (user role only) */}
+      {role === 'user' && (
+        <SuggestionsModal
+          isOpen={isSuggestOpen}
+          onClose={() => setIsSuggestOpen(false)}
+          isAdmin={false}
+          user={user}
+        />
+      )}
     </div>
   );
 }
