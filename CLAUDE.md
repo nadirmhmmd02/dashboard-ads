@@ -1,6 +1,7 @@
 # CLAUDE.md — Dashboard Ads "WILL OF D" (Baba Rafi)
 
 Panduan konteks untuk Claude Code. Baca file ini dulu sebelum mengerjakan apa pun.
+Status: **project aktif & sudah live dengan data real** (bukan lagi tahap dummy/mockup).
 
 ---
 
@@ -8,65 +9,70 @@ Panduan konteks untuk Claude Code. Baca file ini dulu sebelum mengerjakan apa pu
 
 - **User: Nadir** — Performance Marketing specialist di Kebab Turki Baba Rafi (PT Baba Rafi Internasional). GitHub: `nadirmhmmd02`.
 - **TIDAK TEKNIS.** Selalu butuh instruksi/penjelasan super eksplisit dan sabar. Kalau memberi langkah manual, gunakan format jelas: "Buka file X → Ctrl+A → hapus → paste ini → Ctrl+S".
-- Workflow standar: edit lokal → test di localhost → konfirmasi dari user → push GitHub → Vercel auto-deploy → verifikasi web live.
+- **Workflow deploy:** default **langsung commit → push ke GitHub → Vercel auto-deploy**, TANPA nunggu konfirmasi. Pengecualian: kalau Nadir bilang "test di lokal dulu", baru test di localhost & tunggu approval sebelum push. (Lihat memory [[deploy-workflow]].)
 - **JANGAN langsung coding** kalau user masih mode ngumpulin requirement. Tunggu user bilang siap.
 - **Kalau ada keputusan penting, TANYA dulu — jangan asumsi sendiri.**
 - Bahasa campur Indonesia-Inggris santai oke.
-- Selalu **test tiap langkah sebelum lanjut**. Satu perubahan, satu test.
+- `.claude/` JANGAN ikut di-commit (config lokal).
 
 ---
 
 ## TECH STACK & AKSES
 
-- **Next.js** (App Router, JavaScript — NO TypeScript, Tailwind CSS, no `src` dir, no Turbopack)
-- **Icon library: `lucide-react`** (sudah terinstall). CATATAN PENTING: versi lucide user ini MINIM brand icon — `Facebook`, `Chrome` TIDAK ADA. Untuk platform pakai: Meta = `Square` (fill biru #3b82f6), Google = `Globe`. Selalu cek icon ada sebelum pakai.
-- **GitHub:** `nadirmhmmd02/dashboard-ads` (branch `main`)
-- **Hosting:** Vercel — live di `https://dashboard-ads-six.vercel.app`
-- **Database:** Supabase (project ref `tduskxqmsqcgurvxnjzo`, region Tokyo)
-- **Local path:** `C:\Users\Nadir.Muhammad\Desktop\dashboard-ads`, dibuka di VS Code
+- **Next.js 16** (App Router, JavaScript — NO TypeScript, no `src` dir, **Turbopack aktif**). Styling: CSS variables di `globals.css` + inline style (bukan Tailwind class-based, walau Tailwind ada).
+- **Icon: `lucide-react`.** CATATAN: versi lucide ini MINIM brand icon — `Facebook`, `Chrome` TIDAK ADA. Meta = `Square` (fill biru), Google = `Globe`. Selalu cek icon ada sebelum pakai.
+- **GitHub:** `nadirmhmmd02/dashboard-ads` (branch `main`, trunk-based — tiap commit langsung ke main).
+- **Hosting:** Vercel — live `https://dashboard-ads-six.vercel.app` (auto-deploy tiap push).
+- **Database:** Supabase (ref `tduskxqmsqcgurvxnjzo`, region Tokyo) — dipakai halaman Calendar.
+- **Meta Ads API:** Graph v19.0, account `act_433644183932983`.
+- **Local:** `C:\Users\Nadir.Muhammad\Desktop\dashboard-ads`, VS Code.
 
-### ENV VARIABLES (`.env.local` — TIDAK di-commit; ada juga di Vercel → Settings → Environment Variables, Production+Preview. Setelah edit env di Vercel harus Redeploy)
+### ENV (`.env.local` — TIDAK di-commit; juga di Vercel → Settings → Env Variables, Production+Preview. Setelah edit env di Vercel harus Redeploy)
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://tduskxqmsqcgurvxnjzo.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<ambil dari .env.local user>
-META_ACCESS_TOKEN=<System User token permanen Meta — ambil dari .env.local user>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<dari .env.local user>
+META_ACCESS_TOKEN=<System User token permanen Meta — dari .env.local user>
 META_AD_ACCOUNT_ID=act_433644183932983
 ```
-Kredensial asli ada di file `.env.local` user. JANGAN reproduksi dari ingatan — minta user kalau dibutuhkan.
+Kredensial asli ada di `.env.local` user. JANGAN reproduksi dari ingatan — minta user kalau butuh.
 
 ---
 
-## STRUKTUR FILE SAAT INI (setelah redesign UI)
+## STRUKTUR FILE (KONDISI TERKINI)
 
 ```
 app/
-  page.js               → DASHBOARD BARU (kartu + bar chart + donut + platform). Pakai DATA DUMMY sementara.
-  campaigns/page.js     → isi page.js LAMA (tabel Meta Ads real). Logika TIDAK diubah, cuma dipindah.
-  calendar/page.js      → Ads Calendar (CRUD Supabase) — TIDAK BERUBAH
-  reports/page.js        → BELUM DIBUAT (placeholder, next step)
+  layout.js              → AuthProvider + AppShell + no-flash theme script. <html data-theme> di-set dari role+preferensi.
+  page.js                → DASHBOARD (DATA REAL Meta). Semua logika kalkulasi metrik ada di sini.
+  login/page.js          → Halaman login (tema amber/light, kartu putih).
+  campaigns/page.js      → Tabel kampanye Meta (read-only). Filter kalender dual-month. Kolom: …CPL + Total Spend.
+  calendar/page.js       → CRUD jadwal iklan via Supabase (tabel `campaigns`). RBAC: create/edit/delete admin-only.
+  reports/               → BELUM DIBUAT → nav "Reports" masih 404. (Next step.)
   components/
-    Sidebar.js          → sidebar collapsible+resizable (pengganti Navbar). SUDAH JADI & JALAN.
-    CountUp.js           → komponen animasi angka naik dari 0
-    BarChart.js          → bar chart toggle 4 metrik, Y-axis, grid, today highlight, tooltip
-    Navbar.js            → LAMA, sudah tidak dipakai (boleh dihapus nanti)
-  layout.js             → wrapper: Sidebar + main flex full-width. data-theme="dark". maxWidth 1400px SUDAH DIBUANG.
-  globals.css           → tema abu (dark aktif) + keyframes animasi
-  supabase.js           → Supabase client
-  api/meta/route.js     → server-side fetch Meta Graph API
+    AuthContext.js       → SOURCE OF TRUTH: auth + role + theme (light/dark). localStorage/sessionStorage.
+    AppShell.js          → route guard (redirect ke /login kalau belum login; sidebar + main).
+    Sidebar.js           → sidebar collapsible+resizable, user info + logout, logo Control Hub + glow.
+    AreaChart.js         → chart "Daily Spend" (smooth area, animasi ganti metrik). Dipakai dashboard.
+    ExportMenu.js        → tombol Export + laporan tersembunyi 16:9 (render PDF/JPG). Admin-only.
+    CountUp.js           → animasi angka naik dari 0 ke target.
+    Logo.js              → LOGO MARK "Control Hub" (SVG, warna via prop, ikut container/tema).
+    BarChart.js, Navbar.js → LAMA, tidak dipakai lagi (boleh dihapus kapan2).
+  api/meta/route.js      → server-side fetch Meta Graph API. mode=dashboard (summary/prevSummary/daily/campaigns/chartRange) & default campaigns.
+  globals.css            → CSS variables (blok light `:root` + blok `html[data-theme="dark"]`) + keyframes animasi.
+  supabase.js            → Supabase client.
+  icon.svg, apple-icon.svg → favicon + touch icon (Control Hub, square gelap + mark putih).
 ```
 
 ---
 
 ## LOGIKA BISNIS METRIK (FINAL — JANGAN DIUBAH SATU BARIS PUN)
 
-Ini ada di `app/campaigns/page.js`. Jangan sentuh logikanya.
-
 Tipe campaign berdasarkan NAMA:
 - Mengandung `"TRAFFIC"` → Traffic
 - Mengandung `"PROSPEK"`/`"KONVERSI"` → Conversion
 - Selainnya → Awareness
 
-Deteksi result per campaign (dari kode asli, lebih detail): nama mengandung `"AWR REACH"` → Reach; `"AWR IMPR"` atau `"AWR"` → Impressions; `"TRAFFIC"` → Link Clicks; `"PROSPEK"/"KONVERSI"` → Leads.
+Deteksi result per campaign: nama mengandung `"AWR REACH"` → Reach; `"AWR IMPR"`/`"AWR"` → Impressions; `"TRAFFIC"` → Link Clicks; `"PROSPEK"/"KONVERSI"` → Leads.
 
 Kalkulasi:
 - Total Spend, Reach, Impressions → SEMUA campaign
@@ -78,74 +84,69 @@ Kalkulasi:
 - CTR = clicks CONVERSION / impressions CONVERSION × 100
 - `daily_budget` dari API sudah Rupiah penuh (JANGAN dibagi 100/1000)
 - Leads dari actions array: `action_type === 'lead'` ATAU `'onsite_conversion.lead_grouped'`
-- Link clicks dari actions array: `action_type === 'link_click'`
-- Chart harian: query insights pakai `time_increment=1`
+- Link clicks dari actions: `action_type === 'link_click'`
+- Chart harian: insights pakai `time_increment=1`
+- **Semua metrik (termasuk kolom Total Spend di Campaigns) IKUT rentang filter tanggal yang dipilih** — bukan lifetime.
 
-Ada fitur subtotal toggle per grup (Awareness/Traffic/Conversion) di tabel campaigns — jangan dirusak.
+Subtotal toggle per grup (Awareness/Traffic/Conversion) di tabel campaigns — jangan dirusak.
 
 ---
 
-## TEMA & DESAIN (palet abu mockup v5)
+## AUTH & ROLE (client-side sederhana — dikelola AuthContext)
 
-Dark mode default via `html[data-theme="dark"]`. Variabel di `globals.css`:
-- background `#1a1a1a`, sidebar `#141414`, card `#222`, border `#2a2a2a`
-- Aksen: biru `#3b82f6`, amber `#f59e0b`, hijau `#10b981`, merah `#ef4444`, ungu `#8b5cf6`
-- Variabel lama dipetakan ke abu: `--pg #1a1a1a`, `--cd #222`, `--sf #1a1a1a`, `--s2 #252525`, `--br #2a2a2a`, `--ac #f59e0b`, `--t1 #e5e5e5`, `--t2 #a3a3a3`, `--t3 #737373`.
+- **Admin** → `Dozan` / `Dozan213` — default tema **Dark**, akses penuh (Export, Create/Edit/Delete Calendar).
+- **User** → `babarafi` / `babarafi123` — default tema **Light**, read-only (tanpa Export, tanpa CRUD Calendar).
+- Tema terakhir yang dipilih user menimpa default saat login ulang (tersimpan per-role).
+- ⚠️ Auth ini CLIENT-SIDE (password kelihatan di kode) — belum production-secure. Upgrade ke Supabase Auth kalau perlu.
 
-### Sidebar (SUDAH JADI)
-- Default 200px, min 130px, max 360px. Resizable via drag handle tepi kanan (amber `#f59e0b` saat hover).
-- Collapse ke icon-only 64px. Animasi 0.28s cubic-bezier(0.4,0,0.2,1). Chevron rotate 180°, teks fade + width:0.
-- Saat collapsed: drag handle `display:none` total; padding item `10px 0`; span teks `width:0` (biar icon tidak ke-clip — ini fix penting).
-- Active nav: AMBER — bg `rgba(245,158,11,0.16)`, text+icon `#f5b53f`. Hover non-aktif: bg `rgba(245,158,11,0.09)`, text+icon `#d9a441`, geser padding-left 16px.
-- Active state OTOMATIS via `usePathname()`.
-- Logo "WILL OF D" + icon petir (`Zap`) kotak amber dengan glow napas (`wdSpinGlow`). Tanpa branding Baba Rafi.
+---
 
-### Dashboard (`app/page.js`) — DATA MASIH DUMMY
-Urut atas-bawah: topbar (title + filter This month + Compare DISABLED + theme toggle) → 5 big cards (Total Spend, Reach, Impressions, Traffic, Leads — count-up + badge naik/turun) → 4 small cards (CPM, CPC, CPL, CTR) → bar chart full-width → 2 kolom (donut spend breakdown interaktif | platform breakdown: Meta connected+pulse+scanning line, Google not connected).
+## TEMA & DESAIN (palet final — semua via CSS var di `globals.css`)
+
+Dua tema: light (`:root`) & dark (`html[data-theme="dark"]`).
+- **Light:** bg `#F7F8FA`, card `#FFF`, border `#E5E7EB`, teks `#111827`/`#6B7280`; **sidebar aksen amber**.
+- **Dark (final, jangan diubah):** bg `#090A0C`, card `#121417`, border `#23262C`, teks `#FFF`/`#9CA3AF`; **sidebar aksen hijau**.
+- **Aksen umum:** green `#8BE34D`, blue `#3B82F6`, purple `#8B5CF6`, orange/amber `#F59E0B`.
+
+### Dashboard (`app/page.js`) — DATA REAL
+Atas→bawah: header (title + filter tanggal + Export admin-only + Refresh + theme toggle) → 5 KPI card (Total Spend, Reach, Impressions, Traffic, Leads — count-up + growth badge vs periode sebelumnya + sparkline) → strip 4 metrik (CPM/CPC/CPL/CTR) → baris analitik 3 kolom (Spend Breakdown donut · Daily Spend AreaChart · Top Campaigns). **Angka KPI & strip pakai format PENUH** (mis. `Rp 1.440.076`, bukan `Rp 1.4M`). Fit 1 layar tanpa scroll.
+
+### Filter Tanggal (Dashboard & Campaigns) — kalender dual-month inline
+Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cancel/Apply. Default **"This month"**. Preset Dashboard: Today…Last month. Preset Campaigns sama + tambahan "Last 3 days". State: `customSince/customUntil` (format `YYYY-MM-DD`), `isCustom`. Custom range → `/api/meta?...&since=&until=`. **Logika fetch JANGAN diubah.**
 
 ---
 
 ## PRINSIP WAJIB (DITEKANKAN USER)
 
-1. **SPACING PROPORSIONAL** — setiap halaman & elemen HARUS punya jarak/padding proporsional sesuai mockup. JANGAN mepet ke sidebar atau tepi. Topbar `14px 20px`, konten `18px 20px`, gap antar kartu `12px`. Konten butuh "nafas".
-
-2. **ANIMASI = DNA PROJECT** — seluruh dashboard harus punya animasi mulus "memanjakan mata": count-up angka, bar grow dari bawah, donut draw, hover interaktif di mana-mana, glow logo. Pertahankan di semua elemen baru. Keyframes tersedia di globals.css: `wdSpinGlow`, `wdGrowBar`, `wdFadeUp`, `wdPulseDot`, `wdSweep`.
-
-3. **RESPONSIVE FULL-WIDTH** — dashboard fit kanan-kiri penuh di monitor desktop lebar berapa pun. Layout fluid: main `flex:1` + `minWidth:0`, grid pakai `minmax(0,1fr)`, hindari lebar fixed. Fokus desktop; mobile bukan prioritas.
-
-4. **DASHBOARD FIT-TO-SCREEN (khusus halaman Dashboard)** — SEMUA konten dashboard diusahakan muat 1 layar tanpa scroll (kanan-kiri-atas-bawah), termasuk kalau nanti nambah visual. Pakai `height:100vh` + flex column; bar chart `flex:1` mengisi ruang kosong. TAPI kalau layar pendek, boleh scroll dikit demi proporsi (`minHeight` sebagai batas). Ini KHUSUS dashboard, bukan halaman lain.
+1. **AKSEN PER TEMA** — dark mode = aksen **hijau** (`#8BE34D`), light mode = aksen **oren/amber** (`#F59E0B`, teks amber gelap `#B45309`). Berlaku untuk SEMUA komponen. Jangan hardcode hijau untuk elemen aksen; pakai CSS var theme-aware (pola `--cal-*` di globals.css untuk kalender). Lihat memory [[accent-per-theme]].
+2. **SPACING PROPORSIONAL** — jarak/padding proporsional, jangan mepet sidebar/tepi. Konten butuh "nafas".
+3. **ANIMASI = DNA PROJECT** — count-up, area/donut draw, hover interaktif, glow logo. Keyframes di globals.css: `wdSpinGlow`, `wdSpinGlowGreen`, `wdFadeUp`, `wdPulseDot`, `wdScaleIn`, `wdSweep`, `wdSpin`.
+4. **RESPONSIVE FULL-WIDTH** — fit kanan-kiri penuh di desktop lebar berapa pun. Layout fluid (`flex:1` + `minWidth:0`, grid `minmax(0,1fr)`). Fokus desktop; mobile bukan prioritas.
+5. **DASHBOARD FIT-TO-SCREEN** (khusus halaman Dashboard) — konten muat 1 layar tanpa scroll (`height:100vh` + flex column, chart `flex:1`). Boleh scroll dikit di layar pendek. KHUSUS dashboard, bukan halaman lain.
 
 ---
 
-## STATUS SEKARANG (titik berhenti)
+## FITUR YANG SUDAH SELESAI (semua live)
 
-SUDAH SELESAI:
-1. ✅ Install lucide-react
-2. ✅ Pindah page.js lama → campaigns/page.js (logika utuh)
-3. ✅ Sidebar.js (collapsible, resizable, hover, active state, icon fix)
-4. ✅ layout.js (Navbar→Sidebar, full-width, dark default)
-5. ✅ globals.css (tema abu + animasi)
-6. ✅ Dashboard baru (page.js) + CountUp.js + BarChart.js — DATA DUMMY
-7. ✅ Dashboard fit-to-screen (baru diterapkan, PERLU DITEST hasil akhirnya)
+- ✅ Dashboard KPI real (5 card + growth badge + sparkline), strip CPM/CPC/CPL/CTR, Spend Breakdown donut (interaktif, angka penuh), Daily Spend AreaChart, Top Campaigns.
+- ✅ Filter tanggal kalender dual-month inline (Dashboard + Campaigns), default This month.
+- ✅ Campaigns: tabel per grup (Awareness→Traffic→Conversion), subtotal toggle, kolom Total Spend (paling kanan, setelah CPL).
+- ✅ Export laporan PDF/JPG 16:9 (admin-only).
+- ✅ Light/Dark mode (CSS var, satu source of truth di AuthContext), toggle di header dashboard.
+- ✅ Auth + Role (admin/user) + route guard.
+- ✅ Rebranding logo **Control Hub** (ganti ikon petir lama) di sidebar, login, export, favicon.
 
-NEXT STEPS (belum dikerjakan):
-- [ ] Test hasil dashboard fit-to-screen; perbaiki kalau ada elemen mampet
-- [ ] Buat `app/reports/page.js` (placeholder kosong)
-- [ ] Kasih padding wrapper ke `campaigns/page.js` biar tidak mepet sidebar (efek samping hapus maxWidth di layout)
-- [ ] Pastikan `calendar/page.js` masih jalan
-- [ ] SAMBUNGKAN DASHBOARD KE DATA REAL Meta API (ganti data dummy) — perlu API kembalikan data harian time_increment=1 + breakdown per objective
-- [ ] Theme toggle light/dark: sekarang cuma visual (icon morph), belum benar-benar ganti tema. Perlu implementasi ganti `data-theme` di `<html>`.
+## BELUM / PENDING (JANGAN dikerjakan tanpa diminta)
 
-PENDING (JANGAN dikerjakan tanpa diminta):
-- Fitur Compare (tombol ada tapi disabled — format tampilan belum diputuskan)
-- Notifikasi lonceng (hardcoded)
-- Export CSV/Excel di Calendar (belum ada handler)
-- Google Ads integration (placeholder)
-- Halaman login/proteksi (belum ada)
-- Verifikasi akurasi data vs Meta Ads Manager
+- [ ] `app/reports/page.js` belum dibuat → nav Reports 404.
+- [ ] Supabase RLS: tabel `public.campaigns` RLS mati (advisor CRITICAL). Sengaja dibiarkan dulu (data tidak sensitif). Lihat memory [[supabase-rls-deferred]].
+- [ ] Theme toggle belum ada di halaman Campaigns (cuma di Dashboard) — tema ikut pilihan terakhir.
+- [ ] Fitur Compare (tombol disabled), notifikasi lonceng, Export CSV/Excel Calendar, Google Ads integration — placeholder.
+- [ ] Verifikasi akurasi angka vs Meta Ads Manager.
+- [ ] Upgrade auth ke Supabase Auth (kalau perlu production-secure).
 
 ---
 
-## MOCKUP
+## CATATAN VERIFIKASI (sesi ini)
 
-Mockup HTML final (v5) sudah di-approve user. Semua spesifikasi visual & animasi di atas adalah hasil iterasi mockup itu. File mockup: `will_of_d_dashboard_v5_mockup.html` (kalau user melampirkannya). Terjemahkan mockup → komponen Next.js + Tailwind + inline style.
+Tool screenshot preview SERING timeout di environment ini. Kalau begitu, verifikasi lewat `preview_eval` (baca computed style / teks DOM / cek network request) — sudah terbukti reliable. Build cek: `npm run build`.
