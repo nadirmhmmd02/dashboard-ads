@@ -112,7 +112,7 @@ export default function CampaignsPage() {
   const [data, setData]                   = useState(null);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState(null);
-  const [showSubtotal, setShowSubtotal]   = useState({ Awareness: true, Traffic: true, Conversion: true });
+  const [showSubtotal, setShowSubtotal]   = useState({ Awareness: false, Traffic: false, Conversion: false });
 
   // Bulan kiri kalender (UI only). Default: bulan lalu → tampil "bulan lalu + bulan ini".
   const _initCal = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
