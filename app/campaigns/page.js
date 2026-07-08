@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { Calendar, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const dateOptions = [
   { label: 'Today', value: 'today' },
@@ -11,6 +12,26 @@ const dateOptions = [
   { label: 'This month', value: 'this_month' },
   { label: 'Last month', value: 'last_month' },
 ];
+
+/* ─── Calendar UI helpers (murni tampilan — tidak menyentuh logika filter) ─── */
+const CAL_DOW = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+const CAL_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function pad2(n) { return String(n).padStart(2, '0'); }
+function toYMD(y, m, d) { return `${y}-${pad2(m + 1)}-${pad2(d)}`; } // m 0-based
+function monthGrid(y, m) {
+  const start = new Date(y, m, 1).getDay();      // 0=Min
+  const days  = new Date(y, m + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < start; i++) cells.push(null);
+  for (let d = 1; d <= days; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
+function fmtNice(s) {
+  if (!s) return '—';
+  const [y, m, d] = s.split('-').map(Number);
+  return `${d} ${CAL_MON[m - 1]} ${y}`;
+}
 
 function fmtRp(v) {
   if (!v && v !== 0) return '—';
@@ -93,6 +114,11 @@ export default function CampaignsPage() {
   const [error, setError]                 = useState(null);
   const [showSubtotal, setShowSubtotal]   = useState({ Awareness: true, Traffic: true, Conversion: true });
 
+  // Bulan kiri kalender (UI only). Default: bulan lalu → tampil "bulan lalu + bulan ini".
+  const _initCal = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+  const [calY, setCalY] = useState(_initCal.getFullYear());
+  const [calM, setCalM] = useState(_initCal.getMonth());
+
   useEffect(() => { if (!isCustom) fetchData(); }, [selectedDate, isCustom]);
 
   // Tutup dropdown saat klik di luar
@@ -135,6 +161,69 @@ export default function CampaignsPage() {
     setCustomSince('');
     setCustomUntil('');
     setShowDropdown(false);
+  }
+
+  // ── Kalender (UI only) ──
+  function openFilter() {
+    const next = !showDropdown;
+    if (next && customSince) { const p = customSince.split('-'); setCalY(+p[0]); setCalM(+p[1] - 1); }
+    setShowDropdown(next);
+  }
+  function shiftCal(delta) {
+    const dt = new Date(calY, calM + delta, 1);
+    setCalY(dt.getFullYear()); setCalM(dt.getMonth());
+  }
+  function pickDay(ds) {
+    if (!customSince || (customSince && customUntil)) { setCustomSince(ds); setCustomUntil(''); }
+    else if (ds < customSince) { setCustomUntil(customSince); setCustomSince(ds); }
+    else setCustomUntil(ds);
+  }
+  function renderMonth(y, m) {
+    const todayStr = toYMD(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+    return (
+      <div style={{ width: '232px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', rowGap: '2px' }}>
+          {CAL_DOW.map(d => (
+            <div key={d} style={{ textAlign: 'center', fontSize: '11px', color: 'var(--t3)', paddingBottom: '8px' }}>{d}</div>
+          ))}
+          {monthGrid(y, m).map((d, i) => {
+            if (!d) return <div key={i} />;
+            const ds       = toYMD(y, m, d);
+            const isStart  = ds === customSince;
+            const isEnd    = ds === customUntil;
+            const inRange  = customSince && customUntil && ds > customSince && ds < customUntil;
+            const isToday  = ds === todayStr;
+            const endpoint = isStart || isEnd;
+            const hasLeft  = customUntil && (isEnd || inRange);
+            const hasRight = customUntil && (isStart || inRange);
+            return (
+              <div key={i} style={{ position: 'relative', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {(hasLeft || hasRight) && (
+                  <span style={{ position: 'absolute', top: '3px', bottom: '3px',
+                    left: hasLeft ? 0 : '50%', right: hasRight ? 0 : '50%',
+                    background: 'var(--cal-range)' }} />
+                )}
+                {endpoint && (
+                  <span style={{ position: 'absolute', width: '30px', height: '30px', borderRadius: '50%',
+                    background: 'var(--cal-accent)', boxShadow: '0 2px 8px var(--cal-glow)' }} />
+                )}
+                <button onClick={() => pickDay(ds)} style={{
+                  position: 'relative', width: '30px', height: '30px', borderRadius: '50%',
+                  border: isToday && !endpoint ? '1px solid var(--cal-accent-line)' : '1px solid transparent',
+                  background: 'transparent', cursor: 'pointer', fontSize: '12.5px', fontFamily: 'inherit',
+                  fontWeight: endpoint ? 700 : 400,
+                  color: endpoint ? 'var(--cal-accent-fg)' : isToday ? 'var(--cal-accent-line)' : inRange ? 'var(--t1)' : 'var(--t2)',
+                  transition: 'background 0.12s, color 0.12s',
+                }}
+                onMouseEnter={e => { if (!endpoint) e.currentTarget.style.background = 'var(--hover)'; }}
+                onMouseLeave={e => { if (!endpoint) e.currentTarget.style.background = 'transparent'; }}
+                >{d}</button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   }
 
   // Label yang muncul di tombol filter
@@ -325,98 +414,119 @@ export default function CampaignsPage() {
         {/* Filter dropdown */}
         <div style={{ position: 'relative' }} data-filter-dropdown>
           <button
-            onClick={() => setShowDropdown(d => !d)}
+            onClick={openFilter}
             style={{
-              display: 'flex', alignItems: 'center', gap: '7px',
-              padding: '7px 12px', fontSize: '13px',
-              border: `1px solid ${isCustom ? 'var(--ac)' : 'var(--br)'}`,
-              borderRadius: '8px', background: 'var(--cd)', color: 'var(--t1)', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '8px 13px', fontSize: '13px',
+              border: `1px solid ${isCustom ? 'var(--cal-accent)' : 'var(--br)'}`,
+              borderRadius: '9px', background: 'var(--cd)', color: 'var(--t1)', cursor: 'pointer',
               transition: 'border-color 0.15s',
             }}>
-            📅 {filterLabel()} ▾
+            <Calendar size={14} color="var(--t2)" />
+            {filterLabel()}
+            <ChevronDown size={13} color="var(--t2)" />
           </button>
 
-          {showDropdown && (
+          {showDropdown && (() => {
+            const rd = new Date(calY, calM + 1, 1);       // bulan kanan = bulan kiri + 1
+            const rY = rd.getFullYear(), rM = rd.getMonth();
+            const navBtn = {
+              width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: '1px solid var(--br)', borderRadius: '8px', background: 'transparent',
+              cursor: 'pointer', flexShrink: 0, transition: 'background 0.12s',
+            };
+            const rangeReady = customSince && customUntil;
+            return (
             <div style={{
-              position: 'absolute', top: '38px', right: 0, zIndex: 50,
+              position: 'absolute', top: '44px', right: 0, zIndex: 50,
               background: 'var(--cd)', border: '1px solid var(--br)',
-              borderRadius: '10px', minWidth: '220px',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-              animation: 'wdScaleIn 0.18s cubic-bezier(0.4,0,0.2,1)',
-              overflow: 'hidden',
+              borderRadius: '14px', boxShadow: 'var(--pop-shadow)', overflow: 'hidden',
+              animation: 'wdScaleIn 0.15s cubic-bezier(0.4,0,0.2,1)',
+              display: 'flex', flexDirection: 'column',
             }}>
-              {/* Preset options */}
-              <div style={{ padding: '6px 0' }}>
-                {dateOptions.map(opt => (
-                  <div key={opt.value}
-                    onClick={() => selectPreset(opt)}
-                    style={{
-                      padding: '8px 14px', fontSize: '13px', cursor: 'pointer',
-                      color: (!isCustom && opt.value === selectedDate.value) ? 'var(--ac)' : 'var(--t2)',
-                      background: (!isCustom && opt.value === selectedDate.value) ? 'rgba(245,158,11,0.08)' : 'transparent',
-                      transition: 'background 0.1s',
-                    }}
-                    onMouseEnter={e => { if (isCustom || opt.value !== selectedDate.value) e.currentTarget.style.background = 'var(--sf)'; }}
-                    onMouseLeave={e => { if (isCustom || opt.value !== selectedDate.value) e.currentTarget.style.background = 'transparent'; }}
-                  >
-                    {opt.label}
+              <div style={{ display: 'flex' }}>
+                {/* ── Presets kiri ── */}
+                <div style={{ width: '178px', borderRight: '1px solid var(--br)', padding: '10px', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                  {dateOptions.map(opt => {
+                    const active = !isCustom && opt.value === selectedDate.value;
+                    return (
+                      <div key={opt.value} onClick={() => selectPreset(opt)} style={{
+                        padding: '9px 12px', fontSize: '13px', cursor: 'pointer', borderRadius: '8px',
+                        color: active ? 'var(--cal-accent-line)' : 'var(--t2)',
+                        background: active ? 'var(--cal-accent-soft)' : 'transparent',
+                        fontWeight: active ? 600 : 400, transition: 'background 0.12s',
+                      }}
+                      onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--hover)'; }}
+                      onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+                      >{opt.label}</div>
+                    );
+                  })}
+                  <div style={{ borderTop: '1px solid var(--br)', margin: '8px 4px 0' }} />
+                  <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.2px', color: 'var(--t3)', textTransform: 'uppercase', padding: '12px 8px 8px' }}>Custom Range</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '10px',
+                    border: `1px solid ${isCustom ? 'var(--cal-accent-line)' : 'var(--br)'}`, background: 'var(--data-bg)' }}>
+                    <Calendar size={15} color="var(--t2)" style={{ flexShrink: 0 }} />
+                    <div style={{ fontSize: '12px', lineHeight: 1.55 }}>
+                      <div style={{ color: customSince ? 'var(--t1)' : 'var(--t3)' }}>{fmtNice(customSince)}</div>
+                      <div style={{ color: customUntil ? 'var(--t1)' : 'var(--t3)' }}>{fmtNice(customUntil)}</div>
+                    </div>
                   </div>
-                ))}
+                </div>
+
+                {/* ── Kalender kanan ── */}
+                <div style={{ padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+                    <button onClick={() => shiftCal(-1)} style={navBtn}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--hover)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <ChevronLeft size={17} color="var(--t2)" />
+                    </button>
+                    <div style={{ flex: 1, textAlign: 'center', fontSize: '13px', fontWeight: 600, color: 'var(--t1)' }}>
+                      {CAL_MON[calM]} <span style={{ color: 'var(--t2)', fontWeight: 400 }}>{calY}</span>
+                    </div>
+                    <div style={{ width: '16px', flexShrink: 0 }} />
+                    <div style={{ flex: 1, textAlign: 'center', fontSize: '13px', fontWeight: 600, color: 'var(--t1)' }}>
+                      {CAL_MON[rM]} <span style={{ color: 'var(--t2)', fontWeight: 400 }}>{rY}</span>
+                    </div>
+                    <button onClick={() => shiftCal(1)} style={navBtn}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--hover)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <ChevronRight size={17} color="var(--t2)" />
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', gap: '16px' }}>
+                    {renderMonth(calY, calM)}
+                    {renderMonth(rY, rM)}
+                  </div>
+                </div>
               </div>
 
-              {/* Custom date range */}
-              <div style={{ borderTop: '1px solid var(--br)', padding: '12px 14px' }}>
-                <div style={{ fontSize: '10px', fontWeight: '600', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '10px' }}>
-                  Custom range
+              {/* ── Footer ── */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '12px 16px', borderTop: '1px solid var(--br)' }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: customSince ? 'var(--t1)' : 'var(--t3)' }}>
+                  {customSince ? `${fmtNice(customSince)}${customUntil ? '  –  ' + fmtNice(customUntil) : ''}` : 'Select a date range'}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
-                  <div>
-                    <div style={{ fontSize: '10px', color: 'var(--t3)', marginBottom: '4px' }}>From</div>
-                    <input
-                      type="date"
-                      value={customSince}
-                      onChange={e => setCustomSince(e.target.value)}
-                      style={{
-                        width: '100%', padding: '6px 8px', fontSize: '12px',
-                        border: '1px solid var(--br)', borderRadius: '6px',
-                        background: 'var(--sf)', color: 'var(--t1)',
-                        outline: 'none', fontFamily: 'inherit',
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '10px', color: 'var(--t3)', marginBottom: '4px' }}>To</div>
-                    <input
-                      type="date"
-                      value={customUntil}
-                      min={customSince}
-                      onChange={e => setCustomUntil(e.target.value)}
-                      style={{
-                        width: '100%', padding: '6px 8px', fontSize: '12px',
-                        border: '1px solid var(--br)', borderRadius: '6px',
-                        background: 'var(--sf)', color: 'var(--t1)',
-                        outline: 'none', fontFamily: 'inherit',
-                      }}
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={applyCustomRange}
-                  disabled={!customSince || !customUntil}
-                  style={{
-                    width: '100%', padding: '7px', fontSize: '12px', fontWeight: '600',
-                    border: 'none', borderRadius: '6px',
-                    background: customSince && customUntil ? 'var(--ac)' : 'var(--sf)',
-                    color: customSince && customUntil ? '#fff' : 'var(--t3)',
-                    cursor: customSince && customUntil ? 'pointer' : 'default',
-                    transition: 'background 0.15s, color 0.15s',
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => setShowDropdown(false)} style={{
+                    padding: '8px 18px', fontSize: '13px', fontWeight: 500, borderRadius: '9px',
+                    border: '1px solid var(--br)', background: 'transparent', color: 'var(--t1)', cursor: 'pointer',
+                    transition: 'background 0.12s',
                   }}
-                >
-                  Apply range
-                </button>
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--hover)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >Cancel</button>
+                  <button onClick={applyCustomRange} disabled={!rangeReady} style={{
+                    padding: '8px 22px', fontSize: '13px', fontWeight: 600, borderRadius: '9px', border: 'none',
+                    background: rangeReady ? 'var(--cal-accent)' : 'var(--hover)',
+                    color:      rangeReady ? 'var(--cal-accent-fg)' : 'var(--t3)',
+                    cursor:     rangeReady ? 'pointer' : 'default',
+                  }}>Apply</button>
+                </div>
               </div>
             </div>
-          )}
+            );
+          })()}
         </div>
       </div>
 
