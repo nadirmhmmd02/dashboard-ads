@@ -7,7 +7,6 @@ import { useAuth } from './AuthContext';
 export default function ThemeToggle({ size = 40, iconSize = 15 }) {
   const { theme, toggleTheme } = useAuth();
   const dark = theme !== 'light';
-  const btnRef = useRef(null);
   const busy = useRef(false);
 
   const handleClick = useCallback(() => {
@@ -15,36 +14,25 @@ export default function ThemeToggle({ size = 40, iconSize = 15 }) {
     busy.current = true;
 
     const root = document.documentElement;
-
-    root.style.transition = 'filter 0.3s cubic-bezier(0.4,0,0.2,1)';
-    root.style.filter = 'blur(6px) brightness(0.85)';
+    root.style.transition = 'opacity 0.15s ease';
+    root.style.opacity = '0.82';
 
     setTimeout(() => {
       toggleTheme();
-
-      setTimeout(() => {
-        root.style.filter = 'blur(0px) brightness(1)';
-
-        const onEnd = () => {
-          root.style.transition = '';
-          root.style.filter = '';
-          busy.current = false;
-          root.removeEventListener('transitionend', onEnd);
-        };
-        root.addEventListener('transitionend', onEnd, { once: true });
-
+      requestAnimationFrame(() => {
+        root.style.transition = 'opacity 0.25s ease';
+        root.style.opacity = '1';
         setTimeout(() => {
           root.style.transition = '';
-          root.style.filter = '';
+          root.style.opacity = '';
           busy.current = false;
-        }, 400);
-      }, 30);
-    }, 300);
+        }, 280);
+      });
+    }, 160);
   }, [toggleTheme]);
 
   return (
     <button
-      ref={btnRef}
       onClick={handleClick}
       title={dark ? 'Switch to light' : 'Switch to dark'}
       style={{
