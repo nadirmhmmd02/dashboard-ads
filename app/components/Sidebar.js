@@ -10,12 +10,9 @@ import {
   FileChartColumn,
   ChevronsLeft,
   LogOut,
-  MessageSquare,
-  Trash2,
 } from 'lucide-react';
 import Logo from './Logo';
 import { useAuth } from './AuthContext';
-import { supabase } from '../supabase';
 
 const NAV_ITEMS = [
   { href: '/',          label: 'Dashboard', icon: LayoutDashboard },
@@ -42,13 +39,9 @@ export default function Sidebar() {
   const [hovered, setHovered]     = useState(null);
   const [dragHover, setDragHover] = useState(false);
   const [animate, setAnimate]     = useState(true);
-  const [showSuggest, setShowSuggest] = useState(false);
-  const [suggestions, setSuggestions] = useState([]);
-
   const lastWidth  = useRef(DEFAULT_WIDTH);
   const dragging   = useRef(false);
   const sidebarRef = useRef(null);
-  const suggestRef = useRef(null);
 
   function isActive(href) {
     if (href === '/') return pathname === '/';
@@ -90,30 +83,6 @@ export default function Sidebar() {
       window.removeEventListener('mouseup', onUp);
     };
   }, []);
-
-  useEffect(() => {
-    if (showSuggest) {
-      (async () => {
-        const { data, error } = await supabase
-          .from('suggestions').select('*').order('created_at', { ascending: false });
-        if (!error && data) setSuggestions(data);
-      })();
-    }
-  }, [showSuggest]);
-
-  useEffect(() => {
-    if (!showSuggest) return;
-    const handler = (e) => {
-      if (suggestRef.current && !suggestRef.current.contains(e.target)) setShowSuggest(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showSuggest]);
-
-  async function handleDeleteSuggestion(id) {
-    const { error } = await supabase.from('suggestions').delete().eq('id', id);
-    if (!error) setSuggestions(prev => prev.filter(s => s.id !== id));
-  }
 
   function startDrag(e) {
     if (collapsed) return;
@@ -244,90 +213,6 @@ export default function Sidebar() {
           );
         })}
       </nav>
-
-      {/* ── Admin Suggest Menu ── */}
-      {role === 'admin' && (
-        <div ref={suggestRef} style={{ padding: collapsed ? '0 0 8px' : '0 10px 8px', position: 'relative' }}>
-          <button
-            onClick={() => setShowSuggest(prev => !prev)}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--nav-accent-hover)'; e.currentTarget.style.color = 'var(--nav-hover-tx)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = showSuggest ? 'var(--nav-accent-soft)' : 'transparent'; e.currentTarget.style.color = showSuggest ? 'var(--nav-accent-fg)' : 'var(--nav-tx)'; }}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
-              gap: collapsed ? '0' : '10px', padding: collapsed ? '11px 0' : '9px 10px', borderRadius: '9px',
-              background: showSuggest ? 'var(--nav-accent-soft)' : 'transparent', border: 'none',
-              color: showSuggest ? 'var(--nav-accent-fg)' : 'var(--nav-tx)', cursor: 'pointer',
-              fontSize: '13px', fontWeight: showSuggest ? 600 : 400,
-              transition: `background 0.18s ${EASE}, color 0.18s`,
-            }}
-          >
-            <MessageSquare size={18} style={{ flexShrink: 0, minWidth: 18 }} />
-            <span style={{
-              opacity: textVisible ? 1 : 0, width: collapsed ? 0 : 'auto',
-              overflow: 'hidden', transition: 'opacity 0.2s', letterSpacing: '-0.1px', whiteSpace: 'nowrap'
-            }}>
-              Suggestions
-            </span>
-          </button>
-
-          {showSuggest && (
-            <div style={{
-              position: 'absolute', bottom: 0, left: '100%', marginLeft: '8px',
-              width: '360px', maxHeight: '420px',
-              background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '14px',
-              boxShadow: 'var(--pop-shadow)', overflow: 'hidden',
-              animation: 'wdScaleIn 0.15s cubic-bezier(0.4,0,0.2,1)',
-              display: 'flex', flexDirection: 'column', zIndex: 100,
-            }}>
-              <div style={{
-                padding: '14px 16px', borderBottom: '1px solid var(--br)', background: 'var(--sf)',
-                display: 'flex', alignItems: 'center', gap: '8px',
-              }}>
-                <MessageSquare size={16} color="var(--t2)" />
-                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--t1)' }}>User Suggestions</span>
-                <span style={{ fontSize: '11px', color: 'var(--t3)', marginLeft: 'auto' }}>{suggestions.length} total</span>
-              </div>
-
-              <div style={{ overflowY: 'auto', flex: 1, padding: '12px' }}>
-                {suggestions.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: 'var(--t3)', fontSize: '13px', padding: '24px 0' }}>
-                    No suggestions yet.
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {suggestions.map(s => (
-                      <div key={s.id} style={{
-                        padding: '12px', borderRadius: '10px',
-                        border: '1px solid var(--br)', background: 'var(--data-bg)',
-                        animation: 'wdFadeUp 0.2s cubic-bezier(0.4,0,0.2,1)',
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--t2)', textTransform: 'capitalize' }}>{s.author}</span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '10px', color: 'var(--t3)' }}>
-                              {new Date(s.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            <button onClick={() => handleDeleteSuggestion(s.id)} title="Delete" style={{
-                              background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444',
-                              display: 'flex', alignItems: 'center', opacity: 0.6, transition: 'opacity 0.15s', padding: 0,
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                            onMouseLeave={e => e.currentTarget.style.opacity = 0.6}
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </div>
-                        <div style={{ fontSize: '12px', color: 'var(--t1)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{s.text}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ── User + logout ── */}
       {user && (
