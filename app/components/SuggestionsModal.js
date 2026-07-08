@@ -2,23 +2,29 @@
 
 import { useState, useEffect } from 'react';
 import { X, Send, Trash2, MessageSquare, CheckCircle2 } from 'lucide-react';
-
-const STORAGE_KEY = 'willofd_suggestions';
+import { supabase } from '../supabase';
 
 export default function SuggestionsModal({ isOpen, onClose, isAdmin, user }) {
   const [suggestions, setSuggestions] = useState([]);
   const [text, setText] = useState('');
   const [success, setSuccess] = useState(false);
 
-  // Load from local storage when modal opens
+  // Load from Supabase when modal opens
   useEffect(() => {
     if (isOpen) {
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) setSuggestions(JSON.parse(stored));
-      } catch (e) {
-        console.error('Failed to parse suggestions', e);
+      async function fetchSuggestions() {
+        const { data, error } = await supabase
+          .from('suggestions')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (!error && data) {
+          setSuggestions(data);
+        } else if (error) {
+          console.error('Error fetching suggestions:', error);
+        }
       }
+      fetchSuggestions();
       setSuccess(false);
       setText('');
     }
@@ -26,20 +32,26 @@ export default function SuggestionsModal({ isOpen, onClose, isAdmin, user }) {
 
   if (!isOpen) return null;
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     if (!text.trim()) return;
 
     const newSuggestion = {
-      id: Date.now().toString(),
       text: text.trim(),
-      date: new Date().toISOString(),
       author: user?.username || 'user',
     };
 
-    const updated = [newSuggestion, ...suggestions];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    setSuggestions(updated);
+    const { data, error } = await supabase
+      .from('suggestions')
+      .insert([newSuggestion])
+      .select();
+
+    if (!error && data) {
+      setSuggestions([data[0], ...suggestions]);
+    } else if (error) {
+      console.error('Error inserting suggestion:', error);
+    }
+    
     setText('');
     setSuccess(true);
     setTimeout(() => {
@@ -48,10 +60,13 @@ export default function SuggestionsModal({ isOpen, onClose, isAdmin, user }) {
     }, 1500);
   }
 
-  function handleDelete(id) {
-    const updated = suggestions.filter(s => s.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    setSuggestions(updated);
+  async function handleDelete(id) {
+    const { error } = await supabase.from('suggestions').delete().eq('id', id);
+    if (!error) {
+      setSuggestions(suggestions.filter(s => s.id !== id));
+    } else {
+      console.error('Error deleting suggestion:', error);
+    }
   }
 
   return (
@@ -118,7 +133,7 @@ export default function SuggestionsModal({ isOpen, onClose, isAdmin, user }) {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <span style={{ fontSize: '11px', color: 'var(--t3)' }}>
-                          {new Date(s.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          {new Date(s.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </span>
                         <button onClick={() => handleDelete(s.id)} title="Delete" style={{
                           background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444',
