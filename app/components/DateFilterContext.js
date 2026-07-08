@@ -27,7 +27,7 @@ const DEFAULT_PRESET = { label: 'This month', value: 'this_month' };
 
 const DateFilterContext = createContext(null);
 
-export function DateFilterProvider({ children }) {
+function useFilterState() {
   const [dateOpt, setDateOpt]           = useState(DEFAULT_PRESET);
   const [customSince, setCustomSince]   = useState('');
   const [customUntil, setCustomUntil]   = useState('');
@@ -46,21 +46,26 @@ export function DateFilterProvider({ children }) {
     setIsCustom(true);
   }
 
+  return { dateOpt, setDateOpt, customSince, setCustomSince, customUntil, setCustomUntil, isCustom, setIsCustom, selectPreset, applyCustom };
+}
+
+export function DateFilterProvider({ children }) {
+  const dashboard = useFilterState();
+  const campaigns = useFilterState();
+
   return (
-    <DateFilterContext.Provider value={{
-      dateOpt, setDateOpt,
-      customSince, setCustomSince,
-      customUntil, setCustomUntil,
-      isCustom, setIsCustom,
-      selectPreset, applyCustom,
-    }}>
+    <DateFilterContext.Provider value={{ dashboard, campaigns }}>
       {children}
     </DateFilterContext.Provider>
   );
 }
 
-export function useDateFilter() {
-  return useContext(DateFilterContext);
+export function useDashboardFilter() {
+  return useContext(DateFilterContext).dashboard;
+}
+
+export function useCampaignsFilter() {
+  return useContext(DateFilterContext).campaigns;
 }
 
 export { DATE_PRESETS_DASHBOARD, DATE_PRESETS_CAMPAIGNS };

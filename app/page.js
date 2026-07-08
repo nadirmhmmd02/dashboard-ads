@@ -10,7 +10,7 @@ import CountUp from './components/CountUp';
 import AreaChart from './components/AreaChart';
 import ExportMenu from './components/ExportMenu';
 import { useAuth } from './components/AuthContext';
-import { useDateFilter, DATE_PRESETS_DASHBOARD } from './components/DateFilterContext';
+import { useDashboardFilter, DATE_PRESETS_DASHBOARD } from './components/DateFilterContext';
 
 /* ─── Design tokens: netral = CSS var (ikut tema), aksen = literal (sama di 2 tema) ─── */
 const BG      = 'var(--pg)';
@@ -268,7 +268,7 @@ function KpiCard({ label, display, value, icon: Icon, color, pct, spark, delay }
 /* ─── Main ─── */
 export default function DashboardPage() {
   const { isAdmin } = useAuth();
-  const { dateOpt, customSince, setCustomSince, customUntil, setCustomUntil, isCustom, selectPreset, applyCustom } = useDateFilter();
+  const { dateOpt, customSince, setCustomSince, customUntil, setCustomUntil, isCustom, selectPreset, applyCustom } = useDashboardFilter();
   const [hoverSeg, setHoverSeg]         = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading]           = useState(true);

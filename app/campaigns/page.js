@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Calendar, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useDateFilter, DATE_PRESETS_CAMPAIGNS } from '../components/DateFilterContext';
+import { useCampaignsFilter, DATE_PRESETS_CAMPAIGNS } from '../components/DateFilterContext';
 
 /* ─── Calendar UI helpers (murni tampilan — tidak menyentuh logika filter) ─── */
 const CAL_DOW = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -94,7 +94,7 @@ const OBJ_STYLE = {
 const OBJ_ORDER = ['Awareness', 'Traffic', 'Conversion'];
 
 export default function CampaignsPage() {
-  const { dateOpt, customSince, setCustomSince, customUntil, setCustomUntil, isCustom, selectPreset, applyCustom } = useDateFilter();
+  const { dateOpt, customSince, setCustomSince, customUntil, setCustomUntil, isCustom, selectPreset, applyCustom } = useCampaignsFilter();
   const [showDropdown, setShowDropdown]   = useState(false);
   const [data, setData]                   = useState(null);
   const [loading, setLoading]             = useState(true);
