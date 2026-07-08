@@ -4,10 +4,6 @@ import { useRef, useCallback } from 'react';
 import { Moon, Sun } from 'lucide-react';
 import { useAuth } from './AuthContext';
 
-const DURATION = 600;
-const LIGHT_BG = '#F7F8FA';
-const DARK_BG  = '#090A0C';
-
 export default function ThemeToggle({ size = 40, iconSize = 15 }) {
   const { theme, toggleTheme } = useAuth();
   const dark = theme !== 'light';
@@ -18,35 +14,33 @@ export default function ThemeToggle({ size = 40, iconSize = 15 }) {
     if (busy.current) return;
     busy.current = true;
 
-    const rect = btnRef.current.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const maxR = Math.hypot(
-      Math.max(cx, window.innerWidth - cx),
-      Math.max(cy, window.innerHeight - cy),
-    );
+    const root = document.documentElement;
 
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `
-      position:fixed; inset:0; z-index:99999; pointer-events:none;
-      background:${dark ? LIGHT_BG : DARK_BG};
-      clip-path:circle(0px at ${cx}px ${cy}px);
-    `;
-    document.body.appendChild(overlay);
-
-    requestAnimationFrame(() => {
-      overlay.style.transition = `clip-path ${DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)`;
-      overlay.style.clipPath = `circle(${maxR}px at ${cx}px ${cy}px)`;
-    });
+    root.style.transition = 'filter 0.3s cubic-bezier(0.4,0,0.2,1)';
+    root.style.filter = 'blur(6px) brightness(0.85)';
 
     setTimeout(() => {
       toggleTheme();
+
       setTimeout(() => {
-        overlay.remove();
-        busy.current = false;
-      }, 50);
-    }, DURATION * 0.6);
-  }, [dark, toggleTheme]);
+        root.style.filter = 'blur(0px) brightness(1)';
+
+        const onEnd = () => {
+          root.style.transition = '';
+          root.style.filter = '';
+          busy.current = false;
+          root.removeEventListener('transitionend', onEnd);
+        };
+        root.addEventListener('transitionend', onEnd, { once: true });
+
+        setTimeout(() => {
+          root.style.transition = '';
+          root.style.filter = '';
+          busy.current = false;
+        }, 400);
+      }, 30);
+    }, 300);
+  }, [toggleTheme]);
 
   return (
     <button
