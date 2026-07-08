@@ -10,6 +10,7 @@ import {
   FileChartColumn,
   ChevronsLeft,
   LogOut,
+  MessageSquare,
 } from 'lucide-react';
 import Logo from './Logo';
 import { useAuth } from './AuthContext';
@@ -31,7 +32,7 @@ const ACTIVE_BG = 'var(--nav-accent-soft)';   // hijau (dark) / amber (light)
 const ACTIVE_HV = 'var(--nav-accent-hover)';
 const ACTIVE_FG = 'var(--nav-accent-fg)';
 
-export default function Sidebar() {
+export default function Sidebar({ onOpenSuggest }) {
   const pathname  = usePathname();
   const { user, role, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
@@ -214,6 +215,31 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      {/* ── Admin Suggest Menu ── */}
+      {role === 'admin' && (
+        <div style={{ padding: collapsed ? '0 0 8px' : '0 10px 8px' }}>
+          <button
+            onClick={onOpenSuggest}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--nav-accent-hover)'; e.currentTarget.style.color = 'var(--nav-hover-tx)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--nav-tx)'; }}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
+              gap: collapsed ? '0' : '10px', padding: collapsed ? '11px 0' : '9px 10px', borderRadius: '9px',
+              background: 'transparent', border: 'none', color: 'var(--nav-tx)', cursor: 'pointer',
+              fontSize: '13px', transition: `background 0.18s cubic-bezier(0.4,0,0.2,1), color 0.18s`,
+            }}
+          >
+            <MessageSquare size={18} style={{ flexShrink: 0, minWidth: 18 }} />
+            <span style={{
+              opacity: textVisible ? 1 : 0, width: collapsed ? 0 : 'auto',
+              overflow: 'hidden', transition: 'opacity 0.2s', letterSpacing: '-0.1px', whiteSpace: 'nowrap'
+            }}>
+              Suggestions
+            </span>
+          </button>
+        </div>
+      )}
 
       {/* ── User + logout ── */}
       {user && (
