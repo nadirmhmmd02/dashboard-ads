@@ -1,5 +1,6 @@
 import './globals.css';
 import { AuthProvider } from './components/AuthContext';
+import { DateFilterProvider } from './components/DateFilterContext';
 import AppShell from './components/AppShell';
 
 export const metadata = {
@@ -24,7 +25,9 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <AuthProvider>
-          <AppShell>{children}</AppShell>
+          <DateFilterProvider>
+            <AppShell>{children}</AppShell>
+          </DateFilterProvider>
         </AuthProvider>
       </body>
     </html>

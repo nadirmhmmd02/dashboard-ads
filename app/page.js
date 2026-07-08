@@ -10,6 +10,7 @@ import CountUp from './components/CountUp';
 import AreaChart from './components/AreaChart';
 import ExportMenu from './components/ExportMenu';
 import { useAuth } from './components/AuthContext';
+import { useDateFilter, DATE_PRESETS_DASHBOARD } from './components/DateFilterContext';
 
 /* ─── Design tokens: netral = CSS var (ikut tema), aksen = literal (sama di 2 tema) ─── */
 const BG      = 'var(--pg)';
@@ -30,15 +31,6 @@ const CARD_BASE = {
   boxShadow: 'var(--shadow)',
 };
 
-const DATE_OPTIONS = [
-  { label: 'Today',        value: 'today' },
-  { label: 'Yesterday',    value: 'yesterday' },
-  { label: 'Last 7 days',  value: 'last_7d' },
-  { label: 'Last 14 days', value: 'last_14d' },
-  { label: 'Last 30 days', value: 'last_30d' },
-  { label: 'This month',   value: 'this_month' },
-  { label: 'Last month',   value: 'last_month' },
-];
 
 /* ─── Helpers ─── */
 function getActionValue(actions, types) {
@@ -276,12 +268,9 @@ function KpiCard({ label, display, value, icon: Icon, color, pct, spark, delay }
 /* ─── Main ─── */
 export default function DashboardPage() {
   const { isAdmin } = useAuth();
+  const { dateOpt, customSince, setCustomSince, customUntil, setCustomUntil, isCustom, selectPreset, applyCustom } = useDateFilter();
   const [hoverSeg, setHoverSeg]         = useState(null);
-  const [dateOpt, setDateOpt]           = useState(DATE_OPTIONS[5]); // This month
   const [showDropdown, setShowDropdown] = useState(false);
-  const [customSince, setCustomSince]   = useState('');
-  const [customUntil, setCustomUntil]   = useState('');
-  const [isCustom, setIsCustom]         = useState(false);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
   const [summary, setSummary]           = useState(null);
@@ -423,13 +412,13 @@ export default function DashboardPage() {
 
   function applyCustomRange() {
     if (!customSince || !customUntil) return;
-    setIsCustom(true); setShowDropdown(false);
+    applyCustom(customSince, customUntil);
+    setShowDropdown(false);
     fetchData(customSince, customUntil);
   }
 
-  function selectPreset(opt) {
-    setDateOpt(opt); setIsCustom(false);
-    setCustomSince(''); setCustomUntil('');
+  function handleSelectPreset(opt) {
+    selectPreset(opt);
     setShowDropdown(false);
   }
 
@@ -570,10 +559,10 @@ export default function DashboardPage() {
                 <div style={{ display:'flex' }}>
                   {/* ── Presets kiri ── */}
                   <div style={{ width:'178px', borderRight:`1px solid ${BORDER}`, padding:'10px', display:'flex', flexDirection:'column', flexShrink:0 }}>
-                    {DATE_OPTIONS.map(opt => {
+                    {DATE_PRESETS_DASHBOARD.map(opt => {
                       const active = !isCustom && opt.value === dateOpt.value;
                       return (
-                        <div key={opt.value} onClick={() => selectPreset(opt)} style={{
+                        <div key={opt.value} onClick={() => handleSelectPreset(opt)} style={{
                           padding:'9px 12px', fontSize:'13px', cursor:'pointer', borderRadius:'8px',
                           color: active ? 'var(--cal-accent-line)' : SUB,
                           background: active ? 'var(--cal-accent-soft)' : 'transparent',

@@ -1,17 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Calendar, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
-
-const dateOptions = [
-  { label: 'Today', value: 'today' },
-  { label: 'Yesterday', value: 'yesterday' },
-  { label: 'Last 3 days', value: 'last_3d' },
-  { label: 'Last 7 days', value: 'last_7d' },
-  { label: 'Last 14 days', value: 'last_14d' },
-  { label: 'Last 30 days', value: 'last_30d' },
-  { label: 'This month', value: 'this_month' },
-  { label: 'Last month', value: 'last_month' },
-];
+import { useDateFilter, DATE_PRESETS_CAMPAIGNS } from '../components/DateFilterContext';
 
 /* ─── Calendar UI helpers (murni tampilan — tidak menyentuh logika filter) ─── */
 const CAL_DOW = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -104,11 +94,8 @@ const OBJ_STYLE = {
 const OBJ_ORDER = ['Awareness', 'Traffic', 'Conversion'];
 
 export default function CampaignsPage() {
-  const [selectedDate, setSelectedDate] = useState(dateOptions[6]); // this_month
+  const { dateOpt, customSince, setCustomSince, customUntil, setCustomUntil, isCustom, selectPreset, applyCustom } = useDateFilter();
   const [showDropdown, setShowDropdown]   = useState(false);
-  const [customSince, setCustomSince]     = useState('');
-  const [customUntil, setCustomUntil]     = useState('');
-  const [isCustom, setIsCustom]           = useState(false);
   const [data, setData]                   = useState(null);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState(null);
@@ -119,7 +106,7 @@ export default function CampaignsPage() {
   const [calY, setCalY] = useState(_initCal.getFullYear());
   const [calM, setCalM] = useState(_initCal.getMonth());
 
-  useEffect(() => { if (!isCustom) fetchData(); }, [selectedDate, isCustom]);
+  useEffect(() => { if (!isCustom) fetchData(); }, [dateOpt, isCustom]);
 
   // Tutup dropdown saat klik di luar
   useEffect(() => {
@@ -137,7 +124,7 @@ export default function CampaignsPage() {
     try {
       const url = since && until
         ? `/api/meta?since=${since}&until=${until}`
-        : `/api/meta?date_preset=${selectedDate.value}`;
+        : `/api/meta?date_preset=${dateOpt.value}`;
       const res  = await fetch(url);
       const json = await res.json();
       if (json.error) throw new Error(json.error);
@@ -150,16 +137,13 @@ export default function CampaignsPage() {
 
   function applyCustomRange() {
     if (!customSince || !customUntil) return;
-    setIsCustom(true);
+    applyCustom(customSince, customUntil);
     setShowDropdown(false);
     fetchData(customSince, customUntil);
   }
 
-  function selectPreset(opt) {
-    setSelectedDate(opt);
-    setIsCustom(false);
-    setCustomSince('');
-    setCustomUntil('');
+  function handleSelectPreset(opt) {
+    selectPreset(opt);
     setShowDropdown(false);
   }
 
@@ -232,7 +216,7 @@ export default function CampaignsPage() {
       const fmt = d => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
       return `${fmt(customSince)} – ${fmt(customUntil)}`;
     }
-    return selectedDate.label;
+    return dateOpt.label;
   }
 
   function toggleSubtotal(grp) {
@@ -449,10 +433,10 @@ export default function CampaignsPage() {
               <div style={{ display: 'flex' }}>
                 {/* ── Presets kiri ── */}
                 <div style={{ width: '178px', borderRight: '1px solid var(--br)', padding: '10px', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-                  {dateOptions.map(opt => {
-                    const active = !isCustom && opt.value === selectedDate.value;
+                  {DATE_PRESETS_CAMPAIGNS.map(opt => {
+                    const active = !isCustom && opt.value === dateOpt.value;
                     return (
-                      <div key={opt.value} onClick={() => selectPreset(opt)} style={{
+                      <div key={opt.value} onClick={() => handleSelectPreset(opt)} style={{
                         padding: '9px 12px', fontSize: '13px', cursor: 'pointer', borderRadius: '8px',
                         color: active ? 'var(--cal-accent-line)' : 'var(--t2)',
                         background: active ? 'var(--cal-accent-soft)' : 'transparent',
@@ -575,7 +559,7 @@ export default function CampaignsPage() {
                     })
                   : (
                     <tr><td colSpan={12} style={{ padding: '32px', textAlign: 'center', color: 'var(--t3)', fontSize: '13px' }}>
-                      No campaign data for {selectedDate.label}
+                      No campaign data for {dateOpt.label}
                     </td></tr>
                   )
                 }
