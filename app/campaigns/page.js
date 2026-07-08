@@ -302,7 +302,7 @@ export default function CampaignsPage() {
         key={c.id}
         style={{
           borderTop: '1px solid var(--br)',
-          opacity: isActive ? 1 : 0.5,
+          opacity: 1,
           transition: 'background 0.15s',
           animation: `wdFadeUp 0.3s cubic-bezier(0.4,0,0.2,1) ${rowIdx * 0.04}s backwards`,
         }}
@@ -314,7 +314,7 @@ export default function CampaignsPage() {
           {isActive ? (
             <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'rgba(16,185,129,0.14)', color: '#10b981', fontWeight: '600', whiteSpace: 'nowrap' }}>▶ Active</span>
           ) : (
-            <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'rgba(115,115,115,0.12)', color: 'var(--t3)', fontWeight: '600', whiteSpace: 'nowrap' }}>■ {c.status === 'PAUSED' ? 'Paused' : 'Ended'}</span>
+            <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'rgba(115,115,115,0.12)', color: 'var(--t3)', fontWeight: '600', whiteSpace: 'nowrap' }}>■ {c.status === 'PAUSED' ? 'Stop' : 'Ended'}</span>
           )}
         </td>
         <td style={tdStyle()}>{c.daily_budget ? fmtRp(parseInt(c.daily_budget)) : '—'}</td>
