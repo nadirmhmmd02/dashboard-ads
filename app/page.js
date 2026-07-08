@@ -716,7 +716,7 @@ export default function DashboardPage() {
                 onMouseEnter={e => e.currentTarget.style.borderColor='var(--br-strong)'}
                 onMouseLeave={e => { if (!showSuggest) e.currentTarget.style.borderColor=BORDER; }}
               >
-                <MessageSquare size={15} color={SUB}/>
+                <MessageSquare size={15} color="var(--cal-accent-line)"/>
                 {hasUnread && (
                   <span style={{
                     position:'absolute', top:'6px', right:'6px',
