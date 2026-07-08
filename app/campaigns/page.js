@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Calendar, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Moon, Sun } from 'lucide-react';
 import { useCampaignsFilter, DATE_PRESETS_CAMPAIGNS } from '../components/DateFilterContext';
+import { useAuth } from '../components/AuthContext';
 
 /* ─── Calendar UI helpers (murni tampilan — tidak menyentuh logika filter) ─── */
 const CAL_DOW = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -140,6 +141,11 @@ export default function CampaignsPage() {
     applyCustom(customSince, customUntil);
     setShowDropdown(false);
     fetchData(customSince, customUntil);
+  }
+
+  function refresh() {
+    if (isCustom && customSince && customUntil) fetchData(customSince, customUntil);
+    else fetchData();
   }
 
   function handleSelectPreset(opt) {
@@ -397,17 +403,18 @@ export default function CampaignsPage() {
           </div>
         </div>
 
-        {/* Filter dropdown */}
-        <div style={{ position: 'relative' }} data-filter-dropdown>
-          <button
-            onClick={openFilter}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '8px',
-              padding: '8px 13px', fontSize: '13px',
-              border: `1px solid ${isCustom ? 'var(--cal-accent)' : 'var(--br)'}`,
-              borderRadius: '9px', background: 'var(--cd)', color: 'var(--t1)', cursor: 'pointer',
-              transition: 'border-color 0.15s',
-            }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Filter dropdown */}
+          <div style={{ position: 'relative' }} data-filter-dropdown>
+            <button
+              onClick={openFilter}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '8px 13px', fontSize: '13px',
+                border: `1px solid ${isCustom ? 'var(--cal-accent)' : 'var(--br)'}`,
+                borderRadius: '9px', background: 'var(--cd)', color: 'var(--t1)', cursor: 'pointer',
+                transition: 'border-color 0.15s',
+              }}>
             <Calendar size={14} color="var(--t2)" />
             {filterLabel()}
             <ChevronDown size={13} color="var(--t2)" />
@@ -513,6 +520,20 @@ export default function CampaignsPage() {
             </div>
             );
           })()}
+          </div>
+
+          <button onClick={refresh} title="Refresh" style={{
+            width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '9px', cursor: 'pointer',
+            transition: 'border-color 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--t3)'}
+          onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--br)'}
+          >
+            <RefreshCw size={14} color="var(--t2)" style={loading ? { animation: 'wdSpin 0.8s linear infinite' } : undefined} />
+          </button>
+
+          <ThemeToggle />
         </div>
       </div>
 
@@ -569,5 +590,23 @@ export default function CampaignsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+/* ─── Theme toggle (role-aware, dikelola AuthContext) ─── */
+function ThemeToggle() {
+  const { theme, toggleTheme } = useAuth();
+  const dark = theme !== 'light';
+  return (
+    <button onClick={toggleTheme} title={dark ? 'Switch to light' : 'Switch to dark'} style={{
+      width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '9px', cursor: 'pointer',
+      transition: 'border-color 0.15s',
+    }}
+    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--t3)'}
+    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--br)'}
+    >
+      {dark ? <Moon size={14} color="var(--t2)"/> : <Sun size={14} color="#f59e0b"/>}
+    </button>
   );
 }
