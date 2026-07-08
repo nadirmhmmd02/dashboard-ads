@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import {
-  Calendar, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Moon, Sun,
+  Calendar, ChevronDown, ChevronLeft, ChevronRight, RefreshCw,
   DollarSign, Users, Eye, LayoutGrid, User,
   ScanLine, MousePointerClick, UserPlus, Target,
   MessageSquare, Trash2,
@@ -12,6 +12,7 @@ import AreaChart from './components/AreaChart';
 import ExportMenu from './components/ExportMenu';
 import { useAuth } from './components/AuthContext';
 import { useDashboardFilter, DATE_PRESETS_DASHBOARD } from './components/DateFilterContext';
+import ThemeToggle from './components/ThemeToggle';
 import { supabase } from './supabase';
 
 /* ─── Design tokens: netral = CSS var (ikut tema), aksen = literal (sama di 2 tema) ─── */
@@ -945,20 +946,3 @@ export default function DashboardPage() {
   );
 }
 
-/* ─── Theme toggle (role-aware, dikelola AuthContext) ─── */
-function ThemeToggle() {
-  const { theme, toggleTheme } = useAuth();
-  const dark = theme !== 'light';
-  return (
-    <button onClick={toggleTheme} title={dark ? 'Switch to light' : 'Switch to dark'} style={{
-      width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center',
-      background: CARD, border:`1px solid ${BORDER}`, borderRadius:'10px', cursor:'pointer',
-      transition:'border-color 0.15s',
-    }}
-    onMouseEnter={e => e.currentTarget.style.borderColor='var(--br-strong)'}
-    onMouseLeave={e => e.currentTarget.style.borderColor=BORDER}
-    >
-      {dark ? <Moon size={15} color={SUB}/> : <Sun size={15} color={ORANGE}/>}
-    </button>
-  );
-}

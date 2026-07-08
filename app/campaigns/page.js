@@ -1,8 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Calendar, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Moon, Sun } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { useCampaignsFilter, DATE_PRESETS_CAMPAIGNS } from '../components/DateFilterContext';
-import { useAuth } from '../components/AuthContext';
+import ThemeToggle from '../components/ThemeToggle';
+
 
 /* ─── Calendar UI helpers (murni tampilan — tidak menyentuh logika filter) ─── */
 const CAL_DOW = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -533,7 +534,7 @@ export default function CampaignsPage() {
             <RefreshCw size={14} color="var(--t2)" style={loading ? { animation: 'wdSpin 0.8s linear infinite' } : undefined} />
           </button>
 
-          <ThemeToggle />
+          <ThemeToggle size={36} iconSize={14} />
         </div>
       </div>
 
@@ -593,20 +594,3 @@ export default function CampaignsPage() {
   );
 }
 
-/* ─── Theme toggle (role-aware, dikelola AuthContext) ─── */
-function ThemeToggle() {
-  const { theme, toggleTheme } = useAuth();
-  const dark = theme !== 'light';
-  return (
-    <button onClick={toggleTheme} title={dark ? 'Switch to light' : 'Switch to dark'} style={{
-      width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '9px', cursor: 'pointer',
-      transition: 'border-color 0.15s',
-    }}
-    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--t3)'}
-    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--br)'}
-    >
-      {dark ? <Moon size={14} color="var(--t2)"/> : <Sun size={14} color="#f59e0b"/>}
-    </button>
-  );
-}
