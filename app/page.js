@@ -451,6 +451,11 @@ export default function DashboardPage() {
     if (!error) setSuggestions(prev => prev.filter(s => s.id !== id));
   }
 
+  async function handleClearAllSuggestions() {
+    const { error } = await supabase.from('suggestions').delete().neq('id', 0);
+    if (!error) setSuggestions([]);
+  }
+
   function applyCustomRange() {
     if (!customSince || !customUntil) return;
     applyCustom(customSince, customUntil);
@@ -744,6 +749,16 @@ export default function DashboardPage() {
                     <MessageSquare size={16} color={SUB}/>
                     <span style={{ fontSize:'13px', fontWeight:600, color:TXT }}>User Suggestions</span>
                     <span style={{ fontSize:'11px', color:MUTE, marginLeft:'auto' }}>{suggestions.length} total</span>
+                    {suggestions.length > 0 && (
+                      <button onClick={handleClearAllSuggestions} title="Clear all" style={{
+                        background:'none', border:'none', cursor:'pointer', color:'#EF4444',
+                        fontSize:'11px', fontWeight:500, padding:'2px 6px', borderRadius:'6px',
+                        transition:'background 0.15s', marginLeft:'8px',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background='rgba(239,68,68,0.1)'}
+                      onMouseLeave={e => e.currentTarget.style.background='none'}
+                      >Clear all</button>
+                    )}
                   </div>
                   <div style={{ overflowY:'auto', flex:1, padding:'12px' }}>
                     {suggestions.length === 0 ? (
