@@ -452,7 +452,8 @@ export default function DashboardPage() {
   }
 
   async function handleClearAllSuggestions() {
-    const { error } = await supabase.from('suggestions').delete().neq('id', 0);
+    // id bertipe UUID — filter harus valid untuk uuid, bukan angka
+    const { error } = await supabase.from('suggestions').delete().not('id', 'is', null);
     if (!error) setSuggestions([]);
   }
 
