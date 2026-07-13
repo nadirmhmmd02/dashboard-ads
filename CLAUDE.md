@@ -43,11 +43,11 @@ Kredensial asli ada di `.env.local` user. JANGAN reproduksi dari ingatan — min
 ```
 app/
   layout.js              → AuthProvider + DateFilterProvider + AppShell + no-flash theme script. <html data-theme> di-set dari role+preferensi.
-  page.js                → DASHBOARD (DATA REAL Meta). Semua logika kalkulasi metrik ada di sini.
+  page.js                → DASHBOARD (DATA REAL Meta). Semua logika kalkulasi metrik ada di sini. + Platform selector (Meta default; platform lain tampil placeholder).
   login/page.js          → Halaman login (tema amber/light, kartu putih).
   campaigns/page.js      → Tabel kampanye Meta (read-only). Filter kalender dual-month. Kolom: …CPL + Total Spend.
   calendar/page.js       → CRUD jadwal iklan via Supabase (tabel `campaigns`). RBAC: create/edit/delete admin-only.
-  reports/               → BELUM DIBUAT → nav "Reports" masih 404. (Next step.)
+  reports/page.js        → Placeholder "under development" (header konsisten dashboard + PlatformPlaceholder, theme-aware). Fitur asli belum dibuat.
   components/
     AuthContext.js       → SOURCE OF TRUTH: auth + role + theme (light/dark). localStorage/sessionStorage.
     AppShell.js          → route guard (redirect ke /login kalau belum login; sidebar + main). User suggestion floating button + popup.
@@ -59,6 +59,9 @@ app/
     ThemeToggle.js       → shared theme toggle button dengan animasi fade transition. Dipakai dashboard + campaigns.
     DateFilterContext.js → shared filter state (terpisah per halaman: dashboard & campaigns). Persist saat pindah tab, reset saat browser refresh.
     CampaignModal.js     → popup detail campaign (klik row di Campaigns): konten iklan IG embed di kiri (auto feed 1:1 / portrait 9:16, strip thumbnail kalau >1), metrik + platform breakdown di kanan (hero Result+Total Spend, count-up, hover lift, chip brand FB/IG).
+    PlatformSelector.js  → dropdown platform iklan di toolbar dashboard (registry PLATFORMS: Meta/Google/TikTok/All — nambah platform cukup tambah entri). Brand icon inline SVG. Pill aktif pakai --cal-accent (theme-aware).
+    PlatformPlaceholder.js → empty state premium "under development" (chip Coming Soon + judul + deskripsi, props title/description bisa di-override). Dipakai dashboard (platform non-Meta) + halaman Reports.
+    typography.js        → TYPE: design system token teks (h1-h4, body*, small, caption, overline, table*, metric*, cardTitle, sectionTitle). Dashboard & Reports pakai ini — ubah hierarki teks global dari sini.
     CombineModal.js      → popup hitung gabungan campaign terpilih (checkbox di tabel Campaigns → floating bar "Calculate Total"). Agregasi ikut aturan metrik final: Traffic hanya dari campaign TRAFFIC, Leads hanya CONVERSION, CPC/CPL per tipe, CPM semua.
     SuggestionsModal.js  → LAMA, tidak dipakai lagi (logika sudah pindah ke AppShell + page.js).
     BarChart.js, Navbar.js → LAMA, tidak dipakai lagi (boleh dihapus kapan2).
@@ -144,12 +147,16 @@ Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cance
 - ✅ Campaign detail popup (`CampaignModal.js`): klik row campaign → konten iklan (embed post/reels Instagram asli) + metrik lengkap format penuh + "Running On" platform breakdown dengan share bar. CountUp punya fallback settle (anti macet "0" saat tab hidden).
 - ✅ Hitung gabungan campaign (`CombineModal.js`): checkbox per row → floating bar bawah (count + total spend live + Calculate Total) → popup Combined Performance (hero total spend, delivery, cost efficiency, included campaigns + share bar).
 - ✅ Kolom Campaign resizable: handle drag di batas kolom Campaign|Status (150–620px), nama panjang terpotong ellipsis + tooltip. Sidebar default collapsed saat web pertama dibuka.
+- ✅ Platform selector di toolbar dashboard (Meta Ads default; Google/TikTok/All Platforms tampil placeholder "under development"). Registry di `PlatformSelector.js`.
+- ✅ Typography system (`typography.js`) diterapkan ke Dashboard + Reports — ukuran visual tidak berubah, cuma distandarkan lewat token.
+- ✅ Halaman Reports placeholder "under development" (fix 404 + theme-aware).
 
 ## BELUM / PENDING (JANGAN dikerjakan tanpa diminta)
 
-- [ ] `app/reports/page.js` belum dibuat → nav Reports 404.
+- [ ] Fitur Reports asli (halamannya sudah ada tapi masih placeholder).
+- [ ] Integrasi Google Ads / TikTok Ads / All Platforms (selector sudah ada, masih placeholder).
 - [ ] Supabase RLS: tabel `public.campaigns` & `public.suggestions` RLS mati. Sengaja dibiarkan dulu. Lihat memory [[supabase-rls-deferred]].
-- [ ] Fitur Compare (tombol disabled), notifikasi lonceng, Export CSV/Excel Calendar, Google Ads integration — placeholder.
+- [ ] Fitur Compare (tombol disabled), notifikasi lonceng, Export CSV/Excel Calendar — placeholder.
 - [ ] Verifikasi akurasi angka vs Meta Ads Manager.
 - [ ] Upgrade auth ke Supabase Auth (kalau perlu production-secure).
 - [ ] Hapus file lama tidak terpakai: `SuggestionsModal.js`, `BarChart.js`, `Navbar.js`.
