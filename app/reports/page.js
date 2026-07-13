@@ -1,7 +1,6 @@
 'use client';
 
 import { FileChartColumn } from 'lucide-react';
-import ThemeToggle from '../components/ThemeToggle';
 import PlatformPlaceholder from '../components/PlatformPlaceholder';
 import { TYPE } from '../components/typography';
 
@@ -25,10 +24,6 @@ export default function ReportsPage() {
         <div>
           <h1 style={{ ...TYPE.h1 }}>Reports</h1>
           <p style={{ ...TYPE.small, marginTop:'3px' }}>Reports · Under development</p>
-        </div>
-
-        <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-          <ThemeToggle/>
         </div>
       </header>
 
