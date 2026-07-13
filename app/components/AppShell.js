@@ -4,11 +4,14 @@ import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { MessageSquare, Send, CheckCircle2 } from 'lucide-react';
 import Sidebar from './Sidebar';
+import MobileNav from './MobileNav';
+import useIsMobile from './useIsMobile';
 import { useAuth } from './AuthContext';
 import { supabase } from '../supabase';
 
 export default function AppShell({ children }) {
   const { user, role, ready } = useAuth();
+  const isMobile = useIsMobile();
   const [showSuggest, setShowSuggest] = useState(false);
   const [text, setText] = useState('');
   const [success, setSuccess] = useState(false);
@@ -65,20 +68,28 @@ export default function AppShell({ children }) {
   if (!ready || !user) return null;
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', position: 'relative' }}>
-      <Sidebar />
-      <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: isMobile ? 'column' : 'row',
+      height: '100vh', width: '100%', overflow: 'hidden', position: 'relative',
+    }}>
+      {isMobile ? <MobileNav /> : <Sidebar />}
+      <main style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {children}
       </main>
 
       {/* User: Floating suggest button + popup */}
       {role === 'user' && (
-        <div ref={popupRef} style={{ position: 'absolute', bottom: '24px', right: '24px', zIndex: 50 }}>
+        <div ref={popupRef} style={{
+          position: 'absolute', zIndex: 50,
+          bottom: isMobile ? '16px' : '24px',
+          right:  isMobile ? '16px' : '24px',
+        }}>
 
           {showSuggest && (
             <div style={{
               position: 'absolute', bottom: '58px', right: 0,
-              width: '360px',
+              width: isMobile ? 'min(360px, calc(100vw - 32px))' : '360px',
               background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '14px',
               boxShadow: 'var(--pop-shadow)', overflow: 'hidden',
               display: 'flex', flexDirection: 'column',

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Calendar, ChevronDown, ChevronLeft, ChevronRight, RefreshCw,
   DollarSign, Users, Eye, LayoutGrid, User,
@@ -15,6 +16,7 @@ import { useDashboardFilter, DATE_PRESETS_DASHBOARD } from './components/DateFil
 import ThemeToggle from './components/ThemeToggle';
 import PlatformSelector, { DEFAULT_PLATFORM } from './components/PlatformSelector';
 import PlatformPlaceholder from './components/PlatformPlaceholder';
+import useIsMobile from './components/useIsMobile';
 import { TYPE } from './components/typography';
 import { supabase } from './supabase';
 
@@ -271,6 +273,7 @@ function KpiCard({ label, display, value, icon: Icon, color, pct, spark, delay }
 /* ─── Main ─── */
 export default function DashboardPage() {
   const { isAdmin } = useAuth();
+  const isMobile = useIsMobile();
   const { dateOpt, customSince, setCustomSince, customUntil, setCustomUntil, isCustom, selectPreset, applyCustom } = useDashboardFilter();
   const [hoverSeg, setHoverSeg]         = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -289,6 +292,15 @@ export default function DashboardPage() {
   const [hasUnread, setHasUnread]       = useState(false);
   const [platform, setPlatform]         = useState(DEFAULT_PLATFORM);
   const suggestRef = useRef(null);
+
+  // Slot aksi di top bar mobile (MobileNav) — diisi via portal.
+  // Kiri theme toggle: export + refresh · kanan theme toggle: suggestions (admin)
+  const [topbarSlot, setTopbarSlot]           = useState(null);
+  const [topbarSlotRight, setTopbarSlotRight] = useState(null);
+  useEffect(() => {
+    setTopbarSlot(isMobile ? document.getElementById('wd-topbar-actions') : null);
+    setTopbarSlotRight(isMobile ? document.getElementById('wd-topbar-actions-right') : null);
+  }, [isMobile]);
 
   // Bulan kiri kalender (UI only). Default: bulan lalu, jadi tampil "bulan lalu + bulan ini".
   const _initCal = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
@@ -555,17 +567,135 @@ export default function DashboardPage() {
     ? donutTotal
     : { value: donutSegs[hoverSeg]?.value || '—', label: donutSegs[hoverSeg]?.label || '' };
 
+  // ── Refresh + Suggestions: di header (desktop) ATAU top bar via portal (mobile).
+  //    Ukuran 36px di mobile biar serasi dengan ThemeToggle top bar. ──
+  const ctrlSize   = isMobile ? '36px' : '40px';
+  const ctrlRadius = isMobile ? '9px'  : '10px';
+
+  const refreshButton = (
+    <button onClick={refresh} title="Refresh" style={{
+      width:ctrlSize, height:ctrlSize, display:'flex', alignItems:'center', justifyContent:'center',
+      background: CARD, border:`1px solid ${BORDER}`, borderRadius:ctrlRadius, cursor:'pointer',
+      flexShrink:0, transition:'border-color 0.15s',
+    }}
+    onMouseEnter={e => e.currentTarget.style.borderColor='var(--br-strong)'}
+    onMouseLeave={e => e.currentTarget.style.borderColor=BORDER}
+    >
+      <RefreshCw size={15} color={SUB} style={loading ? { animation:'wdSpin 0.8s linear infinite' } : undefined}/>
+    </button>
+  );
+
+  const suggestionsBlock = isAdmin ? (
+    <div ref={suggestRef} style={{ position:'relative' }}>
+      <button
+        onClick={() => setShowSuggest(prev => !prev)}
+        title="Suggestions"
+        style={{
+          width:ctrlSize, height:ctrlSize, display:'flex', alignItems:'center', justifyContent:'center',
+          background: CARD, border:`1px solid ${showSuggest ? 'var(--cal-accent-line)' : BORDER}`,
+          borderRadius:ctrlRadius, cursor:'pointer', position:'relative',
+          flexShrink:0, transition:'border-color 0.15s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.borderColor='var(--br-strong)'}
+        onMouseLeave={e => { if (!showSuggest) e.currentTarget.style.borderColor=BORDER; }}
+      >
+        <MessageSquare size={15} color="var(--cal-accent-line)"/>
+        {hasUnread && (
+          <span style={{
+            position:'absolute', top:'6px', right:'6px',
+            width:'8px', height:'8px', borderRadius:'50%',
+            background:'#EF4444', border:`2px solid ${CARD}`,
+            animation:'wdPulseDot 1.5s ease-in-out infinite',
+          }}/>
+        )}
+      </button>
+
+      {showSuggest && (
+        <div style={ isMobile ? {
+          position:'fixed', top:'64px', left:'16px', right:'16px', zIndex:60,
+          maxHeight:'60vh',
+          background:'var(--cd)', border:`1px solid ${BORDER}`, borderRadius:'14px',
+          boxShadow:'var(--pop-shadow)', overflow:'hidden',
+          animation:'wdScaleIn 0.15s cubic-bezier(0.4,0,0.2,1)',
+          display:'flex', flexDirection:'column',
+        } : {
+          position:'absolute', top:'48px', right:0, zIndex:50,
+          width:'380px', maxHeight:'440px',
+          background:'var(--cd)', border:`1px solid ${BORDER}`, borderRadius:'14px',
+          boxShadow:'var(--pop-shadow)', overflow:'hidden',
+          animation:'wdScaleIn 0.15s cubic-bezier(0.4,0,0.2,1)',
+          display:'flex', flexDirection:'column',
+        }}>
+          <div style={{
+            padding:'14px 16px', borderBottom:`1px solid ${BORDER}`, background:'var(--sf)',
+            display:'flex', alignItems:'center', gap:'8px',
+          }}>
+            <MessageSquare size={16} color={SUB}/>
+            <span style={{ ...TYPE.sectionTitle }}>User Suggestions</span>
+            <span style={{ ...TYPE.caption, marginLeft:'auto' }}>{suggestions.length} total</span>
+            {suggestions.length > 0 && (
+              <button onClick={handleClearAllSuggestions} title="Clear all" style={{
+                background:'none', border:'none', cursor:'pointer', color:'#EF4444',
+                fontSize:'11px', fontWeight:500, padding:'2px 6px', borderRadius:'6px',
+                transition:'background 0.15s', marginLeft:'8px',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background='rgba(239,68,68,0.1)'}
+              onMouseLeave={e => e.currentTarget.style.background='none'}
+              >Clear all</button>
+            )}
+          </div>
+          <div style={{ overflowY:'auto', flex:1, padding:'12px' }}>
+            {suggestions.length === 0 ? (
+              <div style={{ ...TYPE.body, textAlign:'center', color:MUTE, padding:'24px 0' }}>No suggestions yet.</div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+                {suggestions.map(s => (
+                  <div key={s.id} style={{
+                    padding:'12px', borderRadius:'10px',
+                    border:`1px solid ${BORDER}`, background:'var(--data-bg)',
+                    animation:'wdFadeUp 0.2s cubic-bezier(0.4,0,0.2,1)',
+                  }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px' }}>
+                      <span style={{ fontSize:'11px', fontWeight:600, color:SUB, textTransform:'capitalize' }}>{s.author}</span>
+                      <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                        <span style={{ fontSize:'10px', color:MUTE }}>
+                          {new Date(s.created_at).toLocaleDateString('en-GB',{ day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
+                        </span>
+                        <button onClick={() => handleDeleteSuggestion(s.id)} title="Delete" style={{
+                          background:'none', border:'none', cursor:'pointer', color:'#EF4444',
+                          display:'flex', alignItems:'center', opacity:0.6, transition:'opacity 0.15s', padding:0,
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.opacity=1}
+                        onMouseLeave={e => e.currentTarget.style.opacity=0.6}
+                        ><Trash2 size={13}/></button>
+                      </div>
+                    </div>
+                    <div style={{ ...TYPE.small, color:TXT, whiteSpace:'pre-wrap' }}>{s.text}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  ) : null;
+
   return (
     <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', background: BG }}>
 
-      {/* ══ HEADER (72px) ══ */}
-      <header style={{
+      {/* ══ HEADER (72px desktop · 2 baris mobile) ══ */}
+      <header style={ isMobile ? {
+        display:'flex', flexDirection:'column', alignItems:'stretch', gap:'12px',
+        padding:'14px 16px', flexShrink:0,
+        borderBottom:`1px solid ${BORDER}`,
+      } : {
         display:'flex', alignItems:'center', justifyContent:'space-between',
         padding:'0 24px', height:'72px', flexShrink:0,
         borderBottom:`1px solid ${BORDER}`,
       }}>
         <div>
-          <h1 style={{ ...TYPE.h1 }}>Dashboard</h1>
+          <h1 style={{ ...TYPE.h1, ...(isMobile ? { fontSize:'20px' } : null) }}>Dashboard</h1>
           <p style={{ ...TYPE.small, marginTop:'3px' }}>
             {platform.available
               ? (loading ? 'Loading…' : `${platform.label} Performance Overview · ${activeCampaignCount} active`)
@@ -573,7 +703,13 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+        <div style={{
+          display:'flex', alignItems:'center',
+          gap:isMobile ? '8px' : '10px',
+          flexWrap: isMobile ? 'wrap' : 'nowrap',
+          // Mobile: chip platform + date filter rata kanan (semua role)
+          justifyContent: isMobile ? 'flex-end' : 'flex-start',
+        }}>
           {/* Platform selector */}
           <PlatformSelector selected={platform} onSelect={setPlatform} />
 
@@ -592,7 +728,7 @@ export default function DashboardPage() {
               <ChevronDown size={13} color={SUB}/>
             </button>
 
-            {showDropdown && (() => {
+            {showDropdown && !isMobile && (() => {
               const rd = new Date(calY, calM + 1, 1);       // bulan kanan = bulan kiri + 1
               const rY = rd.getFullYear(), rM = rd.getMonth();
               const navBtn = {
@@ -692,9 +828,88 @@ export default function DashboardPage() {
               </div>
               );
             })()}
+
+            {/* ── Mobile: date filter bottom sheet ── */}
+            {showDropdown && isMobile && (() => {
+              const rangeReady = customSince && customUntil;
+              const navBtn = {
+                width:'34px', height:'34px', display:'flex', alignItems:'center', justifyContent:'center',
+                border:`1px solid ${BORDER}`, borderRadius:'9px', background:'transparent',
+                cursor:'pointer', flexShrink:0,
+              };
+              return (
+              <>
+                <div style={{
+                  position:'fixed', inset:0, zIndex:95, background:'rgba(0,0,0,0.45)',
+                  animation:'wdFadeIn 0.2s ease',
+                }}/>
+                <div data-filter style={{
+                  position:'fixed', left:0, right:0, bottom:0, zIndex:96,
+                  background:CARD, borderTop:`1px solid ${BORDER}`,
+                  borderRadius:'18px 18px 0 0', boxShadow:'var(--pop-shadow)',
+                  maxHeight:'88vh', overflowY:'auto',
+                  padding:'6px 16px calc(16px + env(safe-area-inset-bottom, 0px))',
+                  animation:'wdSheetUp 0.28s cubic-bezier(0.4,0,0.2,1)',
+                }}>
+                  {/* grab handle */}
+                  <div style={{ width:'36px', height:'4px', borderRadius:'2px', background:'var(--br-strong)', margin:'8px auto 14px' }}/>
+
+                  {/* presets — chips */}
+                  <div style={{ ...TYPE.overline, padding:'0 2px 8px' }}>Quick Select</div>
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:'8px', marginBottom:'16px' }}>
+                    {DATE_PRESETS_DASHBOARD.map(opt => {
+                      const active = !isCustom && opt.value === dateOpt.value;
+                      return (
+                        <button key={opt.value} onClick={() => handleSelectPreset(opt)} style={{
+                          padding:'8px 13px', borderRadius:'999px', fontSize:'12.5px', fontFamily:'inherit',
+                          fontWeight: active ? 600 : 400, cursor:'pointer',
+                          border:`1px solid ${active ? 'var(--cal-accent-line)' : BORDER}`,
+                          background: active ? 'var(--cal-accent-soft)' : 'transparent',
+                          color: active ? 'var(--cal-accent-line)' : SUB,
+                          transition:'background 0.15s, color 0.15s, border-color 0.15s',
+                        }}>{opt.label}</button>
+                      );
+                    })}
+                  </div>
+
+                  {/* kalender satu bulan */}
+                  <div style={{ ...TYPE.overline, padding:'0 2px 8px' }}>Custom Range</div>
+                  <div style={{ display:'flex', alignItems:'center', marginBottom:'10px' }}>
+                    <button onClick={() => shiftCal(-1)} style={navBtn}><ChevronLeft size={17} color={SUB}/></button>
+                    <div style={{ flex:1, textAlign:'center', fontSize:'14px', fontWeight:600, color:TXT }}>
+                      {CAL_MON[calM]} <span style={{ color:SUB, fontWeight:400 }}>{calY}</span>
+                    </div>
+                    <button onClick={() => shiftCal(1)} style={navBtn}><ChevronRight size={17} color={SUB}/></button>
+                  </div>
+                  <div style={{ display:'flex', justifyContent:'center' }}>
+                    {renderMonth(calY, calM)}
+                  </div>
+
+                  {/* footer */}
+                  <div style={{ display:'flex', flexDirection:'column', gap:'10px', marginTop:'14px', paddingTop:'12px', borderTop:`1px solid ${BORDER}` }}>
+                    <div style={{ fontSize:'13px', fontWeight:600, textAlign:'center', color: customSince ? TXT : MUTE }}>
+                      {customSince ? `${fmtNice(customSince)}${customUntil ? '  –  ' + fmtNice(customUntil) : ''}` : 'Select a date range'}
+                    </div>
+                    <div style={{ display:'flex', gap:'8px' }}>
+                      <button onClick={() => setShowDropdown(false)} style={{
+                        flex:1, padding:'11px 0', fontSize:'13px', fontWeight:500, borderRadius:'10px', fontFamily:'inherit',
+                        border:`1px solid ${BORDER}`, background:'transparent', color:TXT, cursor:'pointer',
+                      }}>Cancel</button>
+                      <button onClick={applyCustomRange} disabled={!rangeReady} style={{
+                        flex:1, padding:'11px 0', fontSize:'13px', fontWeight:600, borderRadius:'10px', border:'none', fontFamily:'inherit',
+                        background: rangeReady ? 'var(--cal-accent)' : 'var(--hover)',
+                        color:      rangeReady ? 'var(--cal-accent-fg)' : SUB,
+                        cursor:     rangeReady ? 'pointer' : 'default',
+                      }}>Apply</button>
+                    </div>
+                  </div>
+                </div>
+              </>
+              );
+            })()}
           </div>
 
-          {isAdmin && (
+          {!isMobile && isAdmin && (
             <ExportMenu
               summary={summary}
               chartData={chartData}
@@ -703,111 +918,39 @@ export default function DashboardPage() {
             />
           )}
 
-          <button onClick={refresh} title="Refresh" style={{
-            width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center',
-            background: CARD, border:`1px solid ${BORDER}`, borderRadius:'10px', cursor:'pointer',
-          }}
-          onMouseEnter={e => e.currentTarget.style.borderColor='var(--br-strong)'}
-          onMouseLeave={e => e.currentTarget.style.borderColor=BORDER}
-          >
-            <RefreshCw size={15} color={SUB} style={loading ? { animation:'wdSpin 0.8s linear infinite' } : undefined}/>
-          </button>
+          {!isMobile && refreshButton}
+          {!isMobile && <ThemeToggle/>}
+          {!isMobile && suggestionsBlock}
 
-          <ThemeToggle/>
-
-          {isAdmin && (
-            <div ref={suggestRef} style={{ position:'relative' }}>
-              <button
-                onClick={() => setShowSuggest(prev => !prev)}
-                title="Suggestions"
-                style={{
-                  width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center',
-                  background: CARD, border:`1px solid ${showSuggest ? 'var(--cal-accent-line)' : BORDER}`,
-                  borderRadius:'10px', cursor:'pointer', position:'relative',
-                  transition:'border-color 0.15s',
-                }}
-                onMouseEnter={e => e.currentTarget.style.borderColor='var(--br-strong)'}
-                onMouseLeave={e => { if (!showSuggest) e.currentTarget.style.borderColor=BORDER; }}
-              >
-                <MessageSquare size={15} color="var(--cal-accent-line)"/>
-                {hasUnread && (
-                  <span style={{
-                    position:'absolute', top:'6px', right:'6px',
-                    width:'8px', height:'8px', borderRadius:'50%',
-                    background:'#EF4444', border:`2px solid ${CARD}`,
-                    animation:'wdPulseDot 1.5s ease-in-out infinite',
-                  }}/>
-                )}
-              </button>
-
-              {showSuggest && (
-                <div style={{
-                  position:'absolute', top:'48px', right:0, zIndex:50,
-                  width:'380px', maxHeight:'440px',
-                  background:'var(--cd)', border:`1px solid ${BORDER}`, borderRadius:'14px',
-                  boxShadow:'var(--pop-shadow)', overflow:'hidden',
-                  animation:'wdScaleIn 0.15s cubic-bezier(0.4,0,0.2,1)',
-                  display:'flex', flexDirection:'column',
-                }}>
-                  <div style={{
-                    padding:'14px 16px', borderBottom:`1px solid ${BORDER}`, background:'var(--sf)',
-                    display:'flex', alignItems:'center', gap:'8px',
-                  }}>
-                    <MessageSquare size={16} color={SUB}/>
-                    <span style={{ ...TYPE.sectionTitle }}>User Suggestions</span>
-                    <span style={{ ...TYPE.caption, marginLeft:'auto' }}>{suggestions.length} total</span>
-                    {suggestions.length > 0 && (
-                      <button onClick={handleClearAllSuggestions} title="Clear all" style={{
-                        background:'none', border:'none', cursor:'pointer', color:'#EF4444',
-                        fontSize:'11px', fontWeight:500, padding:'2px 6px', borderRadius:'6px',
-                        transition:'background 0.15s', marginLeft:'8px',
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background='rgba(239,68,68,0.1)'}
-                      onMouseLeave={e => e.currentTarget.style.background='none'}
-                      >Clear all</button>
-                    )}
-                  </div>
-                  <div style={{ overflowY:'auto', flex:1, padding:'12px' }}>
-                    {suggestions.length === 0 ? (
-                      <div style={{ ...TYPE.body, textAlign:'center', color:MUTE, padding:'24px 0' }}>No suggestions yet.</div>
-                    ) : (
-                      <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
-                        {suggestions.map(s => (
-                          <div key={s.id} style={{
-                            padding:'12px', borderRadius:'10px',
-                            border:`1px solid ${BORDER}`, background:'var(--data-bg)',
-                            animation:'wdFadeUp 0.2s cubic-bezier(0.4,0,0.2,1)',
-                          }}>
-                            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px' }}>
-                              <span style={{ fontSize:'11px', fontWeight:600, color:SUB, textTransform:'capitalize' }}>{s.author}</span>
-                              <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                                <span style={{ fontSize:'10px', color:MUTE }}>
-                                  {new Date(s.created_at).toLocaleDateString('en-GB',{ day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
-                                </span>
-                                <button onClick={() => handleDeleteSuggestion(s.id)} title="Delete" style={{
-                                  background:'none', border:'none', cursor:'pointer', color:'#EF4444',
-                                  display:'flex', alignItems:'center', opacity:0.6, transition:'opacity 0.15s', padding:0,
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.opacity=1}
-                                onMouseLeave={e => e.currentTarget.style.opacity=0.6}
-                                ><Trash2 size={13}/></button>
-                              </div>
-                            </div>
-                            <div style={{ ...TYPE.small, color:TXT, whiteSpace:'pre-wrap' }}>{s.text}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+          {/* Mobile: aksi pindah ke top bar. Urutan dari kanan:
+              Suggestions → Theme toggle → Refresh → Export */}
+          {isMobile && topbarSlot && createPortal(
+            <>
+              {isAdmin && (
+                <ExportMenu
+                  summary={summary}
+                  chartData={chartData}
+                  rangeLabel={filterLabel()}
+                  activeCount={activeCampaignCount}
+                  compact
+                />
               )}
-            </div>
+              {refreshButton}
+            </>,
+            topbarSlot
           )}
+          {isMobile && topbarSlotRight && suggestionsBlock && createPortal(suggestionsBlock, topbarSlotRight)}
         </div>
       </header>
 
       {/* ══ CONTENT ══ */}
-      <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', padding:'24px', gap:'20px', overflow:'hidden' }}>
+      <div style={{
+        flex:1, minHeight:0, display:'flex', flexDirection:'column',
+        padding: isMobile ? '16px' : '24px',
+        gap:     isMobile ? '16px' : '20px',
+        overflowY: isMobile ? 'auto' : 'hidden',
+        overflowX: 'hidden',
+      }}>
 
         {!platform.available && <PlatformPlaceholder platform={platform} />}
 
@@ -823,29 +966,52 @@ export default function DashboardPage() {
 
         {platform.available && !loading && !error && summary && (<>
 
-          {/* ══ ROW 1: KPI — 5 equal cards ══ */}
-          <div style={{ flex:'1 1 0', minHeight:'150px', maxHeight:'190px', display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:'16px' }}>
-            <KpiCard label="Total Spend"  icon={DollarSign} color={GREEN}
-              value={Math.round(summary.totalSpend)} display={fmtSpendFull(summary.totalSpend)}
-              pct={summary.pctSpend} spark={chartData.spend} delay={0}/>
-            <KpiCard label="Reach"        icon={Users} color={BLUE}
-              value={Math.round(summary.totalReach)} display={fmtNumFull(summary.totalReach)}
-              pct={summary.pctReach} spark={chartData.awareness} delay={60}/>
-            <KpiCard label="Impressions"  icon={Eye} color={PURPLE}
-              value={Math.round(summary.totalImpressions)} display={fmtNumFull(summary.totalImpressions)}
-              pct={summary.pctImpressions} spark={chartData.awareness} delay={110}/>
-            <KpiCard label="Traffic"      icon={LayoutGrid} color={ORANGE}
-              value={summary.totalTraffic} display={fmtNumFull(summary.totalTraffic)}
-              pct={summary.pctTraffic} spark={chartData.traffic} delay={160}/>
-            <KpiCard label="Leads"        icon={User} color={GREEN}
-              value={summary.totalLeads} display={fmtNumFull(summary.totalLeads)}
-              pct={summary.pctLeads} spark={chartData.leads} delay={210}/>
-          </div>
+          {/* ══ ROW 1: KPI — 5 equal cards (desktop) · swipe carousel (mobile) ══ */}
+          {(() => {
+            const kpis = [
+              { label:'Total Spend', icon:DollarSign, color:GREEN,
+                value:Math.round(summary.totalSpend), display:fmtSpendFull(summary.totalSpend),
+                pct:summary.pctSpend, spark:chartData.spend },
+              { label:'Reach', icon:Users, color:BLUE,
+                value:Math.round(summary.totalReach), display:fmtNumFull(summary.totalReach),
+                pct:summary.pctReach, spark:chartData.awareness },
+              { label:'Impressions', icon:Eye, color:PURPLE,
+                value:Math.round(summary.totalImpressions), display:fmtNumFull(summary.totalImpressions),
+                pct:summary.pctImpressions, spark:chartData.awareness },
+              { label:'Traffic', icon:LayoutGrid, color:ORANGE,
+                value:summary.totalTraffic, display:fmtNumFull(summary.totalTraffic),
+                pct:summary.pctTraffic, spark:chartData.traffic },
+              { label:'Leads', icon:User, color:GREEN,
+                value:summary.totalLeads, display:fmtNumFull(summary.totalLeads),
+                pct:summary.pctLeads, spark:chartData.leads },
+            ];
+            if (isMobile) return (
+              // Carousel swipe: scroll-snap native (smooth di semua browser, tanpa library)
+              <div className="wd-hscroll" style={{
+                display:'flex', gap:'12px', overflowX:'auto', flexShrink:0,
+                scrollSnapType:'x mandatory',
+                margin:'0 -16px', padding:'0 16px',
+              }}>
+                {kpis.map((k, i) => (
+                  <div key={k.label} style={{ minWidth:'76%', flexShrink:0, scrollSnapAlign:'center', display:'grid' }}>
+                    <KpiCard {...k} delay={i * 55}/>
+                  </div>
+                ))}
+              </div>
+            );
+            return (
+              <div style={{ flex:'1 1 0', minHeight:'150px', maxHeight:'190px', display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:'16px' }}>
+                {kpis.map((k, i) => <KpiCard key={k.label} {...k} delay={i * 55}/>)}
+              </div>
+            );
+          })()}
 
-          {/* ══ ROW 2: SECONDARY METRICS ══ */}
+          {/* ══ ROW 2: SECONDARY METRICS — 4 kolom (desktop) · 2x2 (mobile) ══ */}
           <div style={{
-            ...CARD_BASE, flex:'1 1 0', minHeight:'74px', maxHeight:'92px',
-            display:'grid', gridTemplateColumns:'repeat(4, 1fr)', overflow:'hidden',
+            ...CARD_BASE, overflow:'hidden',
+            display:'grid',
+            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+            ...(isMobile ? { flexShrink:0 } : { flex:'1 1 0', minHeight:'74px', maxHeight:'92px' }),
             animation:'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 260ms backwards',
           }}>
             {[
@@ -858,7 +1024,9 @@ export default function DashboardPage() {
               return (
                 <div key={m.label} style={{
                   display:'flex', alignItems:'center', justifyContent:'space-between',
-                  padding:'0 22px', borderRight: i < 3 ? `1px solid ${BORDER}` : 'none',
+                  padding: isMobile ? '14px 16px' : '0 22px',
+                  borderRight: (isMobile ? i % 2 === 0 : i < 3) ? `1px solid ${BORDER}` : 'none',
+                  borderBottom: isMobile && i < 2 ? `1px solid ${BORDER}` : 'none',
                 }}>
                   <div>
                     <div style={{ ...TYPE.small, marginBottom:'3px' }}>{m.label}</div>
@@ -871,16 +1039,20 @@ export default function DashboardPage() {
             })}
           </div>
 
-          {/* ══ ROW 3: ANALYTICS — 30% / 40% / 30% ══ */}
-          <div style={{ flex:'1 1 0', minHeight:'260px', maxHeight:'500px', display:'grid', gridTemplateColumns:'2.55fr 4.45fr 3fr', gap:'16px' }}>
+          {/* ══ ROW 3: ANALYTICS — 30/40/30 (desktop) · stack vertikal (mobile) ══ */}
+          <div style={ isMobile ? {
+            display:'flex', flexDirection:'column', gap:'16px', flexShrink:0,
+          } : {
+            flex:'1 1 0', minHeight:'260px', maxHeight:'500px', display:'grid', gridTemplateColumns:'2.55fr 4.45fr 3fr', gap:'16px',
+          }}>
 
             {/* Spend Breakdown (donut) */}
-            <div style={{ ...CARD_BASE, display:'flex', flexDirection:'column', overflow:'hidden', padding:'18px 20px' }}>
+            <div style={{ ...CARD_BASE, display:'flex', flexDirection:'column', overflow:'hidden', padding:'18px 20px', ...(isMobile ? { flexShrink:0 } : null) }}>
               <div style={{ ...TYPE.cardTitle, flexShrink:0 }}>Spend Breakdown</div>
               {donutSegs.length === 0 ? (
                 <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', color:SUB }}>No data</div>
               ) : (
-                <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'20px', overflow:'hidden' }}>
+                <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'20px', overflow:'hidden', marginTop: isMobile ? '16px' : 0 }}>
                   <div style={{ position:'relative', width:'200px', height:'200px', flexShrink:0 }}>
                     <svg viewBox="0 0 100 100" style={{ width:'200px', height:'200px' }}>
                       <circle cx="50" cy="50" r="38" fill="none" stroke="var(--track)" strokeWidth="16"/>
@@ -923,11 +1095,17 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Daily Spend (area chart) */}
-            <AreaChart data={chartData} dates={chartDates} today={todayIdx}/>
+            {/* Daily Spend (area chart) — mobile: tinggi tetap 300px */}
+            {isMobile ? (
+              <div style={{ height:'300px', flexShrink:0, display:'flex', flexDirection:'column' }}>
+                <AreaChart data={chartData} dates={chartDates} today={todayIdx}/>
+              </div>
+            ) : (
+              <AreaChart data={chartData} dates={chartDates} today={todayIdx}/>
+            )}
 
             {/* Top Campaigns */}
-            <div style={{ ...CARD_BASE, display:'flex', flexDirection:'column', overflow:'hidden', padding:'18px 20px' }}>
+            <div style={{ ...CARD_BASE, display:'flex', flexDirection:'column', overflow:'hidden', padding:'18px 20px', ...(isMobile ? { flexShrink:0, maxHeight:'420px' } : null) }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px', flexShrink:0 }}>
                 <span style={{ ...TYPE.cardTitle }}>Top Campaigns</span>
               </div>

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { useAuth } from '../components/AuthContext';
+import useIsMobile from '../components/useIsMobile';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const OBJ_ORDER = ['Awareness','Traffic','Conversion'];
@@ -21,6 +22,7 @@ const emptyForm = { name:'', obj:'Awareness', konten:'', bh:'', mulai:'', selesa
 
 export default function CalendarPage() {
   const { isAdmin } = useAuth();
+  const isMobile = useIsMobile();
   const now = new Date();
   const [year, setYear]         = useState(now.getFullYear());
   const [month, setMonth]       = useState(now.getMonth());
@@ -168,7 +170,7 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        <div style={{ display:'flex', gap:'8px' }}>
+        <div style={{ display:'flex', gap:'8px', marginLeft:'auto' }}>
           {isAdmin && (
             <button style={{
               display:'flex', alignItems:'center', gap:'6px',
@@ -209,7 +211,9 @@ export default function CalendarPage() {
           }}
         >
           <div style={{ overflowX:'auto' }}>
-            <table style={{ borderCollapse:'collapse', width:'100%', tableLayout:'fixed' }}>
+            {/* Mobile: minWidth memaksa tabel Gantt melebar → scroll ke kanan
+                (seperti tabel Campaigns), bukan kolom tergencet. Desktop tak berubah. */}
+            <table style={{ borderCollapse:'collapse', width:'100%', tableLayout:'fixed', minWidth: isMobile ? '920px' : undefined }}>
               <colgroup>
                 <col style={{ width:'16%' }}/>
                 <col style={{ width:'8%' }}/>

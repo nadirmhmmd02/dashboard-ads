@@ -247,6 +247,22 @@ button {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+/* ── Mobile: drawer & bottom sheet ── */
+@keyframes wdDrawerIn {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes wdSheetUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+/* Carousel KPI mobile: sembunyikan scrollbar tapi tetap bisa swipe */
+.wd-hscroll {
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* IE/Edge lama */
+  -webkit-overflow-scrolling: touch;
+}
+.wd-hscroll::-webkit-scrollbar { display: none; }
 /* Chart line "menggambar" dari kiri ke kanan (butuh pathLength="1") */
 @keyframes wdDrawLine {
   from { stroke-dashoffset: 1; }

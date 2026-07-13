@@ -14,7 +14,8 @@ import {
 import Logo from './Logo';
 import { useAuth } from './AuthContext';
 
-const NAV_ITEMS = [
+// Dipakai juga oleh MobileNav.js (drawer mobile) — satu sumber menu
+export const NAV_ITEMS = [
   { href: '/',          label: 'Dashboard', icon: LayoutDashboard },
   { href: '/campaigns', label: 'Campaigns', icon: Megaphone },
   { href: '/calendar',  label: 'Calendar',  icon: CalendarDays },

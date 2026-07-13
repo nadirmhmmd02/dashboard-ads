@@ -1,8 +1,10 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Calendar, Calculator, Check, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, X } from 'lucide-react';
 import { useCampaignsFilter, DATE_PRESETS_CAMPAIGNS } from '../components/DateFilterContext';
 import ThemeToggle from '../components/ThemeToggle';
+import useIsMobile from '../components/useIsMobile';
 import CampaignModal from '../components/CampaignModal';
 import CombineModal from '../components/CombineModal';
 
@@ -99,7 +101,14 @@ const OBJ_ORDER = ['Awareness', 'Traffic', 'Conversion'];
 
 export default function CampaignsPage() {
   const { dateOpt, customSince, setCustomSince, customUntil, setCustomUntil, isCustom, selectPreset, applyCustom } = useCampaignsFilter();
+  const isMobile = useIsMobile();
   const [showDropdown, setShowDropdown]   = useState(false);
+
+  // Slot top bar mobile (MobileNav) — tombol refresh pindah ke atas via portal
+  const [topbarSlot, setTopbarSlot] = useState(null);
+  useEffect(() => {
+    setTopbarSlot(isMobile ? document.getElementById('wd-topbar-actions') : null);
+  }, [isMobile]);
   const [data, setData]                   = useState(null);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState(null);
@@ -452,11 +461,25 @@ export default function CampaignsPage() {
     ].filter(Boolean);
   }
 
+  // Tombol refresh — header (desktop) atau top bar via portal (mobile)
+  const refreshBtn = (
+    <button onClick={refresh} title="Refresh" style={{
+      width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '9px', cursor: 'pointer',
+      flexShrink: 0, transition: 'border-color 0.15s',
+    }}
+    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--t3)'}
+    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--br)'}
+    >
+      <RefreshCw size={14} color="var(--t2)" style={loading ? { animation: 'wdSpin 0.8s linear infinite' } : undefined} />
+    </button>
+  );
+
   return (
     <div style={{ padding: '18px 20px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
 
       {/* Topbar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', animation: 'wdFadeUp 0.3s cubic-bezier(0.4,0,0.2,1)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', rowGap: '10px', animation: 'wdFadeUp 0.3s cubic-bezier(0.4,0,0.2,1)' }}>
         <div>
           <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--t1)' }}>Campaign Performance</div>
           <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>
@@ -464,7 +487,7 @@ export default function CampaignsPage() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: 'auto' }}>
           {/* Filter dropdown */}
           <div style={{ position: 'relative' }} data-filter-dropdown>
             <button
@@ -493,12 +516,13 @@ export default function CampaignsPage() {
             return (
             <div style={{
               position: 'absolute', top: '44px', right: 0, zIndex: 50,
+              maxWidth: 'calc(100vw - 24px)',
               background: 'var(--cd)', border: '1px solid var(--br)',
               borderRadius: '14px', boxShadow: 'var(--pop-shadow)', overflow: 'hidden',
               animation: 'wdScaleIn 0.15s cubic-bezier(0.4,0,0.2,1)',
               display: 'flex', flexDirection: 'column',
             }}>
-              <div style={{ display: 'flex' }}>
+              <div style={{ display: 'flex', overflowX: 'auto' }}>
                 {/* ── Presets kiri ── */}
                 <div style={{ width: '178px', borderRight: '1px solid var(--br)', padding: '10px', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
                   {DATE_PRESETS_CAMPAIGNS.map(opt => {
@@ -583,18 +607,11 @@ export default function CampaignsPage() {
           })()}
           </div>
 
-          <button onClick={refresh} title="Refresh" style={{
-            width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '9px', cursor: 'pointer',
-            transition: 'border-color 0.15s',
-          }}
-          onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--t3)'}
-          onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--br)'}
-          >
-            <RefreshCw size={14} color="var(--t2)" style={loading ? { animation: 'wdSpin 0.8s linear infinite' } : undefined} />
-          </button>
+          {!isMobile && refreshBtn}
+          {!isMobile && <ThemeToggle size={36} iconSize={14} />}
 
-          <ThemeToggle size={36} iconSize={14} />
+          {/* Mobile: refresh pindah ke top bar (kiri theme toggle) */}
+          {isMobile && topbarSlot && createPortal(refreshBtn, topbarSlot)}
         </div>
       </div>
 

@@ -102,7 +102,8 @@ function MiniChart({ arr = [], color, name, money }) {
   );
 }
 
-export default function ExportMenu({ summary, chartData = {}, rangeLabel = '', activeCount = 0 }) {
+// compact: tombol icon-only (dipakai toolbar mobile biar chip muat satu baris)
+export default function ExportMenu({ summary, chartData = {}, rangeLabel = '', activeCount = 0, compact = false }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const reportRef = useRef(null);
@@ -164,7 +165,12 @@ export default function ExportMenu({ summary, chartData = {}, rangeLabel = '', a
       {/* ── Tombol Export ── */}
       <button
         onClick={() => !busy && setOpen(o => !o)}
-        style={{
+        title="Export"
+        style={ compact ? {
+          width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: UI_CARD, border: `1px solid ${UI_BORDER}`, borderRadius: '9px',
+          cursor: busy ? 'default' : 'pointer', flexShrink: 0, transition: 'border-color 0.15s',
+        } : {
           display: 'flex', alignItems: 'center', gap: '7px', padding: '9px 14px',
           background: UI_CARD, border: `1px solid ${UI_BORDER}`, borderRadius: '10px',
           fontSize: '13px', color: busy ? UI_SUB : UI_TXT, cursor: busy ? 'default' : 'pointer', transition: 'border-color 0.15s',
@@ -175,8 +181,8 @@ export default function ExportMenu({ summary, chartData = {}, rangeLabel = '', a
         {busy
           ? <Loader2 size={14} color={UI_SUB} style={{ animation: 'wdSpin 0.8s linear infinite' }} />
           : <Download size={14} color={UI_SUB} />}
-        {busy ? 'Exporting…' : 'Export'}
-        {!busy && <ChevronDown size={13} color={UI_SUB} />}
+        {!compact && (busy ? 'Exporting…' : 'Export')}
+        {!compact && !busy && <ChevronDown size={13} color={UI_SUB} />}
       </button>
 
       {/* ── Dropdown format ── */}

@@ -114,7 +114,7 @@ export default function AreaChart({ data, dates, today }) {
       height: '100%',
     }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexShrink: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexShrink: 0, flexWrap: 'wrap', rowGap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
           <span key={metric} style={{
             fontSize: '15px', fontWeight: 600, color: 'var(--t1)',
