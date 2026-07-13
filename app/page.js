@@ -13,6 +13,9 @@ import ExportMenu from './components/ExportMenu';
 import { useAuth } from './components/AuthContext';
 import { useDashboardFilter, DATE_PRESETS_DASHBOARD } from './components/DateFilterContext';
 import ThemeToggle from './components/ThemeToggle';
+import PlatformSelector, { DEFAULT_PLATFORM } from './components/PlatformSelector';
+import PlatformPlaceholder from './components/PlatformPlaceholder';
+import { TYPE } from './components/typography';
 import { supabase } from './supabase';
 
 /* ─── Design tokens: netral = CSS var (ikut tema), aksen = literal (sama di 2 tema) ─── */
@@ -241,14 +244,11 @@ function KpiCard({ label, display, value, icon: Icon, color, pct, spark, delay }
         }}>
           <Icon size={17} color={color} />
         </div>
-        <span style={{ fontSize: '14px', fontWeight: 500, color: SUB }}>{label}</span>
+        <span style={{ ...TYPE.metricLabel }}>{label}</span>
       </div>
 
       {/* value */}
-      <div style={{
-        fontSize: '34px', fontWeight: 700, color: TXT, letterSpacing: '-1px',
-        lineHeight: 1, marginTop: '10px',
-      }}>
+      <div style={{ ...TYPE.metricValue, marginTop: '10px' }}>
         <CountUp value={value} display={display} delay={delay + 100} />
       </div>
 
@@ -256,7 +256,7 @@ function KpiCard({ label, display, value, icon: Icon, color, pct, spark, delay }
       <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginTop: '8px' }}>
         <Badge pct={pct} />
         {pct !== null && pct !== undefined && (
-          <span style={{ fontSize: '11px', color: MUTE }}>vs prev period</span>
+          <span style={{ ...TYPE.caption }}>vs prev period</span>
         )}
       </div>
 
@@ -287,6 +287,7 @@ export default function DashboardPage() {
   const [showSuggest, setShowSuggest]   = useState(false);
   const [suggestions, setSuggestions]   = useState([]);
   const [hasUnread, setHasUnread]       = useState(false);
+  const [platform, setPlatform]         = useState(DEFAULT_PLATFORM);
   const suggestRef = useRef(null);
 
   // Bulan kiri kalender (UI only). Default: bulan lalu, jadi tampil "bulan lalu + bulan ini".
@@ -564,13 +565,18 @@ export default function DashboardPage() {
         borderBottom:`1px solid ${BORDER}`,
       }}>
         <div>
-          <h1 style={{ fontSize:'22px', fontWeight:700, color: TXT, letterSpacing:'-0.4px' }}>Dashboard</h1>
-          <p style={{ fontSize:'12px', color: SUB, marginTop:'3px' }}>
-            {loading ? 'Loading…' : `Meta Ads Performance Overview · ${activeCampaignCount} active`}
+          <h1 style={{ ...TYPE.h1 }}>Dashboard</h1>
+          <p style={{ ...TYPE.small, marginTop:'3px' }}>
+            {platform.available
+              ? (loading ? 'Loading…' : `${platform.label} Performance Overview · ${activeCampaignCount} active`)
+              : `${platform.label} · Under development`}
           </p>
         </div>
 
         <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+          {/* Platform selector */}
+          <PlatformSelector selected={platform} onSelect={setPlatform} />
+
           {/* Date filter */}
           <div style={{ position:'relative' }} data-filter>
             <button onClick={openFilter} style={{
@@ -621,7 +627,7 @@ export default function DashboardPage() {
                       );
                     })}
                     <div style={{ borderTop:`1px solid ${BORDER}`, margin:'8px 4px 0' }} />
-                    <div style={{ fontSize:'10px', fontWeight:600, letterSpacing:'1.2px', color:MUTE, textTransform:'uppercase', padding:'12px 8px 8px' }}>Custom Range</div>
+                    <div style={{ ...TYPE.overline, padding:'12px 8px 8px' }}>Custom Range</div>
                     <div style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 12px', borderRadius:'10px',
                       border:`1px solid ${isCustom ? 'var(--cal-accent-line)' : BORDER}`, background:'var(--data-bg)' }}>
                       <Calendar size={15} color={SUB} style={{ flexShrink:0 }}/>
@@ -748,8 +754,8 @@ export default function DashboardPage() {
                     display:'flex', alignItems:'center', gap:'8px',
                   }}>
                     <MessageSquare size={16} color={SUB}/>
-                    <span style={{ fontSize:'13px', fontWeight:600, color:TXT }}>User Suggestions</span>
-                    <span style={{ fontSize:'11px', color:MUTE, marginLeft:'auto' }}>{suggestions.length} total</span>
+                    <span style={{ ...TYPE.sectionTitle }}>User Suggestions</span>
+                    <span style={{ ...TYPE.caption, marginLeft:'auto' }}>{suggestions.length} total</span>
                     {suggestions.length > 0 && (
                       <button onClick={handleClearAllSuggestions} title="Clear all" style={{
                         background:'none', border:'none', cursor:'pointer', color:'#EF4444',
@@ -763,7 +769,7 @@ export default function DashboardPage() {
                   </div>
                   <div style={{ overflowY:'auto', flex:1, padding:'12px' }}>
                     {suggestions.length === 0 ? (
-                      <div style={{ textAlign:'center', color:MUTE, fontSize:'13px', padding:'24px 0' }}>No suggestions yet.</div>
+                      <div style={{ ...TYPE.body, textAlign:'center', color:MUTE, padding:'24px 0' }}>No suggestions yet.</div>
                     ) : (
                       <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
                         {suggestions.map(s => (
@@ -787,7 +793,7 @@ export default function DashboardPage() {
                                 ><Trash2 size={13}/></button>
                               </div>
                             </div>
-                            <div style={{ fontSize:'12px', color:TXT, lineHeight:1.5, whiteSpace:'pre-wrap' }}>{s.text}</div>
+                            <div style={{ ...TYPE.small, color:TXT, whiteSpace:'pre-wrap' }}>{s.text}</div>
                           </div>
                         ))}
                       </div>
@@ -803,17 +809,19 @@ export default function DashboardPage() {
       {/* ══ CONTENT ══ */}
       <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', padding:'24px', gap:'20px', overflow:'hidden' }}>
 
-        {loading && (
+        {!platform.available && <PlatformPlaceholder platform={platform} />}
+
+        {platform.available && loading && (
           <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:SUB, fontSize:'13px' }}>Loading…</div>
         )}
 
-        {!loading && error && (
+        {platform.available && !loading && error && (
           <div style={{ padding:'14px 18px', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:'12px', color:'#EF4444', fontSize:'12px' }}>
             Error: {error}
           </div>
         )}
 
-        {!loading && !error && summary && (<>
+        {platform.available && !loading && !error && summary && (<>
 
           {/* ══ ROW 1: KPI — 5 equal cards ══ */}
           <div style={{ flex:'1 1 0', minHeight:'150px', maxHeight:'190px', display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:'16px' }}>
@@ -853,9 +861,9 @@ export default function DashboardPage() {
                   padding:'0 22px', borderRight: i < 3 ? `1px solid ${BORDER}` : 'none',
                 }}>
                   <div>
-                    <div style={{ fontSize:'12px', color:SUB, marginBottom:'3px' }}>{m.label}</div>
-                    <div style={{ fontSize:'20px', fontWeight:700, color:TXT, letterSpacing:'-0.5px', lineHeight:1 }}>{m.value}</div>
-                    <div style={{ fontSize:'11px', color:MUTE, marginTop:'3px' }}>{m.sub}</div>
+                    <div style={{ ...TYPE.small, marginBottom:'3px' }}>{m.label}</div>
+                    <div style={{ ...TYPE.metricValueSm }}>{m.value}</div>
+                    <div style={{ ...TYPE.metricSub, marginTop:'3px' }}>{m.sub}</div>
                   </div>
                   <Ic size={18} color="var(--icon-muted)"/>
                 </div>
@@ -868,7 +876,7 @@ export default function DashboardPage() {
 
             {/* Spend Breakdown (donut) */}
             <div style={{ ...CARD_BASE, display:'flex', flexDirection:'column', overflow:'hidden', padding:'18px 20px' }}>
-              <div style={{ fontSize:'15px', fontWeight:600, color:TXT, flexShrink:0 }}>Spend Breakdown</div>
+              <div style={{ ...TYPE.cardTitle, flexShrink:0 }}>Spend Breakdown</div>
               {donutSegs.length === 0 ? (
                 <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', color:SUB }}>No data</div>
               ) : (
@@ -890,8 +898,8 @@ export default function DashboardPage() {
                       })}
                     </svg>
                     <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
-                      <div style={{ fontSize:'20px', fontWeight:700, color:TXT, letterSpacing:'-0.5px', lineHeight:1 }}>{center.value}</div>
-                      <div style={{ fontSize:'11px', color:SUB, marginTop:'4px' }}>{center.label}</div>
+                      <div style={{ ...TYPE.metricValueSm }}>{center.value}</div>
+                      <div style={{ ...TYPE.caption, color:SUB, marginTop:'4px' }}>{center.label}</div>
                     </div>
                   </div>
                   <div style={{ width:'100%', display:'flex', flexDirection:'column', gap:'8px', overflow:'auto' }}>
@@ -902,11 +910,11 @@ export default function DashboardPage() {
                           background: hoverSeg===i ? 'var(--hover)' : 'transparent', transition:'background 0.15s' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
                           <span style={{ width:'9px', height:'9px', borderRadius:'3px', background:seg.color, flexShrink:0 }}/>
-                          <span style={{ fontSize:'13px', color:SUB }}>{seg.label}</span>
+                          <span style={{ ...TYPE.body, color:SUB }}>{seg.label}</span>
                         </div>
                         <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                          <span style={{ fontSize:'13px', fontWeight:600, color:TXT }}>{seg.value}</span>
-                          <span style={{ fontSize:'12px', color:MUTE }}>{seg.pct}%</span>
+                          <span style={{ ...TYPE.body, fontWeight:600 }}>{seg.value}</span>
+                          <span style={{ ...TYPE.small, color:MUTE }}>{seg.pct}%</span>
                         </div>
                       </div>
                     ))}
@@ -921,11 +929,11 @@ export default function DashboardPage() {
             {/* Top Campaigns */}
             <div style={{ ...CARD_BASE, display:'flex', flexDirection:'column', overflow:'hidden', padding:'18px 20px' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px', flexShrink:0 }}>
-                <span style={{ fontSize:'15px', fontWeight:600, color:TXT }}>Top Campaigns</span>
+                <span style={{ ...TYPE.cardTitle }}>Top Campaigns</span>
               </div>
               {/* header row */}
               <div style={{ display:'grid', gridTemplateColumns:'1.4fr 0.9fr 0.8fr 1.05fr 0.7fr', gap:'6px',
-                fontSize:'11px', color:SUB, paddingBottom:'10px', borderBottom:`1px solid ${BORDER}`, flexShrink:0 }}>
+                ...TYPE.tableHeader, paddingBottom:'10px', borderBottom:`1px solid ${BORDER}`, flexShrink:0 }}>
                 <span>Campaign</span>
                 <span style={{ textAlign:'right' }}>Spend</span>
                 <span style={{ textAlign:'right' }}>Result</span>
@@ -944,12 +952,12 @@ export default function DashboardPage() {
                     borderBottom: i < topCampaigns.length-1 ? '1px solid var(--divider)' : 'none' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:'8px', minWidth:0 }}>
                       <span style={{ width:'7px', height:'7px', borderRadius:'50%', background:c.color, flexShrink:0 }}/>
-                      <span style={{ fontSize:'12px', color:TXT, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={c.name}>{c.name}</span>
+                      <span style={{ ...TYPE.tableCell, color:TXT, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={c.name}>{c.name}</span>
                     </div>
-                    <span style={{ fontSize:'12px', color:SUB, textAlign:'right' }}>{fmtSpend(c.spend)}</span>
-                    <span style={{ fontSize:'12px', color:SUB, textAlign:'right' }}>{fmtBigNum(c.result)}</span>
-                    <span style={{ fontSize:'12px', color:TXT, textAlign:'right', fontWeight:500 }}>{fmtCPR(c.cpr)}</span>
-                    <span style={{ fontSize:'12px', color:SUB, textAlign:'right' }}>{c.ctr.toFixed(2)}%</span>
+                    <span style={{ ...TYPE.tableCell, textAlign:'right' }}>{fmtSpend(c.spend)}</span>
+                    <span style={{ ...TYPE.tableCell, textAlign:'right' }}>{fmtBigNum(c.result)}</span>
+                    <span style={{ ...TYPE.tableCellStrong, textAlign:'right' }}>{fmtCPR(c.cpr)}</span>
+                    <span style={{ ...TYPE.tableCell, textAlign:'right' }}>{c.ctr.toFixed(2)}%</span>
                   </div>
                 ))}
               </div>
