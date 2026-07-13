@@ -34,8 +34,9 @@ const ACTIVE_FG = 'var(--nav-accent-fg)';
 export default function Sidebar() {
   const pathname  = usePathname();
   const { user, role, logout } = useAuth();
-  const [collapsed, setCollapsed] = useState(false);
-  const [width, setWidth]         = useState(DEFAULT_WIDTH);
+  // Default: tertutup (collapsed) saat web pertama dibuka
+  const [collapsed, setCollapsed] = useState(true);
+  const [width, setWidth]         = useState(COLLAPSED_WIDTH);
   const [hovered, setHovered]     = useState(null);
   const [dragHover, setDragHover] = useState(false);
   const [animate, setAnimate]     = useState(true);
