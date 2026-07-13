@@ -26,8 +26,13 @@ export default function CountUp({ value, display, duration = 900, delay = 200 })
       rafRef.current = requestAnimationFrame(step);
     }, delay);
 
+    // Fallback: kalau requestAnimationFrame tidak jalan (tab/pane hidden),
+    // tetap paksa tampilkan nilai final supaya tidak macet di "0"
+    const settle = setTimeout(() => setText(display), delay + duration + 150);
+
     return () => {
       clearTimeout(timer);
+      clearTimeout(settle);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [value, display, duration, delay]);

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, ChevronDown, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { useCampaignsFilter, DATE_PRESETS_CAMPAIGNS } from '../components/DateFilterContext';
 import ThemeToggle from '../components/ThemeToggle';
+import CampaignModal from '../components/CampaignModal';
 
 
 /* ─── Calendar UI helpers (murni tampilan — tidak menyentuh logika filter) ─── */
@@ -102,6 +103,7 @@ export default function CampaignsPage() {
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState(null);
   const [showSubtotal, setShowSubtotal]   = useState({ Awareness: false, Traffic: false, Conversion: false });
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
 
   // Bulan kiri kalender (UI only). Default: bulan lalu → tampil "bulan lalu + bulan ini".
   const _initCal = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
@@ -291,9 +293,12 @@ export default function CampaignsPage() {
     return (
       <tr
         key={c.id}
+        title="Klik untuk lihat detail campaign"
+        onClick={() => setSelectedCampaign(c)}
         style={{
           borderTop: '1px solid var(--br)',
           opacity: 1,
+          cursor: 'pointer',
           transition: 'background 0.15s',
           animation: `wdFadeUp 0.3s cubic-bezier(0.4,0,0.2,1) ${rowIdx * 0.04}s backwards`,
         }}
@@ -589,6 +594,18 @@ export default function CampaignsPage() {
             </table>
           </div>
         </div>
+      )}
+
+      {/* Popup detail campaign: konten iklan (kiri) + performa & platform (kanan) */}
+      {selectedCampaign && (
+        <CampaignModal
+          campaign={selectedCampaign}
+          query={isCustom && customSince && customUntil
+            ? `since=${customSince}&until=${customUntil}`
+            : `date_preset=${dateOpt.value}`}
+          periodLabel={filterLabel()}
+          onClose={() => setSelectedCampaign(null)}
+        />
       )}
     </div>
   );

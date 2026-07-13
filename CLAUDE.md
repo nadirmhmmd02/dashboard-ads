@@ -23,7 +23,7 @@ Status: **project aktif & sudah live dengan data real** (bukan lagi tahap dummy/
 - **Icon: `lucide-react`.** CATATAN: versi lucide ini MINIM brand icon — `Facebook`, `Chrome` TIDAK ADA. Meta = `Square` (fill biru), Google = `Globe`. Selalu cek icon ada sebelum pakai.
 - **GitHub:** `nadirmhmmd02/dashboard-ads` (branch `main`, trunk-based — tiap commit langsung ke main).
 - **Hosting:** Vercel — live `https://dashboard-ads-six.vercel.app` (auto-deploy tiap push).
-- **Database:** Supabase (ref `tduskxqmsqcgurvxnjzo`, region Tokyo) — dipakai halaman Calendar.
+- **Database:** Supabase (ref `tduskxqmsqcgurvxnjzo`, region Tokyo) — dipakai halaman Calendar + Suggestions.
 - **Meta Ads API:** Graph v19.0, account `act_433644183932983`.
 - **Local:** `C:\Users\Nadir.Muhammad\Desktop\dashboard-ads`, VS Code.
 
@@ -42,7 +42,7 @@ Kredensial asli ada di `.env.local` user. JANGAN reproduksi dari ingatan — min
 
 ```
 app/
-  layout.js              → AuthProvider + AppShell + no-flash theme script. <html data-theme> di-set dari role+preferensi.
+  layout.js              → AuthProvider + DateFilterProvider + AppShell + no-flash theme script. <html data-theme> di-set dari role+preferensi.
   page.js                → DASHBOARD (DATA REAL Meta). Semua logika kalkulasi metrik ada di sini.
   login/page.js          → Halaman login (tema amber/light, kartu putih).
   campaigns/page.js      → Tabel kampanye Meta (read-only). Filter kalender dual-month. Kolom: …CPL + Total Spend.
@@ -50,14 +50,18 @@ app/
   reports/               → BELUM DIBUAT → nav "Reports" masih 404. (Next step.)
   components/
     AuthContext.js       → SOURCE OF TRUTH: auth + role + theme (light/dark). localStorage/sessionStorage.
-    AppShell.js          → route guard (redirect ke /login kalau belum login; sidebar + main).
-    Sidebar.js           → sidebar collapsible+resizable, user info + logout, logo Control Hub + glow.
+    AppShell.js          → route guard (redirect ke /login kalau belum login; sidebar + main). User suggestion floating button + popup.
+    Sidebar.js           → sidebar collapsible+resizable, user info + logout, logo WILL OF D.
     AreaChart.js         → chart "Daily Spend" (smooth area, animasi ganti metrik). Dipakai dashboard.
     ExportMenu.js        → tombol Export + laporan tersembunyi 16:9 (render PDF/JPG). Admin-only.
     CountUp.js           → animasi angka naik dari 0 ke target.
     Logo.js              → LOGO MARK "Control Hub" (SVG, warna via prop, ikut container/tema).
+    ThemeToggle.js       → shared theme toggle button dengan animasi fade transition. Dipakai dashboard + campaigns.
+    DateFilterContext.js → shared filter state (terpisah per halaman: dashboard & campaigns). Persist saat pindah tab, reset saat browser refresh.
+    CampaignModal.js     → popup detail campaign (klik row di Campaigns): konten iklan IG embed di kiri (auto feed 1:1 / portrait 9:16, strip thumbnail kalau >1), metrik + platform breakdown di kanan (hero Result+Total Spend, count-up, hover lift, chip brand FB/IG).
+    SuggestionsModal.js  → LAMA, tidak dipakai lagi (logika sudah pindah ke AppShell + page.js).
     BarChart.js, Navbar.js → LAMA, tidak dipakai lagi (boleh dihapus kapan2).
-  api/meta/route.js      → server-side fetch Meta Graph API. mode=dashboard (summary/prevSummary/daily/campaigns/chartRange) & default campaigns.
+  api/meta/route.js      → server-side fetch Meta Graph API. mode=dashboard (summary/prevSummary/daily/campaigns/chartRange), mode=campaign_detail (ads+creative+platform breakdown per campaign) & default campaigns.
   globals.css            → CSS variables (blok light `:root` + blok `html[data-theme="dark"]`) + keyframes animasi.
   supabase.js            → Supabase client.
   icon.svg, apple-icon.svg → favicon + touch icon (Control Hub, square gelap + mark putih).
@@ -94,8 +98,8 @@ Subtotal toggle per grup (Awareness/Traffic/Conversion) di tabel campaigns — j
 
 ## AUTH & ROLE (client-side sederhana — dikelola AuthContext)
 
-- **Admin** → `Dozan` / `Dozan213` — default tema **Dark**, akses penuh (Export, Create/Edit/Delete Calendar).
-- **User** → `babarafi` / `babarafi123` — default tema **Light**, read-only (tanpa Export, tanpa CRUD Calendar).
+- **Admin** → `Dozan` / `Dozan213` — default tema **Dark**, akses penuh (Export, Create/Edit/Delete Calendar, lihat+hapus Suggestions).
+- **User** → `user` / `babarafi123` — default tema **Light**, read-only (tanpa Export, tanpa CRUD Calendar, bisa kirim Suggestion).
 - Tema terakhir yang dipilih user menimpa default saat login ulang (tersimpan per-role).
 - ⚠️ Auth ini CLIENT-SIDE (password kelihatan di kode) — belum production-secure. Upgrade ke Supabase Auth kalau perlu.
 
@@ -109,10 +113,10 @@ Dua tema: light (`:root`) & dark (`html[data-theme="dark"]`).
 - **Aksen umum:** green `#8BE34D`, blue `#3B82F6`, purple `#8B5CF6`, orange/amber `#F59E0B`.
 
 ### Dashboard (`app/page.js`) — DATA REAL
-Atas→bawah: header (title + filter tanggal + Export admin-only + Refresh + theme toggle) → 5 KPI card (Total Spend, Reach, Impressions, Traffic, Leads — count-up + growth badge vs periode sebelumnya + sparkline) → strip 4 metrik (CPM/CPC/CPL/CTR) → baris analitik 3 kolom (Spend Breakdown donut · Daily Spend AreaChart · Top Campaigns). **Angka KPI & strip pakai format PENUH** (mis. `Rp 1.440.076`, bukan `Rp 1.4M`). Fit 1 layar tanpa scroll.
+Atas→bawah: header (title + filter tanggal + Export admin-only + Refresh + theme toggle + Suggestions admin-only) → 5 KPI card (Total Spend, Reach, Impressions, Traffic, Leads — count-up + growth badge vs periode sebelumnya + sparkline) → strip 4 metrik (CPM/CPC/CPL/CTR) → baris analitik 3 kolom (Spend Breakdown donut · Daily Spend AreaChart · Top Campaigns). **Angka KPI & strip pakai format PENUH** (mis. `Rp 1.440.076`, bukan `Rp 1.4M`). Fit 1 layar tanpa scroll.
 
 ### Filter Tanggal (Dashboard & Campaigns) — kalender dual-month inline
-Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cancel/Apply. Default **"This month"**. Preset Dashboard: Today…Last month. Preset Campaigns sama + tambahan "Last 3 days". State: `customSince/customUntil` (format `YYYY-MM-DD`), `isCustom`. Custom range → `/api/meta?...&since=&until=`. **Logika fetch JANGAN diubah.**
+Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cancel/Apply. Default **"This month"**. Preset Dashboard: Today…Last month. Preset Campaigns sama + tambahan "Last 3 days". State dikelola `DateFilterContext` (terpisah per halaman) — persist saat pindah tab via client-side navigation, reset ke "This month" saat browser refresh. Tombol Refresh di dashboard hanya refresh data, TIDAK reset filter. Custom range → `/api/meta?...&since=&until=`. **Logika fetch JANGAN diubah.**
 
 ---
 
@@ -120,7 +124,7 @@ Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cance
 
 1. **AKSEN PER TEMA** — dark mode = aksen **hijau** (`#8BE34D`), light mode = aksen **oren/amber** (`#F59E0B`, teks amber gelap `#B45309`). Berlaku untuk SEMUA komponen. Jangan hardcode hijau untuk elemen aksen; pakai CSS var theme-aware (pola `--cal-*` di globals.css untuk kalender). Lihat memory [[accent-per-theme]].
 2. **SPACING PROPORSIONAL** — jarak/padding proporsional, jangan mepet sidebar/tepi. Konten butuh "nafas".
-3. **ANIMASI = DNA PROJECT** — count-up, area/donut draw, hover interaktif, glow logo. Keyframes di globals.css: `wdSpinGlow`, `wdSpinGlowGreen`, `wdFadeUp`, `wdPulseDot`, `wdScaleIn`, `wdSweep`, `wdSpin`.
+3. **ANIMASI = DNA PROJECT** — count-up, area/donut draw, hover interaktif, glow logo, theme fade transition, suggestion slide-up. Keyframes di globals.css: `wdSpinGlow`, `wdSpinGlowGreen`, `wdFadeUp`, `wdPulseDot`, `wdScaleIn`, `wdSlideUp`, `wdSweep`, `wdSpin`. Theme transition = opacity fade di `ThemeToggle.js`.
 4. **RESPONSIVE FULL-WIDTH** — fit kanan-kiri penuh di desktop lebar berapa pun. Layout fluid (`flex:1` + `minWidth:0`, grid `minmax(0,1fr)`). Fokus desktop; mobile bukan prioritas.
 5. **DASHBOARD FIT-TO-SCREEN** (khusus halaman Dashboard) — konten muat 1 layar tanpa scroll (`height:100vh` + flex column, chart `flex:1`). Boleh scroll dikit di layar pendek. KHUSUS dashboard, bukan halaman lain.
 
@@ -129,21 +133,23 @@ Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cance
 ## FITUR YANG SUDAH SELESAI (semua live)
 
 - ✅ Dashboard KPI real (5 card + growth badge + sparkline), strip CPM/CPC/CPL/CTR, Spend Breakdown donut (interaktif, angka penuh), Daily Spend AreaChart, Top Campaigns.
-- ✅ Filter tanggal kalender dual-month inline (Dashboard + Campaigns), default This month.
-- ✅ Campaigns: tabel per grup (Awareness→Traffic→Conversion), subtotal toggle, kolom Total Spend (paling kanan, setelah CPL).
+- ✅ Filter tanggal kalender dual-month inline (Dashboard + Campaigns), default This month. Filter terpisah per halaman, persist saat pindah tab, reset saat browser refresh.
+- ✅ Campaigns: tabel per grup (Awareness→Traffic→Conversion), subtotal toggle (default hidden), kolom Total Spend. Status "Stop" (bukan "Paused"), tampilan non-active normal (tidak abu-abu), urutan active di atas.
 - ✅ Export laporan PDF/JPG 16:9 (admin-only).
-- ✅ Light/Dark mode (CSS var, satu source of truth di AuthContext), toggle di header dashboard.
-- ✅ Auth + Role (admin/user) + route guard.
-- ✅ Rebranding logo **Control Hub** (ganti ikon petir lama) di sidebar, login, export, favicon.
+- ✅ Light/Dark mode (CSS var, satu source of truth di AuthContext), toggle di header dashboard + campaigns. Animasi fade transition saat swap tema.
+- ✅ Auth + Role (admin=`Dozan`, user=`user`) + route guard.
+- ✅ Rebranding logo **WILL OF D** di sidebar, login, export, favicon.
+- ✅ Suggestions (Supabase tabel `suggestions`): user kirim saran via floating button + popup (slide-up, click outside to close); admin lihat+hapus saran via ikon di header dashboard (dengan red dot unread indicator + Clear all).
+- ✅ Campaign detail popup (`CampaignModal.js`): klik row campaign → konten iklan (embed post/reels Instagram asli) + metrik lengkap format penuh + "Running On" platform breakdown dengan share bar. CountUp punya fallback settle (anti macet "0" saat tab hidden).
 
 ## BELUM / PENDING (JANGAN dikerjakan tanpa diminta)
 
 - [ ] `app/reports/page.js` belum dibuat → nav Reports 404.
-- [ ] Supabase RLS: tabel `public.campaigns` RLS mati (advisor CRITICAL). Sengaja dibiarkan dulu (data tidak sensitif). Lihat memory [[supabase-rls-deferred]].
-- [ ] Theme toggle belum ada di halaman Campaigns (cuma di Dashboard) — tema ikut pilihan terakhir.
+- [ ] Supabase RLS: tabel `public.campaigns` & `public.suggestions` RLS mati. Sengaja dibiarkan dulu. Lihat memory [[supabase-rls-deferred]].
 - [ ] Fitur Compare (tombol disabled), notifikasi lonceng, Export CSV/Excel Calendar, Google Ads integration — placeholder.
 - [ ] Verifikasi akurasi angka vs Meta Ads Manager.
 - [ ] Upgrade auth ke Supabase Auth (kalau perlu production-secure).
+- [ ] Hapus file lama tidak terpakai: `SuggestionsModal.js`, `BarChart.js`, `Navbar.js`.
 
 ---
 

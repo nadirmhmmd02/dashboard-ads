@@ -99,6 +99,31 @@ export async function GET(request) {
       });
     }
 
+    // mode=campaign_detail — ads + creative (konten iklan) + breakdown platform untuk popup detail
+    if (mode === 'campaign_detail') {
+      const campaignId = searchParams.get('campaign_id');
+      if (!campaignId) {
+        return NextResponse.json({ error: 'campaign_id is required' }, { status: 400 });
+      }
+
+      const [adsRes, platformRes] = await Promise.all([
+        // Ads di campaign ini + creative-nya (thumbnail besar, link post Instagram)
+        fetch(`https://graph.facebook.com/v19.0/${campaignId}/ads?fields=id,name,status,creative.thumbnail_width(1080).thumbnail_height(1080){id,thumbnail_url,image_url,instagram_permalink_url},insights.${dateField}{spend,impressions,reach,clicks,actions}&access_token=${ACCESS_TOKEN}&limit=50`),
+        // Delivery nyata per platform (facebook/instagram/audience_network/messenger)
+        fetch(`https://graph.facebook.com/v19.0/${campaignId}/insights?fields=spend,impressions,reach&breakdowns=publisher_platform&${dateParam}&access_token=${ACCESS_TOKEN}`),
+      ]);
+      const [adsData, platformData] = await Promise.all([adsRes.json(), platformRes.json()]);
+
+      if (adsData.error) {
+        return NextResponse.json({ error: adsData.error.message }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        ads:       adsData.data || [],
+        platforms: platformData.data || [],
+      });
+    }
+
     // mode=campaigns (default)
     const [campaignsRes, insightsRes] = await Promise.all([
       fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/campaigns?fields=id,name,objective,status,daily_budget,lifetime_budget,insights.${dateField}{spend,impressions,reach,clicks,cpm,cpc,ctr,actions}&access_token=${ACCESS_TOKEN}&limit=50`),
