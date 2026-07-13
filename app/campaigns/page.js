@@ -1,9 +1,10 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { Calendar, ChevronDown, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Calendar, Calculator, Check, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, X } from 'lucide-react';
 import { useCampaignsFilter, DATE_PRESETS_CAMPAIGNS } from '../components/DateFilterContext';
 import ThemeToggle from '../components/ThemeToggle';
 import CampaignModal from '../components/CampaignModal';
+import CombineModal from '../components/CombineModal';
 
 
 /* ─── Calendar UI helpers (murni tampilan — tidak menyentuh logika filter) ─── */
@@ -104,6 +105,36 @@ export default function CampaignsPage() {
   const [error, setError]                 = useState(null);
   const [showSubtotal, setShowSubtotal]   = useState({ Awareness: false, Traffic: false, Conversion: false });
   const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [selectedIds, setSelectedIds]           = useState([]);   // pilihan untuk hitung gabungan
+  const [showCombine, setShowCombine]           = useState(false);
+
+  // Lebar kolom Campaign — bisa di-drag lewat handle di batas kolom Campaign|Status
+  const [campW, setCampW]     = useState(300);
+  const [colDrag, setColDrag] = useState(false);
+  const [colHover, setColHover] = useState(false);
+  const colDragX = useRef(0);
+  const colDragW = useRef(300);
+
+  function startColDrag(e) {
+    e.preventDefault();
+    colDragX.current = e.clientX;
+    colDragW.current = campW;
+    setColDrag(true);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    const move = (ev) => {
+      setCampW(Math.max(150, Math.min(620, colDragW.current + (ev.clientX - colDragX.current))));
+    };
+    const up = () => {
+      setColDrag(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  }
 
   // Bulan kiri kalender (UI only). Default: bulan lalu → tampil "bulan lalu + bulan ini".
   const _initCal = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
@@ -232,6 +263,11 @@ export default function CampaignsPage() {
     setShowSubtotal(prev => ({ ...prev, [grp]: !prev[grp] }));
   }
 
+  function toggleSelect(e, id) {
+    e.stopPropagation(); // jangan sampai membuka popup detail
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
   const allCampaigns = data?.campaigns || [];
 
   // Tampilkan semua campaign yang punya data di periode ini (spend/reach/impressions > 0)
@@ -240,6 +276,9 @@ export default function CampaignsPage() {
     if (!ci) return false;
     return parseFloat(ci.spend || 0) > 0 || parseFloat(ci.reach || 0) > 0 || parseFloat(ci.impressions || 0) > 0;
   });
+
+  const selectedCampaigns = campaignsWithData.filter(c => selectedIds.includes(c.id));
+  const selectedSpend     = selectedCampaigns.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
 
   const activeCampaigns = campaignsWithData.filter(c => c.status === 'ACTIVE');
   const inactiveCampaigns = campaignsWithData.filter(c => c.status !== 'ACTIVE');
@@ -305,7 +344,23 @@ export default function CampaignsPage() {
         onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
       >
-        <td style={{ ...tdStyle('left'), fontWeight: '500', color: 'var(--t1)' }}>{c.name}</td>
+        <td style={{ ...tdStyle('center'), width: '36px', padding: '9px 6px 9px 12px' }} onClick={(e) => toggleSelect(e, c.id)} title="Pilih untuk hitung gabungan">
+          <span style={{
+            width: '16px', height: '16px', borderRadius: '5px', display: 'inline-flex',
+            alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle',
+            border: selectedIds.includes(c.id) ? '1px solid var(--cal-accent)' : '1px solid var(--br-strong)',
+            background: selectedIds.includes(c.id) ? 'var(--cal-accent)' : 'transparent',
+            transition: 'background 0.15s, border-color 0.15s',
+          }}>
+            {selectedIds.includes(c.id) && <Check size={11} strokeWidth={3.5} color="var(--cal-accent-fg)" />}
+          </span>
+        </td>
+        <td title={c.name} style={{
+          ...tdStyle('left'), fontWeight: '500', color: 'var(--t1)',
+          width: campW, minWidth: campW, maxWidth: campW,
+          overflow: 'hidden', textOverflow: 'ellipsis',
+          borderRight: colDrag ? '1px dashed var(--cal-accent)' : '1px solid transparent',
+        }}>{c.name}</td>
         <td style={tdStyle('center')}>
           {isActive ? (
             <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'rgba(16,185,129,0.14)', color: '#10b981', fontWeight: '600', whiteSpace: 'nowrap' }}>▶ Active</span>
@@ -352,7 +407,7 @@ export default function CampaignsPage() {
 
     return [
       <tr key={key + '-hdr'} style={{ background: 'var(--s2)' }}>
-        <td colSpan={12} style={{ padding: '6px 14px' }}>
+        <td colSpan={13} style={{ padding: '6px 14px' }}>
           <span style={{ fontSize: '10px', fontWeight: '600', color: 'var(--t2)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ padding: '2px 9px', borderRadius: '20px', fontSize: '10px', fontWeight: '500', background: OBJ_STYLE[grp]?.bg || 'var(--sf)', color: OBJ_STYLE[grp]?.color || 'var(--t2)' }}>{grp}</span>
             {rows.length} campaign{rows.length > 1 ? 's' : ''}
@@ -364,7 +419,7 @@ export default function CampaignsPage() {
 
       isActive && showSubtotal[grp] && (
         <tr key={key + '-sub'} style={{ borderTop: '0.5px solid var(--br)', background: 'var(--sf)' }}>
-          <td colSpan={2} style={{ padding: '8px 12px', fontWeight: '600', color: 'var(--t1)', fontSize: '11px', fontStyle: 'italic' }}>Subtotal {grp}</td>
+          <td colSpan={3} style={{ padding: '8px 12px', fontWeight: '600', color: 'var(--t1)', fontSize: '11px', fontStyle: 'italic' }}>Subtotal {grp}</td>
           <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subBudget)}</td>
           <td style={{ padding: '8px 12px', textAlign: 'right', fontSize: '11px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
@@ -385,7 +440,7 @@ export default function CampaignsPage() {
 
       isActive && (
         <tr key={key + '-toggle'} style={{ borderTop: '0.5px solid var(--br)', background: 'var(--sf)' }}>
-          <td colSpan={12} style={{ padding: '4px 14px', textAlign: 'center' }}>
+          <td colSpan={13} style={{ padding: '4px 14px', textAlign: 'center' }}>
             <button
               onClick={() => toggleSubtotal(grp)}
               style={{ fontSize: '10px', padding: '2px 14px', borderRadius: '6px', border: '1px solid var(--bs)', background: 'transparent', color: 'var(--t3)', cursor: 'pointer' }}>
@@ -561,7 +616,29 @@ export default function CampaignsPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
               <thead>
                 <tr style={{ background: 'var(--sf)' }}>
-                  <th style={thStyle('left')}>Campaign</th>
+                  <th style={{ ...thStyle('center'), width: '36px', padding: '10px 6px 10px 12px' }}></th>
+                  <th style={{ ...thStyle('left'), position: 'relative', width: campW, minWidth: campW, maxWidth: campW }}>
+                    Campaign
+                    {/* Handle drag batas kolom Campaign | Status */}
+                    <div
+                      onMouseDown={startColDrag}
+                      onMouseEnter={() => setColHover(true)}
+                      onMouseLeave={() => setColHover(false)}
+                      title="Geser untuk atur lebar kolom"
+                      style={{
+                        position: 'absolute', top: 0, bottom: 0, right: '-4px', width: '9px',
+                        cursor: 'col-resize', zIndex: 3,
+                        display: 'flex', alignItems: 'stretch', justifyContent: 'center',
+                      }}>
+                      <div style={{
+                        width: '2px',
+                        background: colDrag || colHover ? 'var(--cal-accent)' : 'var(--br-strong)',
+                        opacity: colDrag || colHover ? 1 : 0.55,
+                        borderRadius: '2px',
+                        transition: 'background 0.15s, opacity 0.15s',
+                      }} />
+                    </div>
+                  </th>
                   <th style={thStyle('center')}>Status</th>
                   <th style={thStyle()}>Daily Budget</th>
                   <th style={thStyle()}>Result</th>
@@ -585,7 +662,7 @@ export default function CampaignsPage() {
                       return renderGroup(grp, rows, activeRows);
                     })
                   : (
-                    <tr><td colSpan={12} style={{ padding: '32px', textAlign: 'center', color: 'var(--t3)', fontSize: '13px' }}>
+                    <tr><td colSpan={13} style={{ padding: '32px', textAlign: 'center', color: 'var(--t3)', fontSize: '13px' }}>
                       No campaign data for {dateOpt.label}
                     </td></tr>
                   )
@@ -594,6 +671,60 @@ export default function CampaignsPage() {
             </table>
           </div>
         </div>
+      )}
+
+      {/* Floating bar: muncul saat ada campaign terpilih untuk dihitung gabungan */}
+      {selectedCampaigns.length > 0 && !showCombine && (
+        <div style={{ position: 'fixed', bottom: '26px', left: '50%', transform: 'translateX(-50%)', zIndex: 80 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '14px',
+            padding: '10px 12px 10px 20px',
+            background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '999px',
+            boxShadow: 'var(--pop-shadow)',
+            animation: 'wdSlideUp 0.25s cubic-bezier(0.4,0,0.2,1)',
+          }}>
+            <span style={{ fontSize: '12.5px', color: 'var(--t2)', whiteSpace: 'nowrap' }}>
+              <span style={{ fontWeight: 700, color: 'var(--cal-accent-line)' }}>{selectedCampaigns.length}</span> selected
+            </span>
+            <span style={{ width: '1px', height: '18px', background: 'var(--br)', flexShrink: 0 }} />
+            <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--t1)', whiteSpace: 'nowrap' }}>
+              Rp {Math.round(selectedSpend).toLocaleString('id-ID')}
+            </span>
+            <button
+              onClick={() => setShowCombine(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '7px',
+                padding: '8px 18px', fontSize: '12.5px', fontWeight: 600,
+                borderRadius: '999px', border: 'none', cursor: 'pointer',
+                background: 'var(--cal-accent)', color: 'var(--cal-accent-fg)',
+                boxShadow: '0 2px 10px var(--cal-glow)', whiteSpace: 'nowrap',
+              }}>
+              <Calculator size={14} /> Calculate Total
+            </button>
+            <button
+              onClick={() => setSelectedIds([])}
+              title="Clear selection"
+              style={{
+                width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: '50%', border: '1px solid var(--br)', background: 'transparent', cursor: 'pointer',
+                transition: 'background 0.12s', flexShrink: 0,
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--hover)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <X size={14} color="var(--t2)" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Popup hitung gabungan campaign terpilih */}
+      {showCombine && selectedCampaigns.length > 0 && (
+        <CombineModal
+          campaigns={selectedCampaigns}
+          periodLabel={filterLabel()}
+          onClose={() => setShowCombine(false)}
+        />
       )}
 
       {/* Popup detail campaign: konten iklan (kiri) + performa & platform (kanan) */}
