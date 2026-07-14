@@ -1,8 +1,9 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, Calculator, Check, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, X } from 'lucide-react';
+import { Calendar, Calculator, Check, ChevronDown, ChevronLeft, ChevronRight, Pause, Pencil, Play, RefreshCw, X } from 'lucide-react';
 import { useCampaignsFilter, DATE_PRESETS_CAMPAIGNS } from '../components/DateFilterContext';
+import { useAuth } from '../components/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
 import useIsMobile from '../components/useIsMobile';
 import DateFilterPopup from '../components/DateFilterPopup';
@@ -102,6 +103,7 @@ const OBJ_ORDER = ['Awareness', 'Traffic', 'Conversion'];
 
 export default function CampaignsPage() {
   const { dateOpt, customSince, setCustomSince, customUntil, setCustomUntil, isCustom, selectPreset, applyCustom } = useCampaignsFilter();
+  const { isAdmin } = useAuth();
   const isMobile = useIsMobile();
   const [showDropdown, setShowDropdown]   = useState(false);
 
@@ -117,6 +119,13 @@ export default function CampaignsPage() {
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [selectedIds, setSelectedIds]           = useState([]);   // pilihan untuk hitung gabungan
   const [showCombine, setShowCombine]           = useState(false);
+
+  // Aksi kontrol iklan (admin-only): stop/run + edit daily budget
+  const [actionModal, setActionModal] = useState(null);  // { type:'status'|'budget', campaign, nextStatus }
+  const [actionBusy, setActionBusy]   = useState(false);
+  const [actionError, setActionError] = useState(null);
+  const [budgetInput, setBudgetInput] = useState('');    // digit murni, tampil pakai separator
+  const [toast, setToast]             = useState(null);  // pesan sukses singkat
 
   // Lebar kolom Campaign — bisa di-drag lewat handle di batas kolom Campaign|Status
   const [campW, setCampW]     = useState(300);
@@ -278,6 +287,57 @@ export default function CampaignsPage() {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   }
 
+  // ── Aksi kontrol iklan (admin-only) ──
+  function openStatusModal(e, c) {
+    e.stopPropagation();
+    setActionError(null);
+    setActionModal({ type: 'status', campaign: c, nextStatus: c.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE' });
+  }
+  function openBudgetModal(e, c) {
+    e.stopPropagation();
+    setActionError(null);
+    setBudgetInput(c.daily_budget ? String(parseInt(c.daily_budget)) : '');
+    setActionModal({ type: 'budget', campaign: c });
+  }
+  function showToast(msg) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3200);
+  }
+  async function executeAction() {
+    if (!actionModal || actionBusy) return;
+    const { type, campaign, nextStatus } = actionModal;
+    setActionBusy(true);
+    setActionError(null);
+    try {
+      const payload = type === 'status'
+        ? { action: 'set_status', campaign_id: campaign.id, status: nextStatus }
+        : { action: 'set_budget', campaign_id: campaign.id, daily_budget: parseInt(budgetInput || '0') };
+      const res  = await fetch('/api/meta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+
+      // Update lokal langsung tanpa reload penuh (Meta sudah konfirmasi sukses)
+      setData(prev => prev ? {
+        ...prev,
+        campaigns: prev.campaigns.map(x => x.id !== campaign.id ? x : (
+          type === 'status' ? { ...x, status: nextStatus } : { ...x, daily_budget: String(parseInt(budgetInput)) }
+        )),
+      } : prev);
+
+      setActionModal(null);
+      showToast(type === 'status'
+        ? (nextStatus === 'ACTIVE' ? 'Campaign is now running ✓' : 'Campaign stopped ✓')
+        : 'Daily budget updated ✓');
+    } catch (err) {
+      setActionError(err.message);
+    }
+    setActionBusy(false);
+  }
+
   const allCampaigns = data?.campaigns || [];
 
   // Tampilkan semua campaign yang punya data di periode ini (spend/reach/impressions > 0)
@@ -309,6 +369,9 @@ export default function CampaignsPage() {
     const inactive = (groupCampaigns(inactiveCampaigns)[grp] || []);
     if (active.length || inactive.length) mergedGrouped[grp] = [...active, ...inactive];
   });
+
+  // Jumlah kolom tabel — admin dapat kolom Actions ekstra
+  const totalCols = isAdmin ? 14 : 13;
 
   const thStyle = (align = 'right') => ({
     padding: '10px 12px',
@@ -378,6 +441,43 @@ export default function CampaignsPage() {
             <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', background: 'rgba(115,115,115,0.12)', color: 'var(--t3)', fontWeight: '600', whiteSpace: 'nowrap' }}>■ {c.status === 'PAUSED' ? 'Stop' : 'Ended'}</span>
           )}
         </td>
+        {isAdmin && (
+          <td style={{ ...tdStyle('center'), padding: '9px 8px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'inline-flex', gap: '6px' }}>
+              {(c.status === 'ACTIVE' || c.status === 'PAUSED') && (
+                <button
+                  onClick={(e) => openStatusModal(e, c)}
+                  title={isActive ? 'Stop campaign' : 'Run campaign'}
+                  style={{
+                    width: '26px', height: '26px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    borderRadius: '7px', cursor: 'pointer', transition: 'background 0.12s, border-color 0.12s',
+                    border: isActive ? '1px solid rgba(239,68,68,0.35)' : '1px solid rgba(16,185,129,0.35)',
+                    background: isActive ? 'rgba(239,68,68,0.10)' : 'rgba(16,185,129,0.10)',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = isActive ? 'rgba(239,68,68,0.22)' : 'rgba(16,185,129,0.22)'}
+                  onMouseLeave={e => e.currentTarget.style.background = isActive ? 'rgba(239,68,68,0.10)' : 'rgba(16,185,129,0.10)'}
+                >
+                  {isActive ? <Pause size={12} color="#ef4444" /> : <Play size={12} color="#10b981" />}
+                </button>
+              )}
+              {c.daily_budget && (
+                <button
+                  onClick={(e) => openBudgetModal(e, c)}
+                  title="Edit daily budget"
+                  style={{
+                    width: '26px', height: '26px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    borderRadius: '7px', border: '1px solid var(--br-strong)', background: 'transparent',
+                    cursor: 'pointer', transition: 'background 0.12s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--hover)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <Pencil size={12} color="var(--t2)" />
+                </button>
+              )}
+            </div>
+          </td>
+        )}
         <td style={tdStyle()}>{c.daily_budget ? fmtRp(parseInt(c.daily_budget)) : '—'}</td>
         <td style={tdStyle()}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
@@ -417,7 +517,7 @@ export default function CampaignsPage() {
 
     return [
       <tr key={key + '-hdr'} style={{ background: 'var(--s2)' }}>
-        <td colSpan={13} style={{ padding: '6px 14px' }}>
+        <td colSpan={totalCols} style={{ padding: '6px 14px' }}>
           <span style={{ fontSize: '10px', fontWeight: '600', color: 'var(--t2)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ padding: '2px 9px', borderRadius: '20px', fontSize: '10px', fontWeight: '500', background: OBJ_STYLE[grp]?.bg || 'var(--sf)', color: OBJ_STYLE[grp]?.color || 'var(--t2)' }}>{grp}</span>
             {rows.length} campaign{rows.length > 1 ? 's' : ''}
@@ -429,7 +529,7 @@ export default function CampaignsPage() {
 
       isActive && showSubtotal[grp] && (
         <tr key={key + '-sub'} style={{ borderTop: '0.5px solid var(--br)', background: 'var(--sf)' }}>
-          <td colSpan={3} style={{ padding: '8px 12px', fontWeight: '600', color: 'var(--t1)', fontSize: '11px', fontStyle: 'italic' }}>Subtotal {grp}</td>
+          <td colSpan={isAdmin ? 4 : 3} style={{ padding: '8px 12px', fontWeight: '600', color: 'var(--t1)', fontSize: '11px', fontStyle: 'italic' }}>Subtotal {grp}</td>
           <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '500', color: 'var(--t1)', fontSize: '11px' }}>{fmtRp(subBudget)}</td>
           <td style={{ padding: '8px 12px', textAlign: 'right', fontSize: '11px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
@@ -450,7 +550,7 @@ export default function CampaignsPage() {
 
       isActive && (
         <tr key={key + '-toggle'} style={{ borderTop: '0.5px solid var(--br)', background: 'var(--sf)' }}>
-          <td colSpan={13} style={{ padding: '4px 14px', textAlign: 'center' }}>
+          <td colSpan={totalCols} style={{ padding: '4px 14px', textAlign: 'center' }}>
             <button
               onClick={() => toggleSubtotal(grp)}
               style={{ fontSize: '10px', padding: '2px 14px', borderRadius: '6px', border: '1px solid var(--bs)', background: 'transparent', color: 'var(--t3)', cursor: 'pointer' }}>
@@ -573,6 +673,7 @@ export default function CampaignsPage() {
                     </div>
                   </th>
                   <th style={thStyle('center')}>Status</th>
+                  {isAdmin && <th style={thStyle('center')}>Actions</th>}
                   <th style={thStyle()}>Daily Budget</th>
                   <th style={thStyle()}>Result</th>
                   <th style={thStyle()}>Reach</th>
@@ -595,7 +696,7 @@ export default function CampaignsPage() {
                       return renderGroup(grp, rows, activeRows);
                     })
                   : (
-                    <tr><td colSpan={13} style={{ padding: '32px', textAlign: 'center', color: 'var(--t3)', fontSize: '13px' }}>
+                    <tr><td colSpan={totalCols} style={{ padding: '32px', textAlign: 'center', color: 'var(--t3)', fontSize: '13px' }}>
                       No campaign data for {dateOpt.label}
                     </td></tr>
                   )
@@ -658,6 +759,141 @@ export default function CampaignsPage() {
           periodLabel={filterLabel()}
           onClose={() => setShowCombine(false)}
         />
+      )}
+
+      {/* Popup konfirmasi aksi iklan (admin-only): stop/run + edit budget */}
+      {actionModal && (
+        <div
+          onClick={() => { if (!actionBusy) setActionModal(null); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', padding: '20px',
+          }}>
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: '400px', background: 'var(--cd)', border: '1px solid var(--br)',
+              borderRadius: '16px', padding: '22px', boxShadow: 'var(--pop-shadow)',
+              animation: 'wdScaleIn 0.18s cubic-bezier(0.4,0,0.2,1)',
+            }}>
+            {actionModal.type === 'status' ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                  <span style={{
+                    width: '38px', height: '38px', borderRadius: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    background: actionModal.nextStatus === 'PAUSED' ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)',
+                  }}>
+                    {actionModal.nextStatus === 'PAUSED' ? <Pause size={17} color="#ef4444" /> : <Play size={17} color="#10b981" />}
+                  </span>
+                  <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--t1)' }}>
+                    {actionModal.nextStatus === 'PAUSED' ? 'Stop this campaign?' : 'Run this campaign?'}
+                  </div>
+                </div>
+                <div style={{ fontSize: '12.5px', color: 'var(--t2)', lineHeight: 1.55, marginBottom: '6px', wordBreak: 'break-word' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--t1)' }}>{actionModal.campaign.name}</span>
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--t3)', lineHeight: 1.55, marginBottom: '16px' }}>
+                  {actionModal.nextStatus === 'PAUSED'
+                    ? 'Campaign akan berhenti tayang di Meta sampai dijalankan lagi.'
+                    : 'Campaign akan mulai tayang lagi di Meta dan membelanjakan budget.'}
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                  <span style={{
+                    width: '38px', height: '38px', borderRadius: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    background: 'var(--cal-range)',
+                  }}>
+                    <Pencil size={16} color="var(--cal-accent-line)" />
+                  </span>
+                  <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--t1)' }}>Edit Daily Budget</div>
+                </div>
+                <div style={{ fontSize: '12.5px', color: 'var(--t2)', marginBottom: '14px', wordBreak: 'break-word' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--t1)' }}>{actionModal.campaign.name}</span>
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--t3)', marginBottom: '6px' }}>
+                  Budget sekarang: <span style={{ fontWeight: 600, color: 'var(--t2)' }}>
+                    Rp {actionModal.campaign.daily_budget ? parseInt(actionModal.campaign.daily_budget).toLocaleString('id-ID') : '—'}
+                  </span> / hari
+                </div>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px',
+                  border: '1px solid var(--br-strong)', borderRadius: '10px', padding: '10px 13px', background: 'var(--sf)',
+                }}>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--t3)', flexShrink: 0 }}>Rp</span>
+                  <input
+                    autoFocus
+                    inputMode="numeric"
+                    value={budgetInput ? parseInt(budgetInput).toLocaleString('id-ID') : ''}
+                    onChange={e => setBudgetInput(e.target.value.replace(/\D/g, ''))}
+                    onKeyDown={e => { if (e.key === 'Enter') executeAction(); }}
+                    placeholder="0"
+                    style={{
+                      flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent',
+                      fontSize: '16px', fontWeight: 700, color: 'var(--t1)', fontFamily: 'inherit',
+                    }}
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--t3)', flexShrink: 0 }}>/ hari</span>
+                </div>
+              </>
+            )}
+
+            {actionError && (
+              <div style={{ padding: '9px 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '9px', color: '#ef4444', fontSize: '12px', marginBottom: '14px' }}>
+                {actionError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setActionModal(null)}
+                disabled={actionBusy}
+                style={{
+                  padding: '9px 16px', fontSize: '12.5px', fontWeight: 500, borderRadius: '9px',
+                  border: '1px solid var(--br)', background: 'transparent', color: 'var(--t2)',
+                  cursor: actionBusy ? 'default' : 'pointer', opacity: actionBusy ? 0.5 : 1,
+                }}>
+                Cancel
+              </button>
+              <button
+                onClick={executeAction}
+                disabled={actionBusy || (actionModal.type === 'budget' && (!budgetInput || parseInt(budgetInput) < 10000))}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '7px',
+                  padding: '9px 18px', fontSize: '12.5px', fontWeight: 600, borderRadius: '9px', border: 'none',
+                  cursor: actionBusy ? 'wait' : 'pointer',
+                  background: actionModal.type === 'status'
+                    ? (actionModal.nextStatus === 'PAUSED' ? '#ef4444' : '#10b981')
+                    : 'var(--cal-accent)',
+                  color: actionModal.type === 'status' ? '#fff' : 'var(--cal-accent-fg)',
+                  opacity: (actionModal.type === 'budget' && (!budgetInput || parseInt(budgetInput) < 10000)) ? 0.45 : 1,
+                }}>
+                {actionBusy && <RefreshCw size={13} style={{ animation: 'wdSpin 0.8s linear infinite' }} />}
+                {actionBusy
+                  ? 'Processing...'
+                  : actionModal.type === 'status'
+                    ? (actionModal.nextStatus === 'PAUSED' ? 'Yes, Stop' : 'Yes, Run')
+                    : 'Save Budget'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast sukses aksi iklan */}
+      {toast && (
+        <div style={{ position: 'fixed', bottom: '26px', left: '50%', transform: 'translateX(-50%)', zIndex: 130 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '9px',
+            padding: '10px 18px', background: 'var(--cd)', border: '1px solid var(--br)',
+            borderRadius: '999px', boxShadow: 'var(--pop-shadow)', fontSize: '12.5px', fontWeight: 600, color: 'var(--t1)',
+            animation: 'wdSlideUp 0.25s cubic-bezier(0.4,0,0.2,1)', whiteSpace: 'nowrap',
+          }}>
+            <Check size={14} color="#10b981" strokeWidth={3} />
+            {toast}
+          </div>
+        </div>
       )}
 
       {/* Popup detail campaign: konten iklan (kiri) + performa & platform (kanan) */}

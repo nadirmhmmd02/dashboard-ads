@@ -139,3 +139,48 @@ export async function GET(request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+/* ─── POST: aksi kontrol iklan (admin-only di UI) ───
+   action=set_status → stop/run campaign (ACTIVE ↔ PAUSED)
+   action=set_budget → ubah daily_budget level campaign (IDR nilai penuh, tanpa dibagi/dikali) */
+export async function POST(request) {
+  try {
+    const body = await request.json();
+    const { action, campaign_id } = body;
+
+    if (!campaign_id) {
+      return NextResponse.json({ error: 'campaign_id is required' }, { status: 400 });
+    }
+
+    const params = new URLSearchParams({ access_token: ACCESS_TOKEN });
+
+    if (action === 'set_status') {
+      if (!['ACTIVE', 'PAUSED'].includes(body.status)) {
+        return NextResponse.json({ error: 'status must be ACTIVE or PAUSED' }, { status: 400 });
+      }
+      params.set('status', body.status);
+    } else if (action === 'set_budget') {
+      const budget = parseInt(body.daily_budget);
+      if (!budget || budget < 10000) {
+        return NextResponse.json({ error: 'Daily budget minimal Rp 10.000' }, { status: 400 });
+      }
+      params.set('daily_budget', String(budget));
+    } else {
+      return NextResponse.json({ error: 'unknown action' }, { status: 400 });
+    }
+
+    const res  = await fetch(`https://graph.facebook.com/v19.0/${campaign_id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+    const json = await res.json();
+
+    if (json.error) {
+      return NextResponse.json({ error: json.error.error_user_msg || json.error.message }, { status: 500 });
+    }
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
