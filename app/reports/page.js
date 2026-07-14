@@ -409,25 +409,26 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            {/* mini stats */}
-            <div style={{
-              display: 'flex', flexDirection: isMobile ? 'row' : 'column',
-              gap: isMobile ? '10px' : '12px', flexShrink: 0,
-              width: isMobile ? '100%' : 'auto',
-              borderLeft: isMobile ? 'none' : `1px solid ${BORDER}`,
-              borderTop:  isMobile ? `1px solid ${BORDER}` : 'none',
-              paddingLeft: isMobile ? 0 : '28px',
-              paddingTop:  isMobile ? '16px' : 0,
-              justifyContent: isMobile ? 'space-between' : 'center',
+            {/* mini stats — grid 2 kolom (desktop) / 3 kolom (mobile) */}
+            <div style={ isMobile ? {
+              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px 10px',
+              width: '100%', borderTop: `1px solid ${BORDER}`, paddingTop: '16px',
+            } : {
+              display: 'grid', gridTemplateColumns: 'repeat(2, minmax(160px, 1fr))', gap: '18px 36px',
+              flexShrink: 0, alignContent: 'center',
+              borderLeft: `1px solid ${BORDER}`, paddingLeft: '36px',
             }}>
               {[
-                { label: 'Leads',       value: fmtNum(m.leads),  pct: m.dLeads, invert: false },
+                { label: 'Leads',       value: fmtNum(m.leads),  pct: m.dLeads,       invert: false },
                 { label: 'Blended CPL', value: m.blCPL != null ? fmtRp(m.blCPL) : '—', pct: m.dCPL, invert: true },
-                { label: 'Total Spend', value: fmtRp(m.spend),   pct: m.dSpend, invert: false },
+                { label: 'Total Spend', value: fmtRp(m.spend),   pct: m.dSpend,       invert: false },
+                { label: 'Reach',       value: fmtNum(m.reach),  pct: m.dReach,       invert: false },
+                { label: 'Impressions', value: fmtNum(m.impressions), pct: m.dImpressions, invert: false },
+                { label: 'CPM',         value: m.cpm != null ? fmtRp(m.cpm) : '—',    pct: m.dCPM, invert: true },
               ].map(s => (
-                <div key={s.label} style={{ minWidth: isMobile ? 0 : '150px', flex: isMobile ? 1 : 'none' }}>
+                <div key={s.label} style={{ minWidth: 0 }}>
                   <div style={{ ...TYPE.caption }}>{s.label}</div>
-                  <div style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: 700, color: TXT, letterSpacing: '-0.3px', margin: '3px 0 4px' }}>{s.value}</div>
+                  <div style={{ fontSize: isMobile ? '14px' : '16px', fontWeight: 700, color: TXT, letterSpacing: '-0.3px', margin: '3px 0 4px', whiteSpace: 'nowrap' }}>{s.value}</div>
                   <Delta pct={s.pct} invert={s.invert} />
                 </div>
               ))}

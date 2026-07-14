@@ -109,9 +109,10 @@ export function buildAnalysis(json) {
   const prevBlCPC = prevClicks > 0 ? prevSpend / prevClicks  : null;
   const prevCPM   = prevImpressions > 0 ? (prevSpend / prevImpressions) * 1000 : null;
 
-  const dLeads   = pctChange(accLeads, prevLeads);
-  const dSpend   = pctChange(spend, prevSpend);
-  const dReach   = pctChange(reach, prevReach);
+  const dLeads       = pctChange(accLeads, prevLeads);
+  const dSpend       = pctChange(spend, prevSpend);
+  const dReach       = pctChange(reach, prevReach);
+  const dImpressions = pctChange(impressions, prevImpressions);
   const dCPL     = (blCPL != null && prevBlCPL != null) ? pctChange(blCPL, prevBlCPL) : null;
   const dCPC     = (blCPC != null && prevBlCPC != null) ? pctChange(blCPC, prevBlCPC) : null;
   const dCPM     = (cpm   != null && prevCPM   != null) ? pctChange(cpm, prevCPM)     : null;
@@ -304,7 +305,10 @@ export function buildAnalysis(json) {
                   'Several metrics are moving the wrong way. Prioritize the critical and warning items below.';
 
   return {
-    metrics: { spend, reach, impressions, leads, cpm, cpc, cpl, blCPL, dSpend, dLeads, dCPL, dReach },
+    metrics: {
+      spend, reach, impressions, leads, cpm, cpc, cpl, blCPL,
+      dSpend, dLeads, dCPL, dReach, dImpressions, dCPM,
+    },
     insights,
     score: { value: score, label, verdict },
     campaignCount: camps.length,
