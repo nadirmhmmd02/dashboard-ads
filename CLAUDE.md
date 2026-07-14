@@ -47,7 +47,7 @@ app/
   login/page.js          → Halaman login (tema amber/light, kartu putih).
   campaigns/page.js      → Tabel kampanye Meta (read-only). Filter kalender dual-month. Kolom: …CPL + Total Spend.
   calendar/page.js       → CRUD jadwal iklan via Supabase (tabel `campaigns`). RBAC: create/edit/delete admin-only.
-  reports/page.js        → Menu sidebar "Analytics & Insights" (rencana: analitik & insight berbasis AI; route tetap /reports; icon Sparkles). Placeholder "under development" (header konsisten dashboard + PlatformPlaceholder, theme-aware). Fitur asli belum dibuat.
+  reports/page.js        → ANALYTICS & INSIGHTS (v1, DATA REAL): Performance Score gauge (0-100) + kartu insight otomatis dari data Meta (rule-based via insightEngine.js). Filter periode preset (default This month). Fetch pakai mode=dashboard yang sama — JANGAN diubah. Mobile: refresh via portal top bar, dropdown rata kanan.
   components/
     AuthContext.js       → SOURCE OF TRUTH: auth + role + theme (light/dark). localStorage/sessionStorage.
     AppShell.js          → route guard (redirect ke /login kalau belum login; sidebar + main). User suggestion floating button + popup.
@@ -63,6 +63,7 @@ app/
     MobileNav.js         → top bar mobile (hamburger morph X + logo + theme toggle) + drawer navigasi slide kiri. Punya 2 slot portal aksi per halaman: #wd-topbar-actions (kiri theme toggle: export/refresh) & #wd-topbar-actions-right (kanan: suggestions admin). Theme toggle disembunyikan di /calendar.
     PlatformSelector.js  → dropdown platform iklan di toolbar dashboard (registry PLATFORMS: Meta/Google/TikTok/All — nambah platform cukup tambah entri). Brand icon inline SVG. Pill aktif pakai --cal-accent (theme-aware).
     PlatformPlaceholder.js → empty state premium "under development" (chip Coming Soon + judul + deskripsi, props title/description bisa di-override). Dipakai dashboard (platform non-Meta) + halaman Reports.
+    insightEngine.js     → mesin analisis Analytics & Insights (pure function, tanpa React): buildAnalysis(json API) → { metrics, insights[], score }. 11 rule (tren leads, CPL/CPC/CPM blended vs prev, top performer, kampanye boros vs median grup, konsentrasi budget, momentum, quiet days, reach, spend shift). Komparasi prev pakai angka blended level akun (di-label di kartu). Siap di-upgrade narasi LLM tanpa ubah halaman.
     typography.js        → TYPE: design system token teks (h1-h4, body*, small, caption, overline, table*, metric*, cardTitle, sectionTitle). Dashboard & Reports pakai ini — ubah hierarki teks global dari sini.
     CombineModal.js      → popup hitung gabungan campaign terpilih (checkbox di tabel Campaigns → floating bar "Calculate Total"). Agregasi ikut aturan metrik final: Traffic hanya dari campaign TRAFFIC, Leads hanya CONVERSION, CPC/CPL per tipe, CPM semua.
     SuggestionsModal.js  → LAMA, tidak dipakai lagi (logika sudah pindah ke AppShell + page.js).
@@ -144,19 +145,19 @@ Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cance
 - ✅ Export laporan PDF/JPG 16:9 (admin-only).
 - ✅ Light/Dark mode (CSS var, satu source of truth di AuthContext), toggle di header dashboard + campaigns. Animasi fade transition saat swap tema.
 - ✅ Auth + Role (admin=`Dozan`, user=`user`) + route guard.
-- ✅ Rebranding logo **WILL OF D** di sidebar, login, export, favicon.
+- ✅ Rebranding logo **WILL OF D** di sidebar, login, export, favicon. Brand di samping logo (Sidebar + MobileNav) per role: admin = "WILL OF D", user = "Baba Rafi Ad Hub".
 - ✅ Suggestions (Supabase tabel `suggestions`): user kirim saran via floating button + popup (slide-up, click outside to close); admin lihat+hapus saran via ikon di header dashboard (dengan red dot unread indicator + Clear all).
 - ✅ Campaign detail popup (`CampaignModal.js`): klik row campaign → konten iklan (embed post/reels Instagram asli) + metrik lengkap format penuh + "Running On" platform breakdown dengan share bar. CountUp punya fallback settle (anti macet "0" saat tab hidden).
 - ✅ Hitung gabungan campaign (`CombineModal.js`): checkbox per row → floating bar bawah (count + total spend live + Calculate Total) → popup Combined Performance (hero total spend, delivery, cost efficiency, included campaigns + share bar).
 - ✅ Kolom Campaign resizable: handle drag di batas kolom Campaign|Status (150–620px), nama panjang terpotong ellipsis + tooltip. Sidebar default collapsed saat web pertama dibuka.
 - ✅ Platform selector di toolbar dashboard (Meta Ads default; Google/TikTok/All Platforms tampil placeholder "under development"). Registry di `PlatformSelector.js`.
 - ✅ Typography system (`typography.js`) diterapkan ke Dashboard + Reports — ukuran visual tidak berubah, cuma distandarkan lewat token.
-- ✅ Halaman Reports placeholder "under development" (fix 404 + theme-aware).
+- ✅ Analytics & Insights v1 (route /reports, icon Sparkles): Performance Score gauge + insight cards otomatis dari data Meta real (insightEngine.js), filter periode, severity critical→warning→positive→info, desktop grid 3 kolom / mobile stack.
 - ✅ Versi mobile (≤767px, desktop tak berubah): top bar hamburger→drawer, KPI carousel swipe scroll-snap, strip 2x2, analytics stack, date filter bottom sheet. Top bar dashboard (kanan→kiri): Suggestions · theme · Refresh · Export icon (via portal ke slot MobileNav). Campaigns: refresh di top bar, filter rata kanan. Calendar: tanpa theme toggle, tombol rata kanan, tabel Gantt scroll horizontal (minWidth 920px).
 
 ## BELUM / PENDING (JANGAN dikerjakan tanpa diminta)
 
-- [ ] Fitur Analytics & Insights asli — analitik & insight berbasis AI (dulu bernama "Reports"; halaman /reports sudah ada tapi masih placeholder).
+- [ ] Analytics & Insights: upgrade narasi ke LLM asli (Claude API) — v1 rule-based sudah live; butuh API key kalau mau.
 - [ ] Integrasi Google Ads / TikTok Ads / All Platforms (selector sudah ada, masih placeholder).
 - [ ] Supabase RLS: tabel `public.campaigns` & `public.suggestions` RLS mati. Sengaja dibiarkan dulu. Lihat memory [[supabase-rls-deferred]].
 - [ ] Fitur Compare (tombol disabled), notifikasi lonceng, Export CSV/Excel Calendar — placeholder.

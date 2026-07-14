@@ -42,6 +42,8 @@ function Hamburger({ open, onClick }) {
 export default function MobileNav() {
   const pathname = usePathname();
   const { user, role, logout } = useAuth();
+  // Brand per role: admin = WILL OF D, user = Baba Rafi Ad Hub
+  const brand = role === 'user' ? 'Baba Rafi Ad Hub' : 'WILL OF D';
   const [open, setOpen]       = useState(false);
   const [closing, setClosing] = useState(false);
 
@@ -91,7 +93,8 @@ export default function MobileNav() {
           <span style={{
             fontSize: '13px', fontWeight: 700, letterSpacing: '0.8px',
             color: 'var(--logo-text)', textTransform: 'uppercase', whiteSpace: 'nowrap',
-          }}>WILL OF D</span>
+            overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>{brand}</span>
         </div>
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -140,7 +143,7 @@ export default function MobileNav() {
               <span style={{
                 fontSize: '13px', fontWeight: 700, letterSpacing: '0.8px',
                 color: 'var(--logo-text)', textTransform: 'uppercase',
-              }}>WILL OF D</span>
+              }}>{brand}</span>
             </div>
 
             {/* Nav — touch target besar */}
