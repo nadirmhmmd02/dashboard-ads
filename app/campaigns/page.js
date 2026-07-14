@@ -794,8 +794,8 @@ export default function CampaignsPage() {
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--t3)', lineHeight: 1.55, marginBottom: '16px' }}>
                   {actionModal.nextStatus === 'PAUSED'
-                    ? 'Campaign akan berhenti tayang di Meta sampai dijalankan lagi.'
-                    : 'Campaign akan mulai tayang lagi di Meta dan membelanjakan budget.'}
+                    ? 'This campaign will stop delivering on Meta until you run it again.'
+                    : 'This campaign will resume delivering on Meta and start spending its budget.'}
                 </div>
               </>
             ) : (
@@ -813,9 +813,9 @@ export default function CampaignsPage() {
                   <span style={{ fontWeight: 600, color: 'var(--t1)' }}>{actionModal.campaign.name}</span>
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--t3)', marginBottom: '6px' }}>
-                  Budget sekarang: <span style={{ fontWeight: 600, color: 'var(--t2)' }}>
+                  Current budget: <span style={{ fontWeight: 600, color: 'var(--t2)' }}>
                     Rp {actionModal.campaign.daily_budget ? parseInt(actionModal.campaign.daily_budget).toLocaleString('id-ID') : '—'}
-                  </span> / hari
+                  </span> / day
                 </div>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px',
@@ -834,7 +834,7 @@ export default function CampaignsPage() {
                       fontSize: '16px', fontWeight: 700, color: 'var(--t1)', fontFamily: 'inherit',
                     }}
                   />
-                  <span style={{ fontSize: '11px', color: 'var(--t3)', flexShrink: 0 }}>/ hari</span>
+                  <span style={{ fontSize: '11px', color: 'var(--t3)', flexShrink: 0 }}>/ day</span>
                 </div>
               </>
             )}

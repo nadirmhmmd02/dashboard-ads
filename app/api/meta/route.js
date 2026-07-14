@@ -162,7 +162,7 @@ export async function POST(request) {
     } else if (action === 'set_budget') {
       const budget = parseInt(body.daily_budget);
       if (!budget || budget < 10000) {
-        return NextResponse.json({ error: 'Daily budget minimal Rp 10.000' }, { status: 400 });
+        return NextResponse.json({ error: 'Minimum daily budget is Rp 10.000' }, { status: 400 });
       }
       params.set('daily_budget', String(budget));
     } else {
