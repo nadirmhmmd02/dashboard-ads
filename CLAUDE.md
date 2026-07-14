@@ -47,7 +47,7 @@ app/
   login/page.js          → Halaman login (tema amber/light, kartu putih).
   campaigns/page.js      → Tabel kampanye Meta (read-only). Filter kalender dual-month. Kolom: …CPL + Total Spend.
   calendar/page.js       → CRUD jadwal iklan via Supabase (tabel `campaigns`). RBAC: create/edit/delete admin-only.
-  reports/page.js        → Menu sidebar "AI Insights" (rencana: analitik & insight berbasis AI; route tetap /reports). Placeholder "under development" (header konsisten dashboard + PlatformPlaceholder, theme-aware). Fitur asli belum dibuat.
+  reports/page.js        → Menu sidebar "Analytics & Insights" (rencana: analitik & insight berbasis AI; route tetap /reports; icon Sparkles). Placeholder "under development" (header konsisten dashboard + PlatformPlaceholder, theme-aware). Fitur asli belum dibuat.
   components/
     AuthContext.js       → SOURCE OF TRUTH: auth + role + theme (light/dark). localStorage/sessionStorage.
     AppShell.js          → route guard (redirect ke /login kalau belum login; sidebar + main). User suggestion floating button + popup.
@@ -156,7 +156,7 @@ Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cance
 
 ## BELUM / PENDING (JANGAN dikerjakan tanpa diminta)
 
-- [ ] Fitur AI Insights asli — analitik & insight berbasis AI (dulu bernama "Reports"; halaman /reports sudah ada tapi masih placeholder).
+- [ ] Fitur Analytics & Insights asli — analitik & insight berbasis AI (dulu bernama "Reports"; halaman /reports sudah ada tapi masih placeholder).
 - [ ] Integrasi Google Ads / TikTok Ads / All Platforms (selector sudah ada, masih placeholder).
 - [ ] Supabase RLS: tabel `public.campaigns` & `public.suggestions` RLS mati. Sengaja dibiarkan dulu. Lihat memory [[supabase-rls-deferred]].
 - [ ] Fitur Compare (tombol disabled), notifikasi lonceng, Export CSV/Excel Calendar — placeholder.

@@ -19,7 +19,7 @@ export const NAV_ITEMS = [
   { href: '/',          label: 'Dashboard', icon: LayoutDashboard },
   { href: '/campaigns', label: 'Campaigns', icon: Megaphone },
   { href: '/calendar',  label: 'Calendar',  icon: CalendarDays },
-  { href: '/reports',   label: 'AI Insights', icon: Sparkles },
+  { href: '/reports',   label: 'Analytics & Insights', icon: Sparkles },
 ];
 
 const MIN_WIDTH       = 180;

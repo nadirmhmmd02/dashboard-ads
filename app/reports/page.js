@@ -23,16 +23,16 @@ export default function ReportsPage() {
         borderBottom:'1px solid var(--br)',
       }}>
         <div>
-          <h1 style={{ ...TYPE.h1 }}>AI Insights</h1>
-          <p style={{ ...TYPE.small, marginTop:'3px' }}>AI Insights · Under development</p>
+          <h1 style={{ ...TYPE.h1 }}>Analytics &amp; Insights</h1>
+          <p style={{ ...TYPE.small, marginTop:'3px' }}>Analytics &amp; Insights · Under development</p>
         </div>
       </header>
 
       {/* ══ CONTENT ══ */}
       <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', padding:'24px' }}>
         <PlatformPlaceholder
-          platform={{ label: 'AI Insights', Icon: Sparkles }}
-          title="AI Insights is currently under development"
+          platform={{ label: 'Analytics & Insights', Icon: Sparkles }}
+          title="Analytics & Insights is currently under development"
           description="We’re working on bringing AI-powered analytics and insights to WILL OF D. Stay tuned for future updates."
         />
       </div>
