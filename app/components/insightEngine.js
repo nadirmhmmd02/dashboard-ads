@@ -113,6 +113,9 @@ export function buildAnalysis(json) {
   const dSpend       = pctChange(spend, prevSpend);
   const dReach       = pctChange(reach, prevReach);
   const dImpressions = pctChange(impressions, prevImpressions);
+  // Traffic (link clicks) — value ikut campaign TRAFFIC (sama dgn Dashboard),
+  // delta pakai level akun karena data prev hanya tersedia level akun.
+  const dTraffic     = pctChange(accClicks, prevClicks);
   const dCPL     = (blCPL != null && prevBlCPL != null) ? pctChange(blCPL, prevBlCPL) : null;
   const dCPC     = (blCPC != null && prevBlCPC != null) ? pctChange(blCPC, prevBlCPC) : null;
   const dCPM     = (cpm   != null && prevCPM   != null) ? pctChange(cpm, prevCPM)     : null;
@@ -143,19 +146,19 @@ export function buildAnalysis(json) {
     });
   }
 
-  // 2. Efisiensi biaya per lead (blended)
+  // 2. Efisiensi biaya per lead (level akun = total spend ÷ total leads)
   if (dCPL != null) {
     if (dCPL <= -10) add({
       id: 'cpl-better', severity: 'positive', icon: 'BadgeCheck',
       title: 'Cost per lead is improving',
-      body: `Blended cost per lead came down to ${fmtRp(blCPL)} — ${fmtPct(dCPL)} versus the previous period. You're paying less for every lead; this is the right direction.`,
-      chips: [{ label: 'Blended CPL', value: fmtRp(blCPL) }, { label: 'vs prev', value: fmtPct(dCPL), tone: 'pos' }],
+      body: `Overall cost per lead — total ad spend divided by all leads — came down to ${fmtRp(blCPL)}, ${fmtPct(dCPL)} versus the previous period. Your advertising is generating leads more efficiently.`,
+      chips: [{ label: 'Overall cost / lead', value: fmtRp(blCPL) }, { label: 'vs prev', value: fmtPct(dCPL), tone: 'pos' }],
     });
     else if (dCPL >= 20) add({
       id: 'cpl-worse', severity: dCPL >= 50 ? 'critical' : 'warning', icon: 'Wallet',
       title: 'Leads are getting more expensive',
-      body: `Blended cost per lead rose to ${fmtRp(blCPL)} (${fmtPct(dCPL)} vs previous period). Review targeting and creatives on conversion campaigns before scaling budget further.`,
-      chips: [{ label: 'Blended CPL', value: fmtRp(blCPL) }, { label: 'vs prev', value: fmtPct(dCPL), tone: 'neg' }],
+      body: `Overall cost per lead — total ad spend divided by all leads — rose to ${fmtRp(blCPL)}, ${fmtPct(dCPL)} versus the previous period. Review targeting and creatives on conversion campaigns before scaling budget further.`,
+      chips: [{ label: 'Overall cost / lead', value: fmtRp(blCPL) }, { label: 'vs prev', value: fmtPct(dCPL), tone: 'neg' }],
     });
   }
 
@@ -307,7 +310,8 @@ export function buildAnalysis(json) {
   return {
     metrics: {
       spend, reach, impressions, leads, cpm, cpc, cpl, blCPL,
-      dSpend, dLeads, dCPL, dReach, dImpressions, dCPM,
+      traffic: trafficClicks,
+      dSpend, dLeads, dCPL, dReach, dImpressions, dCPM, dTraffic,
     },
     insights,
     score: { value: score, label, verdict },

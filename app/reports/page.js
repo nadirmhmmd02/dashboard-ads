@@ -419,9 +419,9 @@ export default function ReportsPage() {
               borderLeft: `1px solid ${BORDER}`, paddingLeft: '36px',
             }}>
               {[
-                { label: 'Leads',       value: fmtNum(m.leads),  pct: m.dLeads,       invert: false },
-                { label: 'Blended CPL', value: m.blCPL != null ? fmtRp(m.blCPL) : '—', pct: m.dCPL, invert: true },
-                { label: 'Total Spend', value: fmtRp(m.spend),   pct: m.dSpend,       invert: false },
+                { label: 'Leads',       value: fmtNum(m.leads),   pct: m.dLeads,   invert: false },
+                { label: 'Traffic',     value: fmtNum(m.traffic), pct: m.dTraffic, invert: false },
+                { label: 'Total Spend', value: fmtRp(m.spend),    pct: m.dSpend,   invert: false },
                 { label: 'Reach',       value: fmtNum(m.reach),  pct: m.dReach,       invert: false },
                 { label: 'Impressions', value: fmtNum(m.impressions), pct: m.dImpressions, invert: false },
                 { label: 'CPM',         value: m.cpm != null ? fmtRp(m.cpm) : '—',    pct: m.dCPM, invert: true },
