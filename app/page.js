@@ -17,6 +17,7 @@ import ThemeToggle from './components/ThemeToggle';
 import PlatformSelector, { DEFAULT_PLATFORM } from './components/PlatformSelector';
 import PlatformPlaceholder from './components/PlatformPlaceholder';
 import useIsMobile from './components/useIsMobile';
+import DateFilterPopup from './components/DateFilterPopup';
 import { TYPE } from './components/typography';
 import { supabase } from './supabase';
 
@@ -728,185 +729,22 @@ export default function DashboardPage() {
               <ChevronDown size={13} color={SUB}/>
             </button>
 
-            {showDropdown && !isMobile && (() => {
-              const rd = new Date(calY, calM + 1, 1);       // bulan kanan = bulan kiri + 1
-              const rY = rd.getFullYear(), rM = rd.getMonth();
-              const navBtn = {
-                width:'30px', height:'30px', display:'flex', alignItems:'center', justifyContent:'center',
-                border:`1px solid ${BORDER}`, borderRadius:'8px', background:'transparent',
-                cursor:'pointer', flexShrink:0, transition:'background 0.12s',
-              };
-              const rangeReady = customSince && customUntil;
-              return (
-              <div data-filter style={{
-                position:'absolute', top:'46px', right:0, zIndex:50,
-                background: CARD, border:`1px solid ${BORDER}`,
-                borderRadius:'14px', boxShadow:'var(--pop-shadow)', overflow:'hidden',
-                animation:'wdScaleIn 0.15s cubic-bezier(0.4,0,0.2,1)',
-                display:'flex', flexDirection:'column',
-              }}>
-                <div style={{ display:'flex' }}>
-                  {/* ── Presets kiri ── */}
-                  <div style={{ width:'178px', borderRight:`1px solid ${BORDER}`, padding:'10px', display:'flex', flexDirection:'column', flexShrink:0 }}>
-                    {DATE_PRESETS_DASHBOARD.map(opt => {
-                      const active = !isCustom && opt.value === dateOpt.value;
-                      return (
-                        <div key={opt.value} onClick={() => handleSelectPreset(opt)} style={{
-                          padding:'9px 12px', fontSize:'13px', cursor:'pointer', borderRadius:'8px',
-                          color: active ? 'var(--cal-accent-line)' : SUB,
-                          background: active ? 'var(--cal-accent-soft)' : 'transparent',
-                          fontWeight: active ? 600 : 400, transition:'background 0.12s',
-                        }}
-                        onMouseEnter={e => { if (!active) e.currentTarget.style.background='var(--hover)'; }}
-                        onMouseLeave={e => { if (!active) e.currentTarget.style.background='transparent'; }}
-                        >{opt.label}</div>
-                      );
-                    })}
-                    <div style={{ borderTop:`1px solid ${BORDER}`, margin:'8px 4px 0' }} />
-                    <div style={{ ...TYPE.overline, padding:'12px 8px 8px' }}>Custom Range</div>
-                    <div style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 12px', borderRadius:'10px',
-                      border:`1px solid ${isCustom ? 'var(--cal-accent-line)' : BORDER}`, background:'var(--data-bg)' }}>
-                      <Calendar size={15} color={SUB} style={{ flexShrink:0 }}/>
-                      <div style={{ fontSize:'12px', lineHeight:1.55 }}>
-                        <div style={{ color: customSince ? TXT : MUTE }}>{fmtNice(customSince)}</div>
-                        <div style={{ color: customUntil ? TXT : MUTE }}>{fmtNice(customUntil)}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ── Kalender kanan ── */}
-                  <div style={{ padding:'14px 16px' }}>
-                    <div style={{ display:'flex', alignItems:'center', marginBottom:'12px' }}>
-                      <button onClick={() => shiftCal(-1)} style={navBtn}
-                        onMouseEnter={e => e.currentTarget.style.background='var(--hover)'}
-                        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                        <ChevronLeft size={17} color={SUB}/>
-                      </button>
-                      <div style={{ flex:1, textAlign:'center', fontSize:'13px', fontWeight:600, color:TXT }}>
-                        {CAL_MON[calM]} <span style={{ color:SUB, fontWeight:400 }}>{calY}</span>
-                      </div>
-                      <div style={{ width:'16px', flexShrink:0 }} />
-                      <div style={{ flex:1, textAlign:'center', fontSize:'13px', fontWeight:600, color:TXT }}>
-                        {CAL_MON[rM]} <span style={{ color:SUB, fontWeight:400 }}>{rY}</span>
-                      </div>
-                      <button onClick={() => shiftCal(1)} style={navBtn}
-                        onMouseEnter={e => e.currentTarget.style.background='var(--hover)'}
-                        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                        <ChevronRight size={17} color={SUB}/>
-                      </button>
-                    </div>
-                    <div style={{ display:'flex', gap:'16px' }}>
-                      {renderMonth(calY, calM)}
-                      {renderMonth(rY, rM)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── Footer ── */}
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
-                  padding:'12px 16px', borderTop:`1px solid ${BORDER}` }}>
-                  <div style={{ fontSize:'13px', fontWeight:600, color: customSince ? TXT : MUTE }}>
-                    {customSince ? `${fmtNice(customSince)}${customUntil ? '  –  ' + fmtNice(customUntil) : ''}` : 'Select a date range'}
-                  </div>
-                  <div style={{ display:'flex', gap:'8px' }}>
-                    <button onClick={() => setShowDropdown(false)} style={{
-                      padding:'8px 18px', fontSize:'13px', fontWeight:500, borderRadius:'9px',
-                      border:`1px solid ${BORDER}`, background:'transparent', color:TXT, cursor:'pointer',
-                      transition:'background 0.12s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background='var(--hover)'}
-                    onMouseLeave={e => e.currentTarget.style.background='transparent'}
-                    >Cancel</button>
-                    <button onClick={applyCustomRange} disabled={!rangeReady} style={{
-                      padding:'8px 22px', fontSize:'13px', fontWeight:600, borderRadius:'9px', border:'none',
-                      background: rangeReady ? 'var(--cal-accent)' : 'var(--hover)',
-                      color:      rangeReady ? 'var(--cal-accent-fg)' : SUB,
-                      cursor:     rangeReady ? 'pointer' : 'default',
-                    }}>Apply</button>
-                  </div>
-                </div>
-              </div>
-              );
-            })()}
-
-            {/* ── Mobile: date filter bottom sheet ── */}
-            {showDropdown && isMobile && (() => {
-              const rangeReady = customSince && customUntil;
-              const navBtn = {
-                width:'34px', height:'34px', display:'flex', alignItems:'center', justifyContent:'center',
-                border:`1px solid ${BORDER}`, borderRadius:'9px', background:'transparent',
-                cursor:'pointer', flexShrink:0,
-              };
-              return (
-              <>
-                <div style={{
-                  position:'fixed', inset:0, zIndex:95, background:'rgba(0,0,0,0.45)',
-                  animation:'wdFadeIn 0.2s ease',
-                }}/>
-                <div data-filter style={{
-                  position:'fixed', left:0, right:0, bottom:0, zIndex:96,
-                  background:CARD, borderTop:`1px solid ${BORDER}`,
-                  borderRadius:'18px 18px 0 0', boxShadow:'var(--pop-shadow)',
-                  maxHeight:'88vh', overflowY:'auto',
-                  padding:'6px 16px calc(16px + env(safe-area-inset-bottom, 0px))',
-                  animation:'wdSheetUp 0.28s cubic-bezier(0.4,0,0.2,1)',
-                }}>
-                  {/* grab handle */}
-                  <div style={{ width:'36px', height:'4px', borderRadius:'2px', background:'var(--br-strong)', margin:'8px auto 14px' }}/>
-
-                  {/* presets — chips */}
-                  <div style={{ ...TYPE.overline, padding:'0 2px 8px' }}>Quick Select</div>
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:'8px', marginBottom:'16px' }}>
-                    {DATE_PRESETS_DASHBOARD.map(opt => {
-                      const active = !isCustom && opt.value === dateOpt.value;
-                      return (
-                        <button key={opt.value} onClick={() => handleSelectPreset(opt)} style={{
-                          padding:'8px 13px', borderRadius:'999px', fontSize:'12.5px', fontFamily:'inherit',
-                          fontWeight: active ? 600 : 400, cursor:'pointer',
-                          border:`1px solid ${active ? 'var(--cal-accent-line)' : BORDER}`,
-                          background: active ? 'var(--cal-accent-soft)' : 'transparent',
-                          color: active ? 'var(--cal-accent-line)' : SUB,
-                          transition:'background 0.15s, color 0.15s, border-color 0.15s',
-                        }}>{opt.label}</button>
-                      );
-                    })}
-                  </div>
-
-                  {/* kalender satu bulan */}
-                  <div style={{ ...TYPE.overline, padding:'0 2px 8px' }}>Custom Range</div>
-                  <div style={{ display:'flex', alignItems:'center', marginBottom:'10px' }}>
-                    <button onClick={() => shiftCal(-1)} style={navBtn}><ChevronLeft size={17} color={SUB}/></button>
-                    <div style={{ flex:1, textAlign:'center', fontSize:'14px', fontWeight:600, color:TXT }}>
-                      {CAL_MON[calM]} <span style={{ color:SUB, fontWeight:400 }}>{calY}</span>
-                    </div>
-                    <button onClick={() => shiftCal(1)} style={navBtn}><ChevronRight size={17} color={SUB}/></button>
-                  </div>
-                  <div style={{ display:'flex', justifyContent:'center' }}>
-                    {renderMonth(calY, calM)}
-                  </div>
-
-                  {/* footer */}
-                  <div style={{ display:'flex', flexDirection:'column', gap:'10px', marginTop:'14px', paddingTop:'12px', borderTop:`1px solid ${BORDER}` }}>
-                    <div style={{ fontSize:'13px', fontWeight:600, textAlign:'center', color: customSince ? TXT : MUTE }}>
-                      {customSince ? `${fmtNice(customSince)}${customUntil ? '  –  ' + fmtNice(customUntil) : ''}` : 'Select a date range'}
-                    </div>
-                    <div style={{ display:'flex', gap:'8px' }}>
-                      <button onClick={() => setShowDropdown(false)} style={{
-                        flex:1, padding:'11px 0', fontSize:'13px', fontWeight:500, borderRadius:'10px', fontFamily:'inherit',
-                        border:`1px solid ${BORDER}`, background:'transparent', color:TXT, cursor:'pointer',
-                      }}>Cancel</button>
-                      <button onClick={applyCustomRange} disabled={!rangeReady} style={{
-                        flex:1, padding:'11px 0', fontSize:'13px', fontWeight:600, borderRadius:'10px', border:'none', fontFamily:'inherit',
-                        background: rangeReady ? 'var(--cal-accent)' : 'var(--hover)',
-                        color:      rangeReady ? 'var(--cal-accent-fg)' : SUB,
-                        cursor:     rangeReady ? 'pointer' : 'default',
-                      }}>Apply</button>
-                    </div>
-                  </div>
-                </div>
-              </>
-              );
-            })()}
+            {showDropdown && (
+              <DateFilterPopup
+                presets={DATE_PRESETS_DASHBOARD}
+                dateOpt={dateOpt}
+                isCustom={isCustom}
+                customSince={customSince}
+                customUntil={customUntil}
+                calY={calY} calM={calM}
+                isMobile={isMobile}
+                onSelectPreset={handleSelectPreset}
+                onPickDay={pickDay}
+                onShiftCal={shiftCal}
+                onApply={applyCustomRange}
+                onClose={() => setShowDropdown(false)}
+              />
+            )}
           </div>
 
           {!isMobile && isAdmin && (

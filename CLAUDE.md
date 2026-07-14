@@ -57,7 +57,8 @@ app/
     CountUp.js           → animasi angka naik dari 0 ke target.
     Logo.js              → LOGO MARK "Control Hub" (SVG, warna via prop, ikut container/tema).
     ThemeToggle.js       → shared theme toggle button dengan animasi fade transition. Dipakai dashboard + campaigns.
-    DateFilterContext.js → shared filter state (terpisah per halaman: dashboard & campaigns). Persist saat pindah tab, reset saat browser refresh.
+    DateFilterContext.js → shared filter state (terpisah per halaman: dashboard, campaigns & reports). Persist saat pindah tab, reset saat browser refresh.
+    DateFilterPopup.js   → popup filter tanggal SHARED (Dashboard+Campaigns+Reports): preset kiri + custom range + kalender dual-month + footer, ukuran "tengah" final 614x367 (SIZES.compact — jangan diubah tanpa diminta). Mobile otomatis jadi bottom sheet single-month. Murni tampilan; state & fetch tetap di halaman masing-masing.
     CampaignModal.js     → popup detail campaign (klik row di Campaigns): konten iklan IG embed di kiri (auto feed 1:1 / portrait 9:16, strip thumbnail kalau >1), metrik + platform breakdown di kanan (hero Result+Total Spend, count-up, hover lift, chip brand FB/IG).
     useIsMobile.js       → hook deteksi viewport mobile ≤767px (matchMedia + fallback resize). Dipakai AppShell, dashboard, campaigns, calendar.
     MobileNav.js         → top bar mobile (hamburger morph X + logo + theme toggle) + drawer navigasi slide kiri. Punya 2 slot portal aksi per halaman: #wd-topbar-actions (kiri theme toggle: export/refresh) & #wd-topbar-actions-right (kanan: suggestions admin). Theme toggle disembunyikan di /calendar.
@@ -122,8 +123,8 @@ Dua tema: light (`:root`) & dark (`html[data-theme="dark"]`).
 ### Dashboard (`app/page.js`) — DATA REAL
 Atas→bawah: header (title + filter tanggal + Export admin-only + Refresh + theme toggle + Suggestions admin-only) → 5 KPI card (Total Spend, Reach, Impressions, Traffic, Leads — count-up + growth badge vs periode sebelumnya + sparkline) → strip 4 metrik (CPM/CPC/CPL/CTR) → baris analitik 3 kolom (Spend Breakdown donut · Daily Spend AreaChart · Top Campaigns). **Angka KPI & strip pakai format PENUH** (mis. `Rp 1.440.076`, bukan `Rp 1.4M`). Fit 1 layar tanpa scroll.
 
-### Filter Tanggal (Dashboard & Campaigns) — kalender dual-month inline
-Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cancel/Apply. Default **"This month"**. Preset Dashboard: Today…Last month. Preset Campaigns sama + tambahan "Last 3 days". State dikelola `DateFilterContext` (terpisah per halaman) — persist saat pindah tab via client-side navigation, reset ke "This month" saat browser refresh. Tombol Refresh di dashboard hanya refresh data, TIDAK reset filter. Custom range → `/api/meta?...&since=&until=`. **Logika fetch JANGAN diubah.**
+### Filter Tanggal (Dashboard, Campaigns & Reports) — kalender dual-month via DateFilterPopup.js
+Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cancel/Apply. Default **"This month"**. Preset Dashboard & Reports: Today…Last month. Preset Campaigns sama + tambahan "Last 3 days". State dikelola `DateFilterContext` (terpisah per halaman) — persist saat pindah tab via client-side navigation, reset ke "This month" saat browser refresh. Tombol Refresh hanya refresh data, TIDAK reset filter. Custom range → `/api/meta?...&since=&until=`. **Logika fetch JANGAN diubah.**
 
 ---
 

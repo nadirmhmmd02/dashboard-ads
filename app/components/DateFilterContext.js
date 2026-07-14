@@ -52,9 +52,10 @@ function useFilterState() {
 export function DateFilterProvider({ children }) {
   const dashboard = useFilterState();
   const campaigns = useFilterState();
+  const reports   = useFilterState();
 
   return (
-    <DateFilterContext.Provider value={{ dashboard, campaigns }}>
+    <DateFilterContext.Provider value={{ dashboard, campaigns, reports }}>
       {children}
     </DateFilterContext.Provider>
   );
@@ -66,6 +67,10 @@ export function useDashboardFilter() {
 
 export function useCampaignsFilter() {
   return useContext(DateFilterContext).campaigns;
+}
+
+export function useReportsFilter() {
+  return useContext(DateFilterContext).reports;
 }
 
 export { DATE_PRESETS_DASHBOARD, DATE_PRESETS_CAMPAIGNS };

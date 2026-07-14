@@ -1,14 +1,16 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Sparkles, Calendar, ChevronDown, RefreshCw, Check,
+  Sparkles, Calendar, ChevronDown, RefreshCw,
   TrendingUp, TrendingDown, TriangleAlert, Award, Activity,
   Zap, Target, Wallet, BadgeCheck, CircleAlert, Crosshair,
 } from 'lucide-react';
 import CountUp from '../components/CountUp';
 import useIsMobile from '../components/useIsMobile';
+import DateFilterPopup from '../components/DateFilterPopup';
+import { useReportsFilter, DATE_PRESETS_DASHBOARD } from '../components/DateFilterContext';
 import { TYPE } from '../components/typography';
 import { buildAnalysis, fmtRp, fmtNum, fmtPct } from '../components/insightEngine';
 
@@ -34,15 +36,6 @@ const CARD_BASE = {
   borderRadius: '18px',
   boxShadow: 'var(--shadow)',
 };
-
-const PRESETS = [
-  { label: 'Last 7 days',  value: 'last_7d'  },
-  { label: 'Last 14 days', value: 'last_14d' },
-  { label: 'Last 30 days', value: 'last_30d' },
-  { label: 'This month',   value: 'this_month' },
-  { label: 'Last month',   value: 'last_month' },
-];
-const DEFAULT_PRESET = PRESETS[3]; // This month — sama dengan default dashboard
 
 /* Severity → warna semantik (positif ikut var tema: hijau dark / hijau emerald light) */
 const SEV = {
@@ -193,12 +186,16 @@ function InsightCard({ insight, index }) {
 /* ═══ MAIN ═══ */
 export default function ReportsPage() {
   const isMobile = useIsMobile();
-  const [preset, setPreset]       = useState(DEFAULT_PRESET);
-  const [showPreset, setShowPreset] = useState(false);
+  const { dateOpt, customSince, setCustomSince, customUntil, setCustomUntil, isCustom, selectPreset, applyCustom } = useReportsFilter();
+  const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
   const [analysis, setAnalysis]   = useState(null);
-  const presetRef = useRef(null);
+
+  // Bulan kiri kalender (UI only) — default: bulan lalu + bulan ini
+  const _initCal = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+  const [calY, setCalY] = useState(_initCal.getFullYear());
+  const [calM, setCalM] = useState(_initCal.getMonth());
 
   // Slot top bar mobile — refresh pindah ke atas via portal
   const [topbarSlot, setTopbarSlot] = useState(null);
@@ -206,19 +203,24 @@ export default function ReportsPage() {
     setTopbarSlot(isMobile ? document.getElementById('wd-topbar-actions') : null);
   }, [isMobile]);
 
-  useEffect(() => { fetchData(); }, [preset]);
+  useEffect(() => { if (!isCustom) fetchData(); }, [dateOpt, isCustom]);
+  // Restore custom range yang persist di context saat balik ke tab ini
+  useEffect(() => { if (isCustom && customSince && customUntil) fetchData(customSince, customUntil); }, []);
 
   useEffect(() => {
-    if (!showPreset) return;
-    const h = (e) => { if (presetRef.current && !presetRef.current.contains(e.target)) setShowPreset(false); };
+    if (!showDropdown) return;
+    const h = e => { if (!e.target.closest('[data-filter]')) setShowDropdown(false); };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
-  }, [showPreset]);
+  }, [showDropdown]);
 
-  async function fetchData() {
+  async function fetchData(since = '', until = '') {
     setLoading(true); setError(null);
     try {
-      const res  = await fetch(`/api/meta?mode=dashboard&date_preset=${preset.value}`);
+      const url = since && until
+        ? `/api/meta?mode=dashboard&since=${since}&until=${until}`
+        : `/api/meta?mode=dashboard&date_preset=${dateOpt.value}`;
+      const res  = await fetch(url);
       const json = await res.json();
       if (json.error) throw new Error(json.error);
       setAnalysis(buildAnalysis(json));
@@ -228,8 +230,49 @@ export default function ReportsPage() {
     setLoading(false);
   }
 
+  function refresh() {
+    if (isCustom && customSince && customUntil) fetchData(customSince, customUntil);
+    else fetchData();
+  }
+
+  // ── Handler filter (pola sama dengan Dashboard) ──
+  function openFilter() {
+    const next = !showDropdown;
+    if (next && customSince) {
+      const p = customSince.split('-');
+      setCalY(+p[0]); setCalM(+p[1] - 1);
+    }
+    setShowDropdown(next);
+  }
+  function shiftCal(delta) {
+    const dt = new Date(calY, calM + delta, 1);
+    setCalY(dt.getFullYear()); setCalM(dt.getMonth());
+  }
+  function pickDay(ds) {
+    if (!customSince || (customSince && customUntil)) { setCustomSince(ds); setCustomUntil(''); }
+    else if (ds < customSince) { setCustomUntil(customSince); setCustomSince(ds); }
+    else setCustomUntil(ds);
+  }
+  function applyCustomRange() {
+    if (!customSince || !customUntil) return;
+    applyCustom(customSince, customUntil);
+    setShowDropdown(false);
+    fetchData(customSince, customUntil);
+  }
+  function handleSelectPreset(opt) {
+    selectPreset(opt);
+    setShowDropdown(false);
+  }
+  function filterLabel() {
+    if (isCustom && customSince && customUntil) {
+      const fmt = d => new Date(d).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'2-digit' });
+      return `${fmt(customSince)} – ${fmt(customUntil)}`;
+    }
+    return dateOpt.label;
+  }
+
   const refreshButton = (
-    <button onClick={fetchData} title="Refresh" style={{
+    <button onClick={refresh} title="Refresh" style={{
       width: isMobile ? '36px' : '40px', height: isMobile ? '36px' : '40px',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: CARD, border: `1px solid ${BORDER}`, borderRadius: isMobile ? '9px' : '10px',
@@ -259,7 +302,7 @@ export default function ReportsPage() {
           <h1 style={{ ...TYPE.h1, ...(isMobile ? { fontSize: '20px' } : null) }}>Analytics &amp; Insights</h1>
           <p style={{ ...TYPE.small, marginTop: '3px' }}>
             {loading ? 'Analyzing…' : analysis
-              ? `${analysis.insights.length} insights · ${analysis.campaignCount} campaigns analyzed · ${preset.label}`
+              ? `${analysis.insights.length} insights · ${analysis.campaignCount} campaigns analyzed · ${filterLabel()}`
               : 'Auto-generated from Meta Ads data'}
           </p>
         </div>
@@ -268,56 +311,35 @@ export default function ReportsPage() {
           display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '10px',
           justifyContent: isMobile ? 'flex-end' : 'flex-start',
         }}>
-          {/* Period dropdown */}
-          <div ref={presetRef} style={{ position: 'relative' }}>
-            <button onClick={() => setShowPreset(p => !p)} style={{
+          {/* Date filter (sama dengan Dashboard & Campaigns) */}
+          <div style={{ position: 'relative' }} data-filter>
+            <button onClick={openFilter} style={{
               display: 'flex', alignItems: 'center', gap: '8px',
               padding: '9px 14px',
-              background: CARD, border: `1px solid ${showPreset ? 'var(--br-strong)' : BORDER}`,
+              background: CARD, border: `1px solid ${isCustom ? 'var(--cal-accent)' : BORDER}`,
               borderRadius: '10px', fontSize: '13px',
               color: TXT, cursor: 'pointer', transition: 'border-color 0.15s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--br-strong)'}
-            onMouseLeave={e => { if (!showPreset) e.currentTarget.style.borderColor = BORDER; }}
-            >
+            }}>
               <Calendar size={14} color={SUB} />
-              {preset.label}
-              <ChevronDown size={13} color={SUB} style={{
-                transform: showPreset ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s',
-              }} />
+              {filterLabel()}
+              <ChevronDown size={13} color={SUB} />
             </button>
 
-            {showPreset && (
-              <div style={{
-                position: 'absolute', top: '46px', right: 0, zIndex: 50,
-                minWidth: '190px', padding: '6px',
-                background: CARD, border: `1px solid ${BORDER}`,
-                borderRadius: '14px', boxShadow: 'var(--pop-shadow)',
-                animation: 'wdScaleIn 0.15s cubic-bezier(0.4,0,0.2,1)',
-                display: 'flex', flexDirection: 'column', gap: '2px',
-              }}>
-                {PRESETS.map(p => {
-                  const active = p.value === preset.value;
-                  return (
-                    <div key={p.value}
-                      onClick={() => { setPreset(p); setShowPreset(false); }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '10px',
-                        padding: '9px 12px', borderRadius: '9px', cursor: 'pointer', fontSize: '13px',
-                        fontWeight: active ? 600 : 400,
-                        color: active ? 'var(--cal-accent-fg)' : TXT,
-                        background: active ? 'var(--cal-accent)' : 'transparent',
-                        transition: 'background 0.12s',
-                      }}
-                      onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--hover)'; }}
-                      onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
-                    >
-                      <span style={{ flex: 1 }}>{p.label}</span>
-                      {active && <Check size={14} color="var(--cal-accent-fg)" strokeWidth={2.5} />}
-                    </div>
-                  );
-                })}
-              </div>
+            {showDropdown && (
+              <DateFilterPopup
+                presets={DATE_PRESETS_DASHBOARD}
+                dateOpt={dateOpt}
+                isCustom={isCustom}
+                customSince={customSince}
+                customUntil={customUntil}
+                calY={calY} calM={calM}
+                isMobile={isMobile}
+                onSelectPreset={handleSelectPreset}
+                onPickDay={pickDay}
+                onShiftCal={shiftCal}
+                onApply={applyCustomRange}
+                onClose={() => setShowDropdown(false)}
+              />
             )}
           </div>
 
@@ -345,7 +367,7 @@ export default function ReportsPage() {
             </div>
             <div style={{ textAlign: 'center' }}>
               <div style={{ ...TYPE.h4 }}>Analyzing your campaign data…</div>
-              <div style={{ ...TYPE.caption, marginTop: '5px' }}>Reading Meta Ads performance for {preset.label.toLowerCase()}</div>
+              <div style={{ ...TYPE.caption, marginTop: '5px' }}>Reading Meta Ads performance · {filterLabel()}</div>
             </div>
           </div>
         )}
@@ -383,7 +405,7 @@ export default function ReportsPage() {
                 {analysis.score.verdict}
               </div>
               <div style={{ ...TYPE.caption, marginTop: '8px' }}>
-                Performance score · auto-generated from your Meta Ads data · {preset.label} vs previous period
+                Performance score · auto-generated from your Meta Ads data · {filterLabel()} vs previous period
               </div>
             </div>
 
