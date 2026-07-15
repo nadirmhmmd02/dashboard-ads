@@ -45,12 +45,24 @@ const SIZES = {
   touch:   { width: 238, cellH: 33, btn: 31, font: 12.5, dowFont: 11 },
 };
 
+/* Kuartal versi Baba Rafi — 4 bulan per kuartal (bukan 3 seperti standar):
+   Q1 = Jan–Apr, Q2 = May–Aug, Q3 = Sep–Dec. Tahun berjalan. */
+function buildQuarters() {
+  const yr = new Date().getFullYear();
+  return [
+    { label: 'Q1', months: 'Jan – Apr', since: `${yr}-01-01`, until: `${yr}-04-30` },
+    { label: 'Q2', months: 'May – Aug', since: `${yr}-05-01`, until: `${yr}-08-31` },
+    { label: 'Q3', months: 'Sep – Dec', since: `${yr}-09-01`, until: `${yr}-12-31` },
+  ];
+}
+
 export default function DateFilterPopup({
   presets, dateOpt, isCustom, customSince, customUntil,
   calY, calM, isMobile,
-  onSelectPreset, onPickDay, onShiftCal, onApply, onClose,
+  onSelectPreset, onPickDay, onPickRange = () => {}, onShiftCal, onApply, onClose,
 }) {
   const rangeReady = customSince && customUntil;
+  const quarters   = buildQuarters();
 
   function renderMonth(y, m, t) {
     const todayStr = toYMD(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
@@ -246,6 +258,28 @@ export default function DateFilterPopup({
           <div style={{ display: 'flex', gap: '14px' }}>
             {renderMonth(calY, calM, t)}
             {renderMonth(rY, rM, t)}
+          </div>
+
+          {/* ── Kuartal (versi Baba Rafi: 4 bulan per kuartal) ── */}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+            {quarters.map(q => {
+              const active = customSince === q.since && customUntil === q.until;
+              return (
+                <button key={q.label} onClick={() => onPickRange(q.since, q.until)} style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+                  padding: '8px 0', borderRadius: '9px', cursor: 'pointer', fontFamily: 'inherit',
+                  border: `1px solid ${active ? 'var(--cal-accent-line)' : BORDER}`,
+                  background: active ? 'var(--cal-accent-soft)' : 'var(--data-bg)',
+                  transition: 'border-color 0.12s, background 0.12s',
+                }}
+                onMouseEnter={e => { if (!active) e.currentTarget.style.borderColor = 'var(--br-strong)'; }}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.borderColor = BORDER; }}
+                >
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: active ? 'var(--cal-accent-line)' : TXT }}>{q.label}</span>
+                  <span style={{ fontSize: '11px', color: active ? 'var(--cal-accent-line)' : MUTE }}>{q.months}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

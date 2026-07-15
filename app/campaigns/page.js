@@ -221,6 +221,11 @@ export default function CampaignsPage() {
     else if (ds < customSince) { setCustomUntil(customSince); setCustomSince(ds); }
     else setCustomUntil(ds);
   }
+  // Pilih range sekaligus (tombol kuartal) + lompatkan kalender ke bulan awal range
+  function pickRange(s, u) {
+    setCustomSince(s); setCustomUntil(u);
+    const p = s.split('-'); setCalY(+p[0]); setCalM(+p[1] - 1);
+  }
   function renderMonth(y, m) {
     const todayStr = toYMD(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
     return (
@@ -616,6 +621,7 @@ export default function CampaignsPage() {
               isMobile={isMobile}
               onSelectPreset={handleSelectPreset}
               onPickDay={pickDay}
+              onPickRange={pickRange}
               onShiftCal={shiftCal}
               onApply={applyCustomRange}
               onClose={() => setShowDropdown(false)}
