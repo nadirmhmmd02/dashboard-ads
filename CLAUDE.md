@@ -150,7 +150,8 @@ Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cance
 - ✅ Export laporan PDF/JPG 16:9 (admin-only).
 - ✅ Light/Dark mode (CSS var, satu source of truth di AuthContext), toggle di header dashboard + campaigns. Animasi fade transition saat swap tema.
 - ✅ Auth + Role (admin=`Dozan`, user=`user`) + route guard.
-- ✅ Rebranding logo **WILL OF D** di sidebar, login, export, favicon. Brand di samping logo (Sidebar + MobileNav) per role: admin = "WILL OF D", user = "Baba Rafi Ad Hub".
+- ✅ Rebranding logo **WILL OF D** di sidebar, login, export, favicon. Brand di samping logo (Sidebar + MobileNav): **"Baba Rafi Ad Hub" untuk SEMUA role** (per 16 Jul 2026 — "WILL OF D" tinggal codename dev di kode). Title tab browser: "Baba Rafi Ad Hub".
+- ✅ Font resmi: **Plus Jakarta Sans** via next/font di layout.js (redesain tahap 1). ⚠️ Redesain warna+layout Dashboard MASIH DITAHAN di lokal (uncommitted: globals.css, page.js, AreaChart.js) — JANGAN di-commit tanpa persetujuan Nadir.
 - ✅ Suggestions (Supabase tabel `suggestions`): user kirim saran via floating button + popup (slide-up, click outside to close); admin lihat+hapus saran via ikon di header dashboard (dengan red dot unread indicator + Clear all).
 - ✅ Campaign detail popup (`CampaignModal.js`): klik row campaign → konten iklan (embed post/reels Instagram asli) + metrik lengkap format penuh + "Running On" platform breakdown dengan share bar. CountUp punya fallback settle (anti macet "0" saat tab hidden).
 - ✅ Hitung gabungan campaign (`CombineModal.js`): checkbox per row → floating bar bawah (count + total spend live + Calculate Total) → popup Combined Performance (hero total spend, delivery, cost efficiency, included campaigns + share bar).

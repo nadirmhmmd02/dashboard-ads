@@ -50,8 +50,8 @@ const ACTIVE_FG = 'var(--nav-accent-fg)';
 export default function Sidebar() {
   const pathname  = usePathname();
   const { user, role, logout } = useAuth();
-  // Brand per role: admin = WILL OF D, user = Baba Rafi Ad Hub
-  const brand = role === 'user' ? 'Baba Rafi Ad Hub' : 'WILL OF D';
+  // Redesain 2026: brand tunggal untuk semua role
+  const brand = 'Baba Rafi Ad Hub';
   // Default: tertutup (collapsed) saat web pertama dibuka
   const [collapsed, setCollapsed] = useState(true);
   const [width, setWidth]         = useState(COLLAPSED_WIDTH);

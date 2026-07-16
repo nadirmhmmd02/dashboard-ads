@@ -42,8 +42,8 @@ function Hamburger({ open, onClick }) {
 export default function MobileNav() {
   const pathname = usePathname();
   const { user, role, logout } = useAuth();
-  // Brand per role: admin = WILL OF D, user = Baba Rafi Ad Hub
-  const brand = role === 'user' ? 'Baba Rafi Ad Hub' : 'WILL OF D';
+  // Redesain 2026: brand tunggal untuk semua role
+  const brand = 'Baba Rafi Ad Hub';
   const [open, setOpen]       = useState(false);
   const [closing, setClosing] = useState(false);
 

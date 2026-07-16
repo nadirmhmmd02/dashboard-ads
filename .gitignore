@@ -39,6 +39,9 @@ yarn-error.log*
 # local agent config & skills (jangan di-commit)
 /.claude/
 /.agents/
+/.codex/
+/agent/
+skills-lock.json
 
 # typescript
 *.tsbuildinfo
