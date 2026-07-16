@@ -7,7 +7,7 @@ import { LogOut } from 'lucide-react';
 import Logo from './Logo';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from './AuthContext';
-import { NAV_ITEMS } from './Sidebar';
+import { NAV_SECTIONS } from './Sidebar';
 
 /* ─────────────────────────────────────────────────────────────
    MOBILE NAV — WILL OF D
@@ -65,8 +65,8 @@ export default function MobileNav() {
   }, [open]);
 
   function isActive(href) {
-    if (href === '/') return pathname === '/';
-    return pathname === href || pathname.startsWith(href + '/');
+    // Exact match — '/leads' tidak boleh ikut aktif saat di '/leads/list'
+    return pathname === href;
   }
 
   const showX = open && !closing;
@@ -146,14 +146,17 @@ export default function MobileNav() {
               }}>{brand}</span>
             </div>
 
-            {/* Nav — touch target besar */}
+            {/* Nav — touch target besar, per section Ads Hub / Leads Hub */}
             <nav style={{ flex: 1, padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: '3px', overflowY: 'auto' }}>
+              {NAV_SECTIONS.map((section, si) => (
+              <div key={section.label} style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: si > 0 ? '14px' : 0 }}>
               <div style={{
                 fontSize: '9px', fontWeight: 700, letterSpacing: '1.4px',
                 color: 'var(--menu-label)', textTransform: 'uppercase', padding: '6px 12px 8px',
-              }}>Menu</div>
+              }}>{section.label}</div>
 
-              {NAV_ITEMS.map((item, i) => {
+              {section.items.map((item, ii) => {
+                const i = si * 4 + ii; // delay stagger animasi berlanjut antar section
                 const active = isActive(item.href);
                 const Icon = item.icon;
                 return (
@@ -178,6 +181,8 @@ export default function MobileNav() {
                   </Link>
                 );
               })}
+              </div>
+              ))}
             </nav>
 
             {/* User + logout */}

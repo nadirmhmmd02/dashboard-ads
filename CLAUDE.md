@@ -48,10 +48,14 @@ app/
   campaigns/page.js      → Tabel kampanye Meta (read-only). Filter kalender dual-month. Kolom: …CPL + Total Spend.
   calendar/page.js       → CRUD jadwal iklan via Supabase (tabel `campaigns`). RBAC: create/edit/delete admin-only.
   reports/page.js        → ANALYTICS & INSIGHTS (v1, DATA REAL): Performance Score gauge (0-100) + kartu insight otomatis dari data Meta (rule-based via insightEngine.js). Filter periode preset (default This month). Fetch pakai mode=dashboard yang sama — JANGAN diubah. Mobile: refresh via portal top bar, dropdown rata kanan.
+  leads/page.js          → LEADS HUB Dashboard (placeholder "under development" via LeadsPlaceholder, sampai v3.0 dibangun).
+  leads/list/page.js     → LEADS HUB Leads List (placeholder, sama).
+  leads/insights/page.js → LEADS HUB Analytics & Insights (placeholder, sama).
   components/
     AuthContext.js       → SOURCE OF TRUTH: auth + role + theme (light/dark). localStorage/sessionStorage.
     AppShell.js          → route guard (redirect ke /login kalau belum login; sidebar + main). User suggestion floating button + popup.
-    Sidebar.js           → sidebar collapsible+resizable, user info + logout, logo WILL OF D.
+    Sidebar.js           → sidebar collapsible+resizable, user info + logout, logo WILL OF D. Menu = NAV_SECTIONS dua section: "Ads Hub" (Dashboard/Campaigns/Calendar/Analytics & Insights) + "Leads Hub" (Dashboard /leads, Leads List /leads/list, Analytics & Insights /leads/insights — placeholder). isActive = exact match pathname. Dipakai juga MobileNav.
+    LeadsPlaceholder.js  → shell halaman "under development" Leads Hub (header pola Reports + PlatformPlaceholder). Props: pageTitle, featureName, Icon.
     AreaChart.js         → chart "Daily Spend" (smooth area, animasi ganti metrik). Dipakai dashboard.
     ExportMenu.js        → tombol Export + laporan tersembunyi 16:9 (render PDF/JPG). Admin-only.
     CountUp.js           → animasi angka naik dari 0 ke target.
@@ -155,6 +159,7 @@ Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cance
 - ✅ Typography system (`typography.js`) diterapkan ke Dashboard + Reports — ukuran visual tidak berubah, cuma distandarkan lewat token.
 - ✅ Analytics & Insights v1 (route /reports, icon Sparkles): Performance Score gauge + insight cards otomatis dari data Meta real (insightEngine.js), filter periode, severity critical→warning→positive→info, desktop grid 3 kolom / mobile stack.
 - ✅ Kontrol iklan admin-only di Campaigns: kolom Actions (setelah Status) dengan tombol Stop/Run (ACTIVE↔PAUSED, popup konfirmasi merah/hijau) + Edit Daily Budget (popup input format Rupiah, min Rp 10.000, level campaign sesuai SOP Nadir — TIDAK PERNAH level ad set). Setelah sukses: update lokal optimistik + toast. Role user tidak melihat kolom ini. Status Ended tidak bisa di-run lagi. ⚠️ Endpoint POST /api/meta tidak ada server-side auth (konsisten dgn auth client-side) — kalau upgrade Supabase Auth, amankan endpoint ini juga.
+- ✅ Sidebar dua section: "ADS HUB" (menu lama) + "LEADS HUB" (Dashboard, Leads List, Analytics & Insights — 3 halaman placeholder "under development" via LeadsPlaceholder.js). Berlaku desktop (Sidebar) & mobile (drawer MobileNav). Nama produk fix: **"Baba Rafi Ad Hub"** (pakai spasi). Leads Hub beneran = rencana v3.0 (lihat BRD/PRD Nadir).
 - ✅ Versi mobile (≤767px, desktop tak berubah): top bar hamburger→drawer, KPI carousel swipe scroll-snap, strip 2x2, analytics stack, date filter bottom sheet. Top bar dashboard (kanan→kiri): Suggestions · theme · Refresh · Export icon (via portal ke slot MobileNav). Campaigns: refresh di top bar, filter rata kanan. Calendar: tanpa theme toggle, tombol rata kanan, tabel Gantt scroll horizontal (minWidth 920px).
 
 ## BELUM / PENDING (JANGAN dikerjakan tanpa diminta)

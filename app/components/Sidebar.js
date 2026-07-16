@@ -8,18 +8,33 @@ import {
   Megaphone,
   CalendarDays,
   Sparkles,
+  Users,
   ChevronsLeft,
   LogOut,
 } from 'lucide-react';
 import Logo from './Logo';
 import { useAuth } from './AuthContext';
 
-// Dipakai juga oleh MobileNav.js (drawer mobile) — satu sumber menu
-export const NAV_ITEMS = [
-  { href: '/',          label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/campaigns', label: 'Campaigns', icon: Megaphone },
-  { href: '/calendar',  label: 'Calendar',  icon: CalendarDays },
-  { href: '/reports',   label: 'Analytics & Insights', icon: Sparkles },
+// Dipakai juga oleh MobileNav.js (drawer mobile) — satu sumber menu.
+// Dua section: Ads Hub (fitur live) + Leads Hub (placeholder, v3.0).
+export const NAV_SECTIONS = [
+  {
+    label: 'Ads Hub',
+    items: [
+      { href: '/',          label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/campaigns', label: 'Campaigns', icon: Megaphone },
+      { href: '/calendar',  label: 'Calendar',  icon: CalendarDays },
+      { href: '/reports',   label: 'Analytics & Insights', icon: Sparkles },
+    ],
+  },
+  {
+    label: 'Leads Hub',
+    items: [
+      { href: '/leads',          label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/leads/list',     label: 'Leads List', icon: Users },
+      { href: '/leads/insights', label: 'Analytics & Insights', icon: Sparkles },
+    ],
+  },
 ];
 
 const MIN_WIDTH       = 180;
@@ -48,8 +63,8 @@ export default function Sidebar() {
   const sidebarRef = useRef(null);
 
   function isActive(href) {
-    if (href === '/') return pathname === '/';
-    return pathname === href || pathname.startsWith(href + '/');
+    // Exact match — '/leads' tidak boleh ikut aktif saat di '/leads/list'
+    return pathname === href;
   }
 
   function toggleCollapse() {
@@ -148,21 +163,25 @@ export default function Sidebar() {
         </span>
       </div>
 
-      {/* ── Nav ── */}
-      <nav style={{ flex: 1, padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      {/* ── Nav (per section: Ads Hub / Leads Hub) ── */}
+      <nav style={{ flex: 1, padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto' }}>
+        {NAV_SECTIONS.map((section, si) => (
+        <div key={section.label} style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: si > 0 ? '14px' : 0 }}>
 
-        {/* Section label */}
-        {!collapsed && (
+        {/* Section label (expanded) / divider (collapsed, antar section) */}
+        {!collapsed ? (
           <div style={{
             fontSize: '9px', fontWeight: '700', letterSpacing: '1.4px',
             color: 'var(--menu-label)', textTransform: 'uppercase',
             padding: '6px 10px 8px',
           }}>
-            Menu
+            {section.label}
           </div>
-        )}
+        ) : si > 0 ? (
+          <div style={{ height: '1px', background: 'var(--divider)', margin: '0 12px 10px' }} />
+        ) : null}
 
-        {NAV_ITEMS.map((item) => {
+        {section.items.map((item) => {
           const active  = isActive(item.href);
           const isHover = hovered === item.href && !active;
           const Icon    = item.icon;
@@ -216,6 +235,8 @@ export default function Sidebar() {
             </Link>
           );
         })}
+        </div>
+        ))}
       </nav>
 
       {/* ── User + logout ── */}
