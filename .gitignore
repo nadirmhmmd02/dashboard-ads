@@ -36,6 +36,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local agent config & skills (jangan di-commit)
+/.claude/
+/.agents/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
