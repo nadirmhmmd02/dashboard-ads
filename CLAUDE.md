@@ -48,9 +48,10 @@ app/
   campaigns/page.js      → Tabel kampanye Meta (read-only). Filter kalender dual-month. Kolom: …CPL + Total Spend.
   calendar/page.js       → CRUD jadwal iklan via Supabase (tabel `campaigns`). RBAC: create/edit/delete admin-only.
   reports/page.js        → ANALYTICS & INSIGHTS (v1, DATA REAL): Performance Score gauge (0-100) + kartu insight otomatis dari data Meta (rule-based via insightEngine.js). Filter periode preset (default This month). Fetch pakai mode=dashboard yang sama — JANGAN diubah. Mobile: refresh via portal top bar, dropdown rata kanan.
-  leads/page.js          → LEADS HUB Dashboard (placeholder "under development" via LeadsPlaceholder, sampai v3.0 dibangun).
-  leads/list/page.js     → LEADS HUB Leads List (placeholder, sama).
-  leads/insights/page.js → LEADS HUB Analytics & Insights (placeholder, sama).
+  leads/page.js          → LEADS HUB Dashboard v3.0 (LIVE, English UI): KPI New Leads/Follow-up %/Deals/Total Closing + Status Breakdown + Cost&ROI (atribusi cohort by created_at) + By Category. Filter tanggal (useLeadsFilter, state terpisah) + filter kategori. Spend konversi via GET /api/leads?mode=spend (aman utk role marketing). Banner Inbox admin.
+  leads/list/page.js     → LEADS HUB Leads List v3.0 (LIVE, English UI): tab Inbox admin (approve/reject, bulk context-aware "Approve (n)"/"Approve all") + All Leads (status pill dropdown Cold/Warm/Hot/Deal, popup Deal WAJIB nominal closing+deal_date+deal_reason, followed-up toggle, notes popup, copy nomor, bulk copy nama+nomor / mark FU / set status non-Deal, search+filter, pagination 50). Tombol "Sync Meta Leads" admin. RLS: marketing hanya lead approved, viewer read-only.
+  leads/insights/page.js → LEADS HUB Analytics & Insights (masih placeholder — belum didetailkan di MASTER PLAN).
+  api/leads/route.js     → API Leads Hub, dikunci Supabase Auth. GET mode=spend (admin/user/marketing): total spend campaign PROSPEK/KONVERSI. POST action=sync (admin): tarik leads instant form Meta (2 Pages via /me/accounts → leadgen_forms → leads, filter time_created ≥ SYNC_START '2026-07-17'), dedup meta_lead_id, deteksi kategori dari nama campaign/form (AUTOPILOT/PROVEN/SUKA/REGULER), rapikan HP (+62→08), field tak dikenal → notes, upsert campaign_ref. Leads sebelum SYNC_START = via import file (belum dibangun). maxDuration 60s.
   components/
     AuthContext.js       → SOURCE OF TRUTH: auth (Supabase Auth) + role (app_metadata) + theme (light/dark). Export homeFor(role).
     AppShell.js          → route guard (redirect ke /login kalau belum login; sidebar + main). User suggestion floating button + popup.
@@ -61,7 +62,7 @@ app/
     CountUp.js           → animasi angka naik dari 0 ke target.
     Logo.js              → LOGO MARK "Control Hub" (SVG, warna via prop, ikut container/tema).
     ThemeToggle.js       → shared theme toggle button dengan animasi fade transition. Dipakai dashboard + campaigns.
-    DateFilterContext.js → shared filter state (terpisah per halaman: dashboard, campaigns & reports). Persist saat pindah tab, reset saat browser refresh.
+    DateFilterContext.js → shared filter state (terpisah per halaman: dashboard, campaigns, reports & leads). Persist saat pindah tab, reset saat browser refresh.
     DateFilterPopup.js   → popup filter tanggal SHARED (Dashboard+Campaigns+Reports): preset kiri + custom range + kalender dual-month + baris tombol kuartal di bawah kalender + footer, ukuran "tengah" final (SIZES.compact — jangan diubah tanpa diminta). Kuartal versi Baba Rafi = 4 BULAN per kuartal (Q1 Jan–Apr, Q2 May–Aug, Q3 Sep–Dec, tahun berjalan) — klik kuartal = pilih range custom + kalender lompat ke bulan awal, tetap butuh Apply. Desktop only (mobile bottom sheet tidak diubah). Mobile otomatis jadi bottom sheet single-month. Murni tampilan; state & fetch tetap di halaman masing-masing (callback onPickRange).
     CampaignModal.js     → popup detail campaign (klik row di Campaigns): konten iklan IG embed di kiri (auto feed 1:1 / portrait 9:16, strip thumbnail kalau >1), metrik + platform breakdown di kanan (hero Result+Total Spend, count-up, hover lift, chip brand FB/IG).
     useIsMobile.js       → hook deteksi viewport mobile ≤767px (matchMedia + fallback resize). Dipakai AppShell, dashboard, campaigns, calendar.
@@ -77,6 +78,7 @@ app/
   globals.css            → CSS variables (blok light `:root` + blok `html[data-theme="dark"]`) + keyframes animasi.
   supabase.js            → Supabase client (storage adapter "remember me") + authFetch (fetch dengan Bearer token untuk /api/meta) + setRememberSession.
   supabase-auth-setup.sql (root repo) → SQL setup auth: set role user + RLS campaigns & suggestions. Dijalankan manual di SQL Editor Supabase.
+  supabase-leads-setup.sql (root repo) → SQL setup Leads Hub: tabel campaign_ref + leads + lead_history (audit trail via trigger log_lead_changes, security definer) + RLS (admin full; marketing read/update approved; user read approved; history admin-only). Sudah dijalankan 17 Jul 2026.
   icon.svg, apple-icon.svg → favicon + touch icon (Control Hub, square gelap + mark putih).
 ```
 
@@ -172,12 +174,15 @@ Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cance
 
 ## BELUM / PENDING (JANGAN dikerjakan tanpa diminta)
 
-- [ ] Analytics & Insights: upgrade narasi ke LLM asli (Claude API) — v1 rule-based sudah live; butuh API key kalau mau.
+- [ ] Leads Hub: IMPORT file export spreadsheet lama (leads < 17 Jul 2026) + smart grouping — Nadir akan kirim file CSV/Excel.
+- [ ] Leads Hub: REDESAIN dashboard & list (Nadir cari referensi Pinterest; usulkan design dulu → approve → terapkan; UI sekarang = fondasi fungsional).
+- [ ] Leads Hub: Analytics & Insights (placeholder; kemungkinan AI-generated, belum didetailkan).
+- [ ] Leads Hub: kolom assigned_to sudah ada di DB tapi belum ada UI-nya (nunggu ada banyak akun marketing).
+- [ ] Analytics & Insights Ads Hub: upgrade narasi ke LLM asli (Claude API) — v1 rule-based sudah live; butuh API key kalau mau.
 - [ ] Integrasi Google Ads / TikTok Ads / All Platforms (selector sudah ada, masih placeholder).
 - [ ] Fitur Compare (tombol disabled), notifikasi lonceng, Export CSV/Excel Calendar — placeholder.
 - [ ] Verifikasi akurasi angka vs Meta Ads Manager.
 - [ ] Hapus file lama tidak terpakai: `SuggestionsModal.js`, `BarChart.js`, `Navbar.js`.
-- [ ] v3.0 Leads Hub (fase berikutnya setelah auth live — lihat MASTER PLAN Bagian 3).
 
 ---
 
