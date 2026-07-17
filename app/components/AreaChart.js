@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import { Info } from 'lucide-react';
 
 const COLORS = {
-  spend:     '#8BE34D',
+  spend:     '#2FB673',   // emerald — redesain 2026 (selaras KPI & donut)
   awareness: '#8B5CF6',
   traffic:   '#F59E0B',
   leads:     '#3B82F6',

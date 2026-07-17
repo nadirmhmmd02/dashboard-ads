@@ -44,7 +44,7 @@ Kredensial asli ada di `.env.local` user. JANGAN reproduksi dari ingatan — min
 app/
   layout.js              → AuthProvider + DateFilterProvider + AppShell + no-flash theme script. <html data-theme> di-set dari role+preferensi.
   page.js                → DASHBOARD (DATA REAL Meta). Semua logika kalkulasi metrik ada di sini. + Platform selector (Meta default; platform lain tampil placeholder).
-  login/page.js          → Halaman login (tema amber/light, kartu putih).
+  login/page.js          → Halaman login (light + aksen forest/emerald, kartu putih).
   campaigns/page.js      → Tabel kampanye Meta (read-only). Filter kalender dual-month. Kolom: …CPL + Total Spend.
   calendar/page.js       → CRUD jadwal iklan via Supabase (tabel `campaigns`). RBAC: create/edit/delete admin-only.
   reports/page.js        → ANALYTICS & INSIGHTS (v1, DATA REAL): Performance Score gauge (0-100) + kartu insight otomatis dari data Meta (rule-based via insightEngine.js). Filter periode preset (default This month). Fetch pakai mode=dashboard yang sama — JANGAN diubah. Mobile: refresh via portal top bar, dropdown rata kanan.
@@ -117,15 +117,17 @@ Subtotal toggle per grup (Awareness/Traffic/Conversion) di tabel campaigns — j
 
 ---
 
-## TEMA & DESAIN (palet final — semua via CSS var di `globals.css`)
+## TEMA & DESAIN (palet redesain 2026 "forest & lime" — semua via CSS var di `globals.css`)
 
-Dua tema: light (`:root`) & dark (`html[data-theme="dark"]`).
-- **Light:** bg `#F7F8FA`, card `#FFF`, border `#E5E7EB`, teks `#111827`/`#6B7280`; **sidebar aksen amber**.
-- **Dark (final, jangan diubah):** bg `#090A0C`, card `#121417`, border `#23262C`, teks `#FFF`/`#9CA3AF`; **sidebar aksen hijau**.
-- **Aksen umum:** green `#8BE34D`, blue `#3B82F6`, purple `#8B5CF6`, orange/amber `#F59E0B`.
+Dua tema: light (`:root`) & dark (`html[data-theme="dark"]`). **Aksen SATU keluarga (forest/emerald/lime) di KEDUA tema** — aturan lama "amber di light" sudah usang (diganti 17 Jul 2026).
+- **Light:** bg off-white kehijauan `#F1F2EF`, card `#FFF`, border `#E7E9E4`, teks `#101915`/`#5F6B63`; aksen **emerald `#1E6B4B`**, logo tile forest `#14382A` + mark lime.
+- **Dark ("dark forest premium"):** bg `#0C110E`, card `#131A15`, border `#242E27`, teks `#F4F7F3`/`#9EABA2`; aksen **lime `#C8F169`** (cal-accent-fg gelap `#14251A`).
+- **Warna data (sama dua tema):** conversion/green `#2FB673` (emerald), blue `#3B82F6`, purple `#8B5CF6` (awareness), orange `#F59E0B` (traffic).
+- Token hero card `--hero-*` tersedia di globals.css tapi TIDAK dipakai (kartu gelap Total Spend DITOLAK Nadir — jangan diterapkan lagi tanpa diminta).
+- **Login:** light + aksen forest/emerald (hardcode di `login/page.js`, seragam dengan dashboard).
 
 ### Dashboard (`app/page.js`) — DATA REAL
-Atas→bawah: header (title + filter tanggal + Export admin-only + Refresh + theme toggle + Suggestions admin-only) → 5 KPI card (Total Spend, Reach, Impressions, Traffic, Leads — count-up + growth badge vs periode sebelumnya + sparkline) → strip 4 metrik (CPM/CPC/CPL/CTR) → baris analitik 3 kolom (Spend Breakdown donut · Daily Spend AreaChart · Top Campaigns). **Angka KPI & strip pakai format PENUH** (mis. `Rp 1.440.076`, bukan `Rp 1.4M`). Fit 1 layar tanpa scroll.
+Atas→bawah: header (title + filter tanggal + Export admin-only + Refresh + theme toggle + Suggestions admin-only) → 5 KPI card SERAGAM putih (Total Spend, Reach, Impressions, Traffic, Leads — count-up + growth badge vs periode sebelumnya + sparkline) → **4 KARTU TERPISAH CPM/CPC/CPL/CTR** (desktop; mobile tetap 1 kartu merged 2x2 — keputusan Nadir 17 Jul 2026 dari mockup Varian A) → baris analitik 3 kolom (Spend Breakdown donut · Daily Spend AreaChart · Top Campaigns). **Angka KPI & strip pakai format PENUH** (mis. `Rp 1.440.076`, bukan `Rp 1.4M`). Fit 1 layar tanpa scroll.
 
 ### Filter Tanggal (Dashboard, Campaigns & Reports) — kalender dual-month via DateFilterPopup.js
 Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cancel/Apply. Default **"This month"**. Preset Dashboard & Reports: Today…Last month. Preset Campaigns sama + tambahan "Last 3 days". State dikelola `DateFilterContext` (terpisah per halaman) — persist saat pindah tab via client-side navigation, reset ke "This month" saat browser refresh. Tombol Refresh hanya refresh data, TIDAK reset filter. Custom range → `/api/meta?...&since=&until=`. **Logika fetch JANGAN diubah.**
@@ -134,7 +136,7 @@ Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cance
 
 ## PRINSIP WAJIB (DITEKANKAN USER)
 
-1. **AKSEN PER TEMA** — dark mode = aksen **hijau** (`#8BE34D`), light mode = aksen **oren/amber** (`#F59E0B`, teks amber gelap `#B45309`). Berlaku untuk SEMUA komponen. Jangan hardcode hijau untuk elemen aksen; pakai CSS var theme-aware (pola `--cal-*` di globals.css untuk kalender). Lihat memory [[accent-per-theme]].
+1. **AKSEN FOREST/LIME KONSISTEN DUA TEMA** (menggantikan aturan lama aksen-per-tema, 17 Jul 2026) — light = emerald `#1E6B4B`, dark = lime `#C8F169`, satu keluarga hijau. Jangan hardcode warna aksen di komponen; SELALU pakai CSS var theme-aware (`--cal-*`, `--nav-accent-*`, `--ac`, `--accent-*` di globals.css). Lihat memory [[accent-per-theme]].
 2. **SPACING PROPORSIONAL** — jarak/padding proporsional, jangan mepet sidebar/tepi. Konten butuh "nafas".
 3. **ANIMASI = DNA PROJECT** — count-up, area/donut draw, hover interaktif, glow logo, theme fade transition, suggestion slide-up. Keyframes di globals.css: `wdSpinGlow`, `wdSpinGlowGreen`, `wdFadeUp`, `wdPulseDot`, `wdScaleIn`, `wdSlideUp`, `wdSweep`, `wdSpin`. Theme transition = opacity fade di `ThemeToggle.js`.
 4. **RESPONSIVE FULL-WIDTH** — fit kanan-kiri penuh di desktop lebar berapa pun. Layout fluid (`flex:1` + `minWidth:0`, grid `minmax(0,1fr)`). Versi mobile (≤767px via `useIsMobile`) SUDAH ADA dan final — perubahan mobile TIDAK BOLEH mempengaruhi desktop sedikit pun (selalu gate dengan `isMobile`).
@@ -151,7 +153,8 @@ Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cance
 - ✅ Light/Dark mode (CSS var, satu source of truth di AuthContext), toggle di header dashboard + campaigns. Animasi fade transition saat swap tema.
 - ✅ Auth + Role (admin=`Dozan`, user=`user`) + route guard.
 - ✅ Rebranding logo **WILL OF D** di sidebar, login, export, favicon. Brand di samping logo (Sidebar + MobileNav): **"Baba Rafi Ad Hub" untuk SEMUA role** (per 16 Jul 2026 — "WILL OF D" tinggal codename dev di kode). Title tab browser: "Baba Rafi Ad Hub".
-- ✅ Font resmi: **Plus Jakarta Sans** via next/font di layout.js (redesain tahap 1). ⚠️ Redesain warna+layout Dashboard MASIH DITAHAN di lokal (uncommitted: globals.css, page.js, AreaChart.js) — JANGAN di-commit tanpa persetujuan Nadir.
+- ✅ Font resmi: **Plus Jakarta Sans** via next/font di layout.js (redesain tahap 1).
+- ✅ Redesain tahap 2 (17 Jul 2026, LIVE): palet forest/lime dua tema di seluruh web (dashboard, campaigns, calendar, reports, login, export PDF) + strip CPM/CPC/CPL/CTR jadi 4 kartu terpisah di Dashboard desktop. Layout halaman masih struktur lama — redesain layout total menyusul (mockup varian D/E dulu, Nadir pilih sebelum koding). Kartu hero gelap Total Spend DITOLAK.
 - ✅ Suggestions (Supabase tabel `suggestions`): user kirim saran via floating button + popup (slide-up, click outside to close); admin lihat+hapus saran via ikon di header dashboard (dengan red dot unread indicator + Clear all).
 - ✅ Campaign detail popup (`CampaignModal.js`): klik row campaign → konten iklan (embed post/reels Instagram asli) + metrik lengkap format penuh + "Running On" platform breakdown dengan share bar. CountUp punya fallback settle (anti macet "0" saat tab hidden).
 - ✅ Hitung gabungan campaign (`CombineModal.js`): checkbox per row → floating bar bawah (count + total spend live + Calculate Total) → popup Combined Performance (hero total spend, delivery, cost efficiency, included campaigns + share bar).

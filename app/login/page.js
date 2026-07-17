@@ -6,10 +6,10 @@ import { User, Lock, Eye, EyeOff } from 'lucide-react';
 import Logo from '../components/Logo';
 import { useAuth } from '../components/AuthContext';
 
-/* Login page — light + amber accent (mengikuti desain referensi).
+/* Login page — light + aksen forest/emerald (redesain 2026, seragam dengan dashboard).
    Warna di-hardcode terang supaya tampilan login konsisten apapun tema tersimpan. */
-const AMBER   = '#F59E0B';
-const AMBER_2 = '#FBBF24';
+const AMBER   = '#1E6B4B';
+const AMBER_2 = '#2FB673';
 const INK     = '#111827';
 const SUB     = '#6B7280';
 const BORDER  = '#E5E7EB';
@@ -43,7 +43,7 @@ export default function LoginPage() {
     background: '#fff', border: `1px solid ${BORDER}`, borderRadius: '12px',
     padding: '0 14px', height: '52px', transition: 'border-color 0.18s, box-shadow 0.18s',
   };
-  function focusOn(e)  { e.currentTarget.style.borderColor = AMBER; e.currentTarget.style.boxShadow = `0 0 0 4px rgba(245,158,11,0.14)`; }
+  function focusOn(e)  { e.currentTarget.style.borderColor = AMBER; e.currentTarget.style.boxShadow = `0 0 0 4px rgba(30,107,75,0.14)`; }
   function focusOff(e) { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.boxShadow = 'none'; }
   const inputEl = {
     flex: 1, border: 'none', outline: 'none', background: 'transparent',
@@ -54,21 +54,21 @@ export default function LoginPage() {
     <div style={{
       position: 'fixed', inset: 0, overflow: 'auto',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      background: '#FFFDF9',
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif",
+      background: '#F7FAF6',
+      fontFamily: 'inherit',
       animation: 'wdFadeIn 0.5s ease',
     }}>
-      {/* Dekor amber di sudut */}
+      {/* Dekor forest di sudut */}
       <div style={{ position: 'absolute', top: '-15%', left: '-10%', width: '45%', height: '55%',
-        background: 'radial-gradient(circle at 30% 30%, rgba(245,158,11,0.22), transparent 60%)', pointerEvents: 'none' }} />
+        background: 'radial-gradient(circle at 30% 30%, rgba(30,107,75,0.18), transparent 60%)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: '-20%', right: '-10%', width: '55%', height: '70%',
-        background: 'radial-gradient(circle at 70% 70%, rgba(251,191,36,0.28), transparent 62%)', pointerEvents: 'none' }} />
+        background: 'radial-gradient(circle at 70% 70%, rgba(47,182,115,0.20), transparent 62%)', pointerEvents: 'none' }} />
 
       {/* Card */}
       <form onSubmit={submit} style={{
         position: 'relative', width: '100%', maxWidth: '440px', margin: '24px',
         background: '#fff', border: `1px solid ${BORDER}`, borderRadius: '24px',
-        boxShadow: '0 20px 60px rgba(245,158,11,0.10), 0 4px 16px rgba(16,24,40,0.06)',
+        boxShadow: '0 20px 60px rgba(30,107,75,0.10), 0 4px 16px rgba(16,24,40,0.06)',
         padding: '44px 40px 36px',
         animation: 'wdScaleIn 0.4s cubic-bezier(0.4,0,0.2,1)',
       }}>
@@ -78,7 +78,7 @@ export default function LoginPage() {
             width: '64px', height: '64px', borderRadius: '18px',
             background: `linear-gradient(135deg, ${AMBER_2}, ${AMBER})`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 8px 22px rgba(245,158,11,0.35)',
+            boxShadow: '0 8px 22px rgba(30,107,75,0.30)',
           }}>
             <Logo size={34} color="#fff" />
           </div>
@@ -139,13 +139,13 @@ export default function LoginPage() {
         <button type="submit" disabled={busy} style={{
           width: '100%', height: '52px', border: 'none', borderRadius: '12px',
           background: `linear-gradient(135deg, ${AMBER_2}, ${AMBER})`,
-          color: '#3d2a00', fontSize: '15px', fontWeight: 700, cursor: busy ? 'default' : 'pointer',
-          boxShadow: '0 8px 22px rgba(245,158,11,0.32)',
+          color: '#FFFFFF', fontSize: '15px', fontWeight: 700, cursor: busy ? 'default' : 'pointer',
+          boxShadow: '0 8px 22px rgba(30,107,75,0.30)',
           transition: 'transform 0.12s ease, box-shadow 0.18s ease, opacity 0.18s',
           opacity: busy ? 0.7 : 1,
         }}
-          onMouseEnter={e => { if (!busy) e.currentTarget.style.boxShadow = '0 10px 28px rgba(245,158,11,0.45)'; }}
-          onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 8px 22px rgba(245,158,11,0.32)'; }}
+          onMouseEnter={e => { if (!busy) e.currentTarget.style.boxShadow = '0 10px 28px rgba(30,107,75,0.42)'; }}
+          onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 8px 22px rgba(30,107,75,0.30)'; }}
           onMouseDown={e => { if (!busy) e.currentTarget.style.transform = 'scale(0.985)'; }}
           onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
         >

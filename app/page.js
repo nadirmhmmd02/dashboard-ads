@@ -28,7 +28,7 @@ const BORDER  = 'var(--br)';
 const TXT     = 'var(--t1)';
 const SUB     = 'var(--t2)';
 const MUTE    = 'var(--t3)';
-const GREEN   = '#8BE34D';
+const GREEN   = '#2FB673';   // emerald — ikut palet redesain 2026 (dua tema)
 const BLUE    = '#3B82F6';
 const PURPLE  = '#8B5CF6';
 const ORANGE  = '#F59E0B';
@@ -850,38 +850,66 @@ export default function DashboardPage() {
             );
           })()}
 
-          {/* ══ ROW 2: SECONDARY METRICS — 4 kolom (desktop) · 2x2 (mobile) ══ */}
-          <div style={{
-            ...CARD_BASE, overflow:'hidden',
-            display:'grid',
-            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-            ...(isMobile ? { flexShrink:0 } : { flex:'1 1 0', minHeight:'74px', maxHeight:'92px' }),
-            animation:'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 260ms backwards',
-          }}>
-            {[
+          {/* ══ ROW 2: SECONDARY METRICS — 4 KARTU TERPISAH (desktop) · 1 kartu 2x2 (mobile, tidak berubah) ══ */}
+          {(() => {
+            const mini = [
               { label:'CPM', value: summary.calcCPM ? fmtSpendFull(summary.calcCPM) : '—', sub:'cost per 1K impressions', icon: ScanLine },
               { label:'CPC', value: summary.calcCPC ? fmtSpendFull(summary.calcCPC) : '—', sub:'cost per click',          icon: MousePointerClick },
               { label:'CPL', value: summary.calcCPL ? fmtSpendFull(summary.calcCPL) : '—', sub:'cost per lead',           icon: UserPlus },
               { label:'CTR', value: summary.calcCTR ? summary.calcCTR.toFixed(2)+'%' : '—', sub:'click through rate',  icon: Target },
-            ].map((m, i) => {
-              const Ic = m.icon;
-              return (
-                <div key={m.label} style={{
-                  display:'flex', alignItems:'center', justifyContent:'space-between',
-                  padding: isMobile ? '14px 16px' : '0 22px',
-                  borderRight: (isMobile ? i % 2 === 0 : i < 3) ? `1px solid ${BORDER}` : 'none',
-                  borderBottom: isMobile && i < 2 ? `1px solid ${BORDER}` : 'none',
-                }}>
-                  <div>
-                    <div style={{ ...TYPE.small, marginBottom:'3px' }}>{m.label}</div>
-                    <div style={{ ...TYPE.metricValueSm }}>{m.value}</div>
-                    <div style={{ ...TYPE.metricSub, marginTop:'3px' }}>{m.sub}</div>
-                  </div>
-                  <Ic size={18} color="var(--icon-muted)"/>
-                </div>
-              );
-            })}
-          </div>
+            ];
+            if (isMobile) return (
+              <div style={{
+                ...CARD_BASE, overflow:'hidden', flexShrink:0,
+                display:'grid', gridTemplateColumns:'repeat(2, 1fr)',
+                animation:'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 260ms backwards',
+              }}>
+                {mini.map((m, i) => {
+                  const Ic = m.icon;
+                  return (
+                    <div key={m.label} style={{
+                      display:'flex', alignItems:'center', justifyContent:'space-between',
+                      padding:'14px 16px',
+                      borderRight: i % 2 === 0 ? `1px solid ${BORDER}` : 'none',
+                      borderBottom: i < 2 ? `1px solid ${BORDER}` : 'none',
+                    }}>
+                      <div>
+                        <div style={{ ...TYPE.small, marginBottom:'3px' }}>{m.label}</div>
+                        <div style={{ ...TYPE.metricValueSm }}>{m.value}</div>
+                        <div style={{ ...TYPE.metricSub, marginTop:'3px' }}>{m.sub}</div>
+                      </div>
+                      <Ic size={18} color="var(--icon-muted)"/>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+            return (
+              <div style={{
+                flex:'1 1 0', minHeight:'74px', maxHeight:'92px',
+                display:'grid', gridTemplateColumns:'repeat(4, minmax(0,1fr))', gap:'16px',
+              }}>
+                {mini.map((m, i) => {
+                  const Ic = m.icon;
+                  return (
+                    <div key={m.label} style={{
+                      ...CARD_BASE, overflow:'hidden',
+                      display:'flex', alignItems:'center', justifyContent:'space-between',
+                      padding:'0 22px',
+                      animation:`wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) ${260 + i * 45}ms backwards`,
+                    }}>
+                      <div>
+                        <div style={{ ...TYPE.small, marginBottom:'3px' }}>{m.label}</div>
+                        <div style={{ ...TYPE.metricValueSm }}>{m.value}</div>
+                        <div style={{ ...TYPE.metricSub, marginTop:'3px' }}>{m.sub}</div>
+                      </div>
+                      <Ic size={18} color="var(--icon-muted)"/>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
           {/* ══ ROW 3: ANALYTICS — 30/40/30 (desktop) · stack vertikal (mobile) ══ */}
           <div style={ isMobile ? {

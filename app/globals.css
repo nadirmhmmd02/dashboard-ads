@@ -4,162 +4,183 @@
   padding: 0;
 }
 
-/* ===== LIGHT MODE — SaaS light (off-white + green accent) ===== */
+/* ===== LIGHT MODE — Redesain 2026: off-white bersih + forest & lime =====
+   Palet dari referensi Nadir (Pinterest): forest #14382A · emerald #1E6B4B ·
+   lime #C8F169 · kanvas off-white kehijauan. Aksen SAMA di kedua tema. */
 :root {
-  --pg: #F7F8FA;
+  --pg: #F1F2EF;
   --cd: #FFFFFF;
   --sf: #FFFFFF;
-  --s2: #F3F4F6;
+  --s2: #F3F5F1;
   --nav: #FFFFFF;
-  --br: #E5E7EB;
-  --br-strong: #D1D5DB;
-  --bs: #D1D5DB;
-  --divider: #EEF1F4;
-  --hover: rgba(17,24,39,0.035);
-  --grid: rgba(17,24,39,0.06);
-  --track: #EDEFF2;
-  --shadow: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06);
-  --card-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06);
-  --pop-shadow: 0 12px 32px rgba(16,24,40,0.14);
+  --br: #E7E9E4;
+  --br-strong: #D2D6CE;
+  --bs: #D2D6CE;
+  --divider: #EEF0EB;
+  --hover: rgba(16,25,21,0.04);
+  --grid: rgba(16,25,21,0.06);
+  --track: #ECEEE9;
+  --shadow: 0 1px 2px rgba(16,25,21,0.04), 0 1px 3px rgba(16,25,21,0.05);
+  --card-shadow: 0 1px 2px rgba(16,25,21,0.04), 0 1px 3px rgba(16,25,21,0.05);
+  --pop-shadow: 0 12px 32px rgba(16,25,21,0.14);
 
-  --t1: #111827;
-  --t2: #6B7280;
-  --t3: #9CA3AF;
-  --t4: #9CA3AF;
+  --t1: #101915;
+  --t2: #5F6B63;
+  --t3: #93A099;
+  --t4: #93A099;
 
-  --ac: #65a30d;
-  --pos: #10b981;
+  --ac: #1E6B4B;
+  --pos: #16A34A;
   --neg: #ef4444;
-  --accent-soft: rgba(139,227,77,0.20);
-  --accent-hover: rgba(139,227,77,0.11);
-  --accent-fg: #4D7C0F;
-  --pos-soft: rgba(101,163,13,0.14);
+  --accent-soft: rgba(30,107,75,0.10);
+  --accent-hover: rgba(30,107,75,0.06);
+  --accent-fg: #1B5E42;
+  --pos-soft: rgba(22,163,74,0.12);
   --neg-soft: rgba(239,68,68,0.11);
 
-  --pr-bg: rgba(101,163,13,0.10);
-  --pr-tx: #4D7C0F;
+  --pr-bg: rgba(30,107,75,0.10);
+  --pr-tx: #1B5E42;
   --pd-bg: rgba(0,0,0,0.05);
-  --pd-tx: #6B7280;
+  --pd-tx: #5F6B63;
+
+  /* hero card (kartu gelap di antara kartu putih — pola referensi) */
+  --hero-bg: #14382A;
+  --hero-tx: #F2F7EF;
+  --hero-sub: rgba(242,247,239,0.62);
+  --hero-br: #14382A;
+  --hero-divider: rgba(242,247,239,0.14);
+  --hero-shadow: 0 8px 24px rgba(20,56,42,0.28);
 
   /* sidebar */
-  --menu-label: #9CA3AF;
-  --nav-tx: #6B7280;
-  --nav-icon: #6B7280;
-  --nav-hover-tx: #111827;
-  --logo-text: #111827;
-  --data-bg: #F7F8FA;
-  --data-br: #EBEDF0;
-  --data-label: #6B7280;
-  --data-time: #374151;
-  --collapse-tx: #6B7280;
-  /* sidebar accent — LIGHT = amber (seperti halaman login) */
-  --nav-accent-fg: #B45309;
-  --nav-accent-soft: rgba(245,158,11,0.16);
-  --nav-accent-hover: rgba(245,158,11,0.10);
-  --nav-logo-bg: linear-gradient(135deg, #FBBF24, #F59E0B);
-  --nav-logo-fg: #FFFFFF;
-  --nav-dot: #F59E0B;
-  --nav-drag: rgba(245,158,11,0.6);
+  --menu-label: #93A099;
+  --nav-tx: #5F6B63;
+  --nav-icon: #5F6B63;
+  --nav-hover-tx: #101915;
+  --logo-text: #101915;
+  --data-bg: #F3F5F1;
+  --data-br: #E9EBE5;
+  --data-label: #5F6B63;
+  --data-time: #37423C;
+  --collapse-tx: #5F6B63;
+  /* sidebar accent — forest (sama di kedua tema, redesain 2026) */
+  --nav-accent-fg: #1B5E42;
+  --nav-accent-soft: rgba(30,107,75,0.10);
+  --nav-accent-hover: rgba(30,107,75,0.06);
+  --nav-logo-bg: #14382A;
+  --nav-logo-fg: #C8F169;
+  --nav-dot: #1E6B4B;
+  --nav-drag: rgba(30,107,75,0.5);
 
   /* tooltip + misc */
-  --tooltip-bg: #111827;
-  --tooltip-br: #111827;
+  --tooltip-bg: #101915;
+  --tooltip-br: #101915;
   --tooltip-tx: #FFFFFF;
-  --icon-muted: #C7CBD1;
+  --icon-muted: #C6CCC3;
 
   --blue: #3B82F6;
-  --green: #8BE34D;
+  --green: #2FB673;
   --red: #ef4444;
   --purple: #8B5CF6;
   --amber: #F59E0B;
-  --lime: #8BE34D;
+  --lime: #C8F169;
+  --forest: #14382A;
 
-  /* calendar / date-filter accent (LIGHT = amber, seperti sidebar/login) */
-  --cal-accent: #F59E0B;
+  /* calendar / date-filter accent — emerald (sama di kedua tema) */
+  --cal-accent: #1E6B4B;
   --cal-accent-fg: #FFFFFF;
-  --cal-accent-soft: rgba(245,158,11,0.16);
-  --cal-accent-line: #B45309;
-  --cal-glow: rgba(245,158,11,0.35);
-  --cal-range: rgba(245,158,11,0.20);
+  --cal-accent-soft: rgba(30,107,75,0.12);
+  --cal-accent-line: #1B5E42;
+  --cal-glow: rgba(30,107,75,0.30);
+  --cal-range: rgba(30,107,75,0.14);
 }
 
-/* ===== DARK MODE — palet final (JANGAN diubah) ===== */
+/* ===== DARK MODE — Redesain 2026: dark forest premium =====
+   Kanvas gelap kehijauan, lime #C8F169 jadi bintang aksen. */
 html[data-theme="dark"] {
-  --pg: #090A0C;
-  --cd: #121417;
-  --sf: #0d0f12;
-  --s2: #16191d;
-  --nav: #0B0C0E;
-  --br: #23262C;
-  --br-strong: rgba(255,255,255,0.14);
-  --bs: rgba(255,255,255,0.14);
-  --divider: rgba(255,255,255,0.05);
-  --hover: rgba(255,255,255,0.04);
-  --grid: rgba(255,255,255,0.035);
-  --track: rgba(255,255,255,0.05);
+  --pg: #0C110E;
+  --cd: #131A15;
+  --sf: #10150F;
+  --s2: #1A221C;
+  --nav: #0E130F;
+  --br: #242E27;
+  --br-strong: rgba(242,247,239,0.16);
+  --bs: rgba(242,247,239,0.16);
+  --divider: rgba(242,247,239,0.05);
+  --hover: rgba(242,247,239,0.04);
+  --grid: rgba(242,247,239,0.035);
+  --track: rgba(242,247,239,0.05);
   --shadow: 0 1px 3px rgba(0,0,0,0.4);
-  --card-shadow: 0 1px 4px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+  --card-shadow: 0 1px 4px rgba(0,0,0,0.7), 0 0 0 1px rgba(242,247,239,0.04);
   --pop-shadow: 0 20px 60px rgba(0,0,0,0.7);
 
-  --t1: #FFFFFF;
-  --t2: #9CA3AF;
-  --t3: #5B616B;
-  --t4: rgba(255,255,255,0.22);
+  --t1: #F4F7F3;
+  --t2: #9EABA2;
+  --t3: #61706A;
+  --t4: rgba(242,247,239,0.22);
 
-  --ac: #8BE34D;
-  --pos: #8BE34D;
+  --ac: #C8F169;
+  --pos: #4ADE80;
   --neg: #ef4444;
-  --accent-soft: rgba(139,227,77,0.12);
-  --accent-hover: rgba(139,227,77,0.06);
-  --accent-fg: #8BE34D;
-  --pos-soft: rgba(139,227,77,0.12);
+  --accent-soft: rgba(200,241,105,0.12);
+  --accent-hover: rgba(200,241,105,0.06);
+  --accent-fg: #C8F169;
+  --pos-soft: rgba(74,222,128,0.12);
   --neg-soft: rgba(239,68,68,0.12);
 
-  --pr-bg: rgba(139,227,77,0.12);
-  --pr-tx: #8BE34D;
-  --pd-bg: rgba(255,255,255,0.04);
-  --pd-tx: #666666;
+  --pr-bg: rgba(200,241,105,0.12);
+  --pr-tx: #C8F169;
+  --pd-bg: rgba(242,247,239,0.04);
+  --pd-tx: #6B7770;
+
+  /* hero card — forest sedikit lebih terang dari kanvas, tetap menonjol */
+  --hero-bg: #17402E;
+  --hero-tx: #F2F7EF;
+  --hero-sub: rgba(242,247,239,0.62);
+  --hero-br: #1E4F39;
+  --hero-divider: rgba(242,247,239,0.14);
+  --hero-shadow: 0 8px 24px rgba(0,0,0,0.45);
 
   /* sidebar */
-  --menu-label: rgba(255,255,255,0.22);
-  --nav-tx: rgba(255,255,255,0.38);
-  --nav-icon: rgba(255,255,255,0.35);
-  --nav-hover-tx: rgba(255,255,255,0.7);
-  --logo-text: #e5e5e5;
-  --data-bg: rgba(255,255,255,0.03);
-  --data-br: rgba(255,255,255,0.06);
-  --data-label: rgba(255,255,255,0.35);
-  --data-time: rgba(255,255,255,0.6);
-  --collapse-tx: rgba(255,255,255,0.3);
-  /* sidebar accent — DARK = green (tidak diubah) */
-  --nav-accent-fg: #8BE34D;
-  --nav-accent-soft: rgba(139,227,77,0.12);
-  --nav-accent-hover: rgba(139,227,77,0.06);
-  --nav-logo-bg: #8BE34D;
-  --nav-logo-fg: #0A0F06;
-  --nav-dot: #8BE34D;
-  --nav-drag: rgba(139,227,77,0.5);
+  --menu-label: rgba(242,247,239,0.24);
+  --nav-tx: rgba(242,247,239,0.4);
+  --nav-icon: rgba(242,247,239,0.36);
+  --nav-hover-tx: rgba(242,247,239,0.72);
+  --logo-text: #E8EDE6;
+  --data-bg: rgba(242,247,239,0.03);
+  --data-br: rgba(242,247,239,0.06);
+  --data-label: rgba(242,247,239,0.36);
+  --data-time: rgba(242,247,239,0.6);
+  --collapse-tx: rgba(242,247,239,0.32);
+  /* sidebar accent — lime (sama keluarga dengan light, redesain 2026) */
+  --nav-accent-fg: #C8F169;
+  --nav-accent-soft: rgba(200,241,105,0.11);
+  --nav-accent-hover: rgba(200,241,105,0.06);
+  --nav-logo-bg: #C8F169;
+  --nav-logo-fg: #14382A;
+  --nav-dot: #C8F169;
+  --nav-drag: rgba(200,241,105,0.5);
 
   /* tooltip + misc */
-  --tooltip-bg: #0A0C0E;
-  --tooltip-br: #23262C;
+  --tooltip-bg: #0B0F0C;
+  --tooltip-br: #242E27;
   --tooltip-tx: #FFFFFF;
-  --icon-muted: #3A3F47;
+  --icon-muted: #3B463F;
 
   --blue: #3B82F6;
-  --green: #8BE34D;
+  --green: #2FB673;
   --red: #ef4444;
   --purple: #8B5CF6;
   --amber: #F59E0B;
-  --lime: #8BE34D;
+  --lime: #C8F169;
+  --forest: #14382A;
 
-  /* calendar / date-filter accent (DARK = green, sesuai referensi) */
-  --cal-accent: #8BE34D;
-  --cal-accent-fg: #0A0F06;
-  --cal-accent-soft: rgba(139,227,77,0.14);
-  --cal-accent-line: #8BE34D;
-  --cal-glow: rgba(139,227,77,0.30);
-  --cal-range: rgba(139,227,77,0.13);
+  /* calendar / date-filter accent — lime, teks gelap di atasnya */
+  --cal-accent: #C8F169;
+  --cal-accent-fg: #14251A;
+  --cal-accent-soft: rgba(200,241,105,0.14);
+  --cal-accent-line: #C8F169;
+  --cal-glow: rgba(200,241,105,0.28);
+  --cal-range: rgba(200,241,105,0.13);
 }
 
 /* Saat ganti tema: matikan semua transition sekejap supaya var() ter-resolve
@@ -170,7 +191,7 @@ html.theme-switching *::after {
   transition: none !important;
 }
 
-/* Logo sidebar: glow amber di light, glow hijau di dark */
+/* Logo sidebar: glow forest di light, glow lime di dark (redesain 2026) */
 .wd-logo { animation: wdSpinGlow 3s ease-in-out infinite; }
 html[data-theme="dark"] .wd-logo { animation: wdSpinGlowGreen 3s ease-in-out infinite; }
 
@@ -182,7 +203,8 @@ html, body {
 body {
   background: var(--pg);
   color: var(--t1);
-  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  /* Font utama di-inject next/font (Plus Jakarta Sans) via className di layout.js */
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 a {
@@ -197,12 +219,12 @@ button {
 
 /* ===== ANIMASI ===== */
 @keyframes wdSpinGlow {
-  0%, 100% { box-shadow: 0 0 8px 0 rgba(245,158,11,0.4); }
-  50%       { box-shadow: 0 0 16px 3px rgba(245,158,11,0.7); }
+  0%, 100% { box-shadow: 0 0 8px 0 rgba(30,107,75,0.35); }
+  50%       { box-shadow: 0 0 16px 3px rgba(30,107,75,0.6); }
 }
 @keyframes wdSpinGlowGreen {
-  0%, 100% { box-shadow: 0 0 8px 0 rgba(139,227,77,0.45); }
-  50%       { box-shadow: 0 0 18px 4px rgba(139,227,77,0.75); }
+  0%, 100% { box-shadow: 0 0 8px 0 rgba(200,241,105,0.4); }
+  50%       { box-shadow: 0 0 18px 4px rgba(200,241,105,0.65); }
 }
 @keyframes wdLimeGlow {
   0%, 100% { box-shadow: 0 0 0 0 rgba(163,230,53,0); }
