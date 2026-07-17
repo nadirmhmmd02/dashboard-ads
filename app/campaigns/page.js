@@ -582,10 +582,16 @@ export default function CampaignsPage() {
   );
 
   return (
-    <div style={{ padding: '18px 20px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
+    <div style={{ padding: isMobile ? '18px 20px' : '12px 16px 16px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
 
-      {/* Topbar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', rowGap: '10px', animation: 'wdFadeUp 0.3s cubic-bezier(0.4,0,0.2,1)' }}>
+      {/* Topbar — desktop: card mengambang (nuansa dashboard redesain 2026) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: isMobile ? '16px' : '10px', flexWrap: 'wrap', rowGap: '10px',
+        animation: 'wdFadeUp 0.3s cubic-bezier(0.4,0,0.2,1)',
+        ...(isMobile ? null : {
+          background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '18px',
+          padding: '12px 20px', boxShadow: 'var(--shadow)',
+        }) }}>
         <div>
           <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--t1)' }}>Campaign Performance</div>
           <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>
@@ -650,7 +656,7 @@ export default function CampaignsPage() {
       )}
 
       {!loading && !error && data && (
-        <div style={{ background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '10px', overflow: 'hidden', animation: 'wdFadeUp 0.35s cubic-bezier(0.4,0,0.2,1) 0.05s backwards' }}>
+        <div style={{ background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: isMobile ? '10px' : '18px', overflow: 'hidden', boxShadow: 'var(--shadow)', animation: 'wdFadeUp 0.35s cubic-bezier(0.4,0,0.2,1) 0.05s backwards' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
               <thead>

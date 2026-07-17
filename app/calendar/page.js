@@ -110,7 +110,7 @@ export default function CalendarPage() {
   };
 
   return (
-    <div style={{ padding:'18px 20px', flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:'14px' }}>
+    <div style={{ padding: isMobile ? '18px 20px' : '12px 16px 16px', flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap: isMobile ? '14px' : '10px' }}>
 
       {/* Error banner */}
       {error && (
@@ -132,8 +132,12 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {/* Topbar */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'10px' }}>
+      {/* Topbar — desktop: card mengambang (nuansa dashboard redesain 2026) */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'10px',
+        ...(isMobile ? null : {
+          background:'var(--cd)', border:'1px solid var(--br)', borderRadius:'18px',
+          padding:'12px 20px', boxShadow:'var(--shadow)',
+        }) }}>
         <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
           <button onClick={prevMonth} style={{
             width:'32px', height:'32px', borderRadius:'8px',
@@ -206,7 +210,9 @@ export default function CalendarPage() {
         <div
           key={tableKey}
           style={{
-            border:'1px solid var(--br)', borderRadius:'10px', overflow:'hidden',
+            border:'1px solid var(--br)', overflow:'hidden',
+            borderRadius: isMobile ? '10px' : '18px',
+            ...(isMobile ? null : { background:'var(--cd)', boxShadow:'var(--shadow)' }),
             animation:'wdFadeUp 0.3s cubic-bezier(0.4,0,0.2,1)',
           }}
         >

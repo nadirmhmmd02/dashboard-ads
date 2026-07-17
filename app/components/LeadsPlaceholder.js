@@ -30,7 +30,9 @@ export default function LeadsPlaceholder({ pageTitle, featureName, Icon, descrip
         padding: '14px 16px', flexShrink: 0, borderBottom: '1px solid var(--br)',
       } : {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 24px', height: '72px', flexShrink: 0, borderBottom: '1px solid var(--br)',
+        padding: '12px 20px', margin: '12px 16px 0', flexShrink: 0,
+        background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '18px',
+        boxShadow: 'var(--shadow)',
       }}>
         <div>
           <h1 style={{ ...TYPE.h1, ...(isMobile ? { fontSize: '20px' } : null) }}>{pageTitle}</h1>
@@ -41,7 +43,7 @@ export default function LeadsPlaceholder({ pageTitle, featureName, Icon, descrip
       {/* ══ CONTENT ══ */}
       <div style={{
         flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
-        padding: isMobile ? '16px' : '24px',
+        padding: isMobile ? '16px' : '12px 16px 16px',
       }}>
         <PlatformPlaceholder
           platform={{ label: featureName, Icon: TileIcon }}

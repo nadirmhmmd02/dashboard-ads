@@ -301,7 +301,9 @@ export default function ReportsPage() {
         padding: '14px 16px', flexShrink: 0, borderBottom: `1px solid ${BORDER}`,
       } : {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 24px', height: '72px', flexShrink: 0, borderBottom: `1px solid ${BORDER}`,
+        padding: '12px 20px', margin: '12px 16px 0', flexShrink: 0,
+        background: CARD, border: `1px solid ${BORDER}`, borderRadius: '18px',
+        boxShadow: 'var(--shadow)',
       }}>
         <div>
           <h1 style={{ ...TYPE.h1, ...(isMobile ? { fontSize: '20px' } : null) }}>Analytics &amp; Insights</h1>
@@ -357,8 +359,8 @@ export default function ReportsPage() {
       {/* ══ CONTENT ══ */}
       <div style={{
         flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden',
-        padding: isMobile ? '16px' : '24px',
-        display: 'flex', flexDirection: 'column', gap: isMobile ? '16px' : '20px',
+        padding: isMobile ? '16px' : '12px 16px 16px',
+        display: 'flex', flexDirection: 'column', gap: isMobile ? '16px' : '10px',
       }}>
 
         {loading && (
