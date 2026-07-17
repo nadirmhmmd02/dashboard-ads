@@ -13,6 +13,7 @@ import DateFilterPopup from '../components/DateFilterPopup';
 import { useReportsFilter, DATE_PRESETS_DASHBOARD } from '../components/DateFilterContext';
 import { TYPE } from '../components/typography';
 import { buildAnalysis, fmtRp, fmtNum, fmtPct } from '../components/insightEngine';
+import { authFetch } from '../supabase';
 
 /* ─────────────────────────────────────────────────────────────
    ANALYTICS & INSIGHTS — WILL OF D
@@ -220,7 +221,7 @@ export default function ReportsPage() {
       const url = since && until
         ? `/api/meta?mode=dashboard&since=${since}&until=${until}`
         : `/api/meta?mode=dashboard&date_preset=${dateOpt.value}`;
-      const res  = await fetch(url);
+      const res  = await authFetch(url);
       const json = await res.json();
       if (json.error) throw new Error(json.error);
       setAnalysis(buildAnalysis(json));

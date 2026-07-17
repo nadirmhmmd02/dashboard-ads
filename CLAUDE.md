@@ -52,7 +52,7 @@ app/
   leads/list/page.js     → LEADS HUB Leads List (placeholder, sama).
   leads/insights/page.js → LEADS HUB Analytics & Insights (placeholder, sama).
   components/
-    AuthContext.js       → SOURCE OF TRUTH: auth + role + theme (light/dark). localStorage/sessionStorage.
+    AuthContext.js       → SOURCE OF TRUTH: auth (Supabase Auth) + role (app_metadata) + theme (light/dark). Export homeFor(role).
     AppShell.js          → route guard (redirect ke /login kalau belum login; sidebar + main). User suggestion floating button + popup.
     Sidebar.js           → sidebar collapsible+resizable, user info + logout, logo WILL OF D. Menu = NAV_SECTIONS dua section: "Ads Hub" (Dashboard/Campaigns/Calendar/Analytics & Insights) + "Leads Hub" (Dashboard /leads, Leads List /leads/list, Analytics & Insights /leads/insights — placeholder). isActive = exact match pathname. Dipakai juga MobileNav.
     LeadsPlaceholder.js  → shell halaman "under development" Leads Hub (header pola Reports + PlatformPlaceholder). Props: pageTitle, featureName, Icon.
@@ -73,9 +73,10 @@ app/
     CombineModal.js      → popup hitung gabungan campaign terpilih (checkbox di tabel Campaigns → floating bar "Calculate Total"). Agregasi ikut aturan metrik final: Traffic hanya dari campaign TRAFFIC, Leads hanya CONVERSION, CPC/CPL per tipe, CPM semua.
     SuggestionsModal.js  → LAMA, tidak dipakai lagi (logika sudah pindah ke AppShell + page.js).
     BarChart.js, Navbar.js → LAMA, tidak dipakai lagi (boleh dihapus kapan2).
-  api/meta/route.js      → server-side fetch Meta Graph API. GET: mode=dashboard (summary/prevSummary/daily/campaigns/chartRange), mode=campaign_detail (ads+creative+platform breakdown per campaign) & default campaigns. POST: aksi kontrol iklan — action=set_status (ACTIVE↔PAUSED) & action=set_budget (daily_budget level campaign, IDR nilai penuh, min Rp 10.000). Token System User sudah punya izin ads_management (dicek 2026-07-15).
+  api/meta/route.js      → server-side fetch Meta Graph API. DIKUNCI Supabase Auth: verifikasi Bearer token → role (GET = admin/user, POST = admin only). GET: mode=dashboard (summary/prevSummary/daily/campaigns/chartRange), mode=campaign_detail (ads+creative+platform breakdown per campaign) & default campaigns. POST: aksi kontrol iklan — action=set_status (ACTIVE↔PAUSED) & action=set_budget (daily_budget level campaign, IDR nilai penuh, min Rp 10.000). Token System User sudah punya izin ads_management (dicek 2026-07-15).
   globals.css            → CSS variables (blok light `:root` + blok `html[data-theme="dark"]`) + keyframes animasi.
-  supabase.js            → Supabase client.
+  supabase.js            → Supabase client (storage adapter "remember me") + authFetch (fetch dengan Bearer token untuk /api/meta) + setRememberSession.
+  supabase-auth-setup.sql (root repo) → SQL setup auth: set role user + RLS campaigns & suggestions. Dijalankan manual di SQL Editor Supabase.
   icon.svg, apple-icon.svg → favicon + touch icon (Control Hub, square gelap + mark putih).
 ```
 
@@ -108,12 +109,14 @@ Subtotal toggle per grup (Awareness/Traffic/Conversion) di tabel campaigns — j
 
 ---
 
-## AUTH & ROLE (client-side sederhana — dikelola AuthContext)
+## AUTH & ROLE (Supabase Auth — upgrade Jul 2026)
 
-- **Admin** → `Dozan` / `Dozan213` — default tema **Dark**, akses penuh (Export, Create/Edit/Delete Calendar, lihat+hapus Suggestions).
-- **User** → `user` / `babarafi123` — default tema **Light**, read-only (tanpa Export, tanpa CRUD Calendar, bisa kirim Suggestion).
-- Tema terakhir yang dipilih user menimpa default saat login ulang (tersimpan per-role).
-- ⚠️ Auth ini CLIENT-SIDE (password kelihatan di kode) — belum production-secure. Upgrade ke Supabase Auth kalau perlu.
+- Login pakai **email internal "seakan-akan"** (bukan email aktif beneran) + password tersimpan terenkripsi di Supabase. TIDAK ADA kredensial di kode/repo — password dipegang Nadir, JANGAN tulis password di file mana pun.
+- 3 akun: `nadir.adhub@babarafi.com` (**admin** — tema default Dark, akses penuh: Export, CRUD Calendar, lihat+hapus Suggestions, Stop/Run+Edit Budget), `user.adhub@babarafi.com` (**user**/viewer — Light, read-only + kirim Suggestion), `marketing.adhub@babarafi.com` (**marketing** — Light, HANYA Leads Hub; menu Ads Hub tidak dirender, rute Ads Hub di-redirect ke /leads, landing login = /leads).
+- Role dari `app_metadata.role` di JWT (di-set via SQL `supabase-auth-setup.sql`, klien tidak bisa ubah). Tambah user & reset password = Nadir manual via dashboard Supabase (TIDAK ada signup/User Management di app; "Allow new users to sign up" di Supabase HARUS off).
+- `/api/meta` dikunci server-side: klien kirim access token via `authFetch()` (app/supabase.js); GET = role admin/user, POST = admin saja.
+- RLS aktif: `campaigns` (read admin+user, write admin), `suggestions` (insert semua yang login, read/delete admin). Lihat `supabase-auth-setup.sql`.
+- Tema terakhir yang dipilih user menimpa default saat login ulang (tersimpan per-role, no-flash script baca `wd-last-role`). "Remember me" = sesi di localStorage vs sessionStorage (flag `wd-remember`).
 
 ---
 
@@ -163,7 +166,7 @@ Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cance
 - ✅ Platform selector di toolbar dashboard (Meta Ads default; Google/TikTok/All Platforms tampil placeholder "under development"). Registry di `PlatformSelector.js`.
 - ✅ Typography system (`typography.js`) diterapkan ke Dashboard + Reports — ukuran visual tidak berubah, cuma distandarkan lewat token.
 - ✅ Analytics & Insights v1 (route /reports, icon Sparkles): Performance Score gauge + insight cards otomatis dari data Meta real (insightEngine.js), filter periode, severity critical→warning→positive→info, desktop grid 3 kolom / mobile stack.
-- ✅ Kontrol iklan admin-only di Campaigns: kolom Actions (setelah Status) dengan tombol Stop/Run (ACTIVE↔PAUSED, popup konfirmasi merah/hijau) + Edit Daily Budget (popup input format Rupiah, min Rp 10.000, level campaign sesuai SOP Nadir — TIDAK PERNAH level ad set). Setelah sukses: update lokal optimistik + toast. Role user tidak melihat kolom ini. Status Ended tidak bisa di-run lagi. ⚠️ Endpoint POST /api/meta tidak ada server-side auth (konsisten dgn auth client-side) — kalau upgrade Supabase Auth, amankan endpoint ini juga.
+- ✅ Kontrol iklan admin-only di Campaigns: kolom Actions (setelah Status) dengan tombol Stop/Run (ACTIVE↔PAUSED, popup konfirmasi merah/hijau) + Edit Daily Budget (popup input format Rupiah, min Rp 10.000, level campaign sesuai SOP Nadir — TIDAK PERNAH level ad set). Setelah sukses: update lokal optimistik + toast. Role user tidak melihat kolom ini. Status Ended tidak bisa di-run lagi. Endpoint POST /api/meta sudah diamankan server-side (admin only, via Supabase Auth token).
 - ✅ Sidebar dua section: "ADS HUB" (menu lama) + "LEADS HUB" (Dashboard, Leads List, Analytics & Insights — 3 halaman placeholder "under development" via LeadsPlaceholder.js). Berlaku desktop (Sidebar) & mobile (drawer MobileNav). Nama produk fix: **"Baba Rafi Ad Hub"** (pakai spasi). Leads Hub beneran = rencana v3.0 (lihat BRD/PRD Nadir).
 - ✅ Versi mobile (≤767px, desktop tak berubah): top bar hamburger→drawer, KPI carousel swipe scroll-snap, strip 2x2, analytics stack, date filter bottom sheet. Top bar dashboard (kanan→kiri): Suggestions · theme · Refresh · Export icon (via portal ke slot MobileNav). Campaigns: refresh di top bar, filter rata kanan. Calendar: tanpa theme toggle, tombol rata kanan, tabel Gantt scroll horizontal (minWidth 920px).
 
@@ -171,11 +174,10 @@ Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cance
 
 - [ ] Analytics & Insights: upgrade narasi ke LLM asli (Claude API) — v1 rule-based sudah live; butuh API key kalau mau.
 - [ ] Integrasi Google Ads / TikTok Ads / All Platforms (selector sudah ada, masih placeholder).
-- [ ] Supabase RLS: tabel `public.campaigns` & `public.suggestions` RLS mati. Sengaja dibiarkan dulu. Lihat memory [[supabase-rls-deferred]].
 - [ ] Fitur Compare (tombol disabled), notifikasi lonceng, Export CSV/Excel Calendar — placeholder.
 - [ ] Verifikasi akurasi angka vs Meta Ads Manager.
-- [ ] Upgrade auth ke Supabase Auth (kalau perlu production-secure).
 - [ ] Hapus file lama tidak terpakai: `SuggestionsModal.js`, `BarChart.js`, `Navbar.js`.
+- [ ] v3.0 Leads Hub (fase berikutnya setelah auth live — lihat MASTER PLAN Bagian 3).
 
 ---
 

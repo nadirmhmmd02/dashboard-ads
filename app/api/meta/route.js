@@ -1,7 +1,36 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 const ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
 const AD_ACCOUNT_ID = process.env.META_AD_ACCOUNT_ID;
+
+/* ─── Auth guard (Supabase Auth) ───
+   Klien mengirim access token via header Authorization (lihat authFetch di
+   app/supabase.js). Token diverifikasi ke server Supabase → dapat role dari
+   app_metadata. GET = admin & user (viewer); POST kontrol iklan = admin saja.
+   Marketing tidak punya akses data ads sama sekali. */
+const supabaseAuth = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  { auth: { persistSession: false, autoRefreshToken: false } }
+);
+
+async function getRole(request) {
+  const header = request.headers.get('authorization') || '';
+  const token  = header.startsWith('Bearer ') ? header.slice(7) : '';
+  if (!token) return null;
+  try {
+    const { data, error } = await supabaseAuth.auth.getUser(token);
+    if (error || !data?.user) return null;
+    return data.user.app_metadata?.role || 'user';
+  } catch (e) {
+    return null;
+  }
+}
+
+function unauthorized() {
+  return NextResponse.json({ error: 'Unauthorized — silakan login ulang' }, { status: 401 });
+}
 
 // Bangun string filter insights — pakai date_preset atau time_range
 function buildDateFilter(datePreset, since, until) {
@@ -55,6 +84,9 @@ function previousRange(since, until) {
 }
 
 export async function GET(request) {
+  const role = await getRole(request);
+  if (role !== 'admin' && role !== 'user') return unauthorized();
+
   const { searchParams } = new URL(request.url);
   const datePreset = searchParams.get('date_preset') || 'this_month';
   const since      = searchParams.get('since') || '';
@@ -144,6 +176,11 @@ export async function GET(request) {
    action=set_status → stop/run campaign (ACTIVE ↔ PAUSED)
    action=set_budget → ubah daily_budget level campaign (IDR nilai penuh, tanpa dibagi/dikali) */
 export async function POST(request) {
+  const role = await getRole(request);
+  if (role !== 'admin') {
+    return NextResponse.json({ error: 'Hanya admin yang boleh mengontrol iklan' }, { status: 403 });
+  }
+
   try {
     const body = await request.json();
     const { action, campaign_id } = body;

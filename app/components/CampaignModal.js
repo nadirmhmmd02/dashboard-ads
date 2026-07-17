@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { X, Globe, MessageCircle, ImageOff, RefreshCw, Users, Eye, MousePointerClick, UserPlus, Gauge, Coins, Wallet, Banknote, Target } from 'lucide-react';
 import CountUp from './CountUp';
+import { authFetch } from '../supabase';
 
 /* ─── Helpers metrik (sama persis dengan logika tabel campaigns — jangan diubah) ─── */
 function getActionValue(actions, types) {
@@ -99,7 +100,7 @@ export default function CampaignModal({ campaign, query, periodLabel, onClose })
     let alive = true;
     (async () => {
       try {
-        const res  = await fetch(`/api/meta?mode=campaign_detail&campaign_id=${campaign.id}&${query}`);
+        const res  = await authFetch(`/api/meta?mode=campaign_detail&campaign_id=${campaign.id}&${query}`);
         const json = await res.json();
         if (!alive) return;
         if (json.error) throw new Error(json.error);

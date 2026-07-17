@@ -7,7 +7,7 @@ import { LogOut } from 'lucide-react';
 import Logo from './Logo';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from './AuthContext';
-import { NAV_SECTIONS } from './Sidebar';
+import { navSectionsFor } from './Sidebar';
 
 /* ─────────────────────────────────────────────────────────────
    MOBILE NAV — WILL OF D
@@ -148,7 +148,7 @@ export default function MobileNav() {
 
             {/* Nav — touch target besar, per section Ads Hub / Leads Hub */}
             <nav style={{ flex: 1, padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: '3px', overflowY: 'auto' }}>
-              {NAV_SECTIONS.map((section, si) => (
+              {navSectionsFor(role).map((section, si) => (
               <div key={section.label} style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: si > 0 ? '14px' : 0 }}>
               <div style={{
                 fontSize: '9px', fontWeight: 700, letterSpacing: '1.4px',

@@ -6,7 +6,7 @@ import { MessageSquare, Send, CheckCircle2 } from 'lucide-react';
 import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
 import useIsMobile from './useIsMobile';
-import { useAuth } from './AuthContext';
+import { useAuth, homeFor } from './AuthContext';
 import { supabase } from '../supabase';
 
 export default function AppShell({ children }) {
@@ -21,11 +21,15 @@ export default function AppShell({ children }) {
   const router = useRouter();
   const isLogin = pathname === '/login';
 
+  // Marketing hanya boleh di Leads Hub — rute lain dilempar balik ke /leads
+  const marketingBlocked = role === 'marketing' && !pathname.startsWith('/leads');
+
   useEffect(() => {
     if (!ready) return;
     if (!user && !isLogin) router.replace('/login');
-    if (user && isLogin)   router.replace('/');
-  }, [ready, user, isLogin, router]);
+    if (user && isLogin)   router.replace(homeFor(role));
+    if (user && !isLogin && marketingBlocked) router.replace('/leads');
+  }, [ready, user, role, isLogin, marketingBlocked, router]);
 
   useEffect(() => {
     if (showSuggest) {
@@ -66,6 +70,7 @@ export default function AppShell({ children }) {
 
   if (isLogin) return children;
   if (!ready || !user) return null;
+  if (marketingBlocked) return null; // jangan sempat render halaman Ads Hub
 
   return (
     <div style={{
@@ -78,8 +83,8 @@ export default function AppShell({ children }) {
         {children}
       </main>
 
-      {/* User: Floating suggest button + popup */}
-      {role === 'user' && (
+      {/* Non-admin (user & marketing): Floating suggest button + popup */}
+      {role !== 'admin' && (
         <div ref={popupRef} style={{
           position: 'absolute', zIndex: 50,
           bottom: isMobile ? '16px' : '24px',

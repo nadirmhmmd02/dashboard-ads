@@ -9,6 +9,7 @@ import useIsMobile from '../components/useIsMobile';
 import DateFilterPopup from '../components/DateFilterPopup';
 import CampaignModal from '../components/CampaignModal';
 import CombineModal from '../components/CombineModal';
+import { authFetch } from '../supabase';
 
 
 /* ─── Calendar UI helpers (murni tampilan — tidak menyentuh logika filter) ─── */
@@ -179,7 +180,7 @@ export default function CampaignsPage() {
       const url = since && until
         ? `/api/meta?since=${since}&until=${until}`
         : `/api/meta?date_preset=${dateOpt.value}`;
-      const res  = await fetch(url);
+      const res  = await authFetch(url);
       const json = await res.json();
       if (json.error) throw new Error(json.error);
       setData(json);
@@ -317,7 +318,7 @@ export default function CampaignsPage() {
       const payload = type === 'status'
         ? { action: 'set_status', campaign_id: campaign.id, status: nextStatus }
         : { action: 'set_budget', campaign_id: campaign.id, daily_budget: parseInt(budgetInput || '0') };
-      const res  = await fetch('/api/meta', {
+      const res  = await authFetch('/api/meta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

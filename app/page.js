@@ -19,7 +19,7 @@ import PlatformPlaceholder from './components/PlatformPlaceholder';
 import useIsMobile from './components/useIsMobile';
 import DateFilterPopup from './components/DateFilterPopup';
 import { TYPE } from './components/typography';
-import { supabase } from './supabase';
+import { supabase, authFetch } from './supabase';
 
 /* ─── Design tokens: netral = CSS var (ikut tema), aksen = literal (sama di 2 tema) ─── */
 const BG      = 'var(--pg)';
@@ -352,7 +352,7 @@ export default function DashboardPage() {
       const url = since && until
         ? `/api/meta?mode=dashboard&since=${since}&until=${until}`
         : `/api/meta?mode=dashboard&date_preset=${dateOpt.value}`;
-      const res  = await fetch(url);
+      const res  = await authFetch(url);
       const json = await res.json();
       if (json.error) throw new Error(json.error);
 

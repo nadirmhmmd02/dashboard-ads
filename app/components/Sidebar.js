@@ -37,6 +37,12 @@ export const NAV_SECTIONS = [
   },
 ];
 
+// Menu per role: marketing hanya Leads Hub, role lain lihat semua
+export function navSectionsFor(role) {
+  if (role === 'marketing') return NAV_SECTIONS.filter(s => s.label === 'Leads Hub');
+  return NAV_SECTIONS;
+}
+
 const MIN_WIDTH       = 180;
 const MAX_WIDTH       = 360;
 const DEFAULT_WIDTH   = 240;
@@ -165,7 +171,7 @@ export default function Sidebar() {
 
       {/* ── Nav (per section: Ads Hub / Leads Hub) ── */}
       <nav style={{ flex: 1, padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto' }}>
-        {NAV_SECTIONS.map((section, si) => (
+        {navSectionsFor(role).map((section, si) => (
         <div key={section.label} style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: si > 0 ? '14px' : 0 }}>
 
         {/* Section label (expanded) / divider (collapsed, antar section) */}

@@ -16,11 +16,11 @@ export const metadata = {
   description: 'Performance Marketing Dashboard',
 };
 
-// No-flash theme: pilih tema sesuai role tersimpan + preferensi terakhir
+// No-flash theme: pilih tema sesuai role terakhir (ditulis AuthContext saat
+// login/restore sesi Supabase) + preferensi tema tersimpan per role
 const themeInit = `(function(){try{
-  var raw=localStorage.getItem('wd-auth')||sessionStorage.getItem('wd-auth');
-  if(!raw)return;
-  var role=JSON.parse(raw).role;
+  var role=localStorage.getItem('wd-last-role');
+  if(!role)return;
   var t=localStorage.getItem('wd-theme-'+role)||(role==='admin'?'dark':'light');
   document.documentElement.setAttribute('data-theme',t);
 }catch(e){}})();`;

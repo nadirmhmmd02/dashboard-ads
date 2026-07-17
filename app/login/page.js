@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import Logo from '../components/Logo';
-import { useAuth } from '../components/AuthContext';
+import { useAuth, homeFor } from '../components/AuthContext';
 
 /* Login page — light + aksen forest/emerald (redesain 2026, seragam dengan dashboard).
    Warna di-hardcode terang supaya tampilan login konsisten apapun tema tersimpan. */
@@ -18,20 +18,20 @@ export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
 
-  const [username, setUsername] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [show, setShow]         = useState(false);
   const [remember, setRemember] = useState(true);
   const [error, setError]       = useState('');
   const [busy, setBusy]         = useState(false);
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     setError('');
     setBusy(true);
-    const res = login(username, password, remember);
+    const res = await login(email, password, remember);
     if (res.ok) {
-      router.replace('/');
+      router.replace(homeFor(res.role));
     } else {
       setError(res.error || 'Login gagal');
       setBusy(false);
@@ -101,12 +101,12 @@ export default function LoginPage() {
           }}>{error}</div>
         )}
 
-        {/* Username */}
-        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: INK, marginBottom: '8px' }}>Username</label>
+        {/* Email */}
+        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: INK, marginBottom: '8px' }}>Email</label>
         <div style={{ ...inputWrap, marginBottom: '20px' }} onFocus={focusOn} onBlur={focusOff}>
-          <User size={18} color={SUB} />
-          <input style={inputEl} type="text" autoComplete="username" placeholder="Enter your username"
-            value={username} onChange={e => setUsername(e.target.value)} />
+          <Mail size={18} color={SUB} />
+          <input style={inputEl} type="text" autoComplete="username" placeholder="Enter your email"
+            value={email} onChange={e => setEmail(e.target.value)} />
         </div>
 
         {/* Password */}
