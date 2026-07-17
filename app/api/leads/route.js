@@ -5,9 +5,9 @@ import { createClient } from '@supabase/supabase-js';
 // beri batas waktu maksimal yang diizinkan Vercel (60 detik).
 export const maxDuration = 60;
 
-/* Tanggal mulai sync (go-live Leads Hub, keputusan Nadir 17 Jul 2026):
+/* Tanggal mulai sync (go-live Leads Hub, dikonfirmasi Nadir: 17 JULI 2026):
    hanya lead yang masuk SEJAK tanggal ini yang ditarik dari API —
-   lead sebelum ini akan masuk lewat fitur import file export (gelombang 2). */
+   lead sebelum ini masuk lewat fitur import file (gelombang 2). */
 const SYNC_START = '2026-07-17';
 const SYNC_START_UNIX = Math.floor(new Date(SYNC_START + 'T00:00:00+07:00').getTime() / 1000);
 

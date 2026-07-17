@@ -2,57 +2,68 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Inbox, Users, RefreshCw, Download, Search, Copy, Check, X,
-  ChevronDown, Pencil, CheckCircle2, CircleAlert,
+  Inbox, Users, RefreshCw, Download, Upload, Search, Copy, Check, X,
+  Pencil, CheckCircle2, CircleAlert, SlidersHorizontal, UserRound, Plus,
 } from 'lucide-react';
 import { useAuth } from '../../components/AuthContext';
 import { supabase, authFetch } from '../../supabase';
 import useIsMobile from '../../components/useIsMobile';
 import ThemeToggle from '../../components/ThemeToggle';
+import Dropdown from '../../components/Dropdown';
+import { STATUSES, STATUS_COLOR, SALES, SALES_COLOR, CATEGORIES, kategoriLabel } from '../../components/leadsConfig';
 import { TYPE } from '../../components/typography';
 
 /* ─────────────────────────────────────────────────────────────
-   LEADS HUB — LEADS LIST + INBOX VERIFIKASI (v3.0)
-   Admin  : tab Inbox (approve/reject lead unverified) + All Leads,
-            tombol Sync (tarik leads Meta via POST /api/leads).
-   Marketing: All Leads saja (RLS: hanya lead approved) — update
-            status/FU/notes/closing.
+   LEADS HUB — LEADS LIST + BLACK BOX (v3.0)
+   Admin  : tab Black Box (verifikasi lead Meta) + All Leads,
+            tombol Add Leads (Sync Meta / Import from File).
+   Marketing: All Leads saja (RLS: hanya lead approved).
    User   : read-only.
-   Data langsung dari Supabase (RLS per role). Aturan bisnis:
-   status Deal wajib isi nominal closing (popup otomatis).
+   Fitur: label NEW (hilang setelah aksi apa pun), kolom City &
+   Sales, hide/show kolom (persist), filter kategori/status/sales,
+   bulk copy / follow-up / set status / assign sales, popup Deal
+   wajib nominal. Urutan selalu terbaru di atas.
    ───────────────────────────────────────────────────────────── */
 
-const STATUSES = ['No Status', 'Cold', 'Warm', 'Hot', 'Deal'];
-const STATUS_COLOR = {
-  'No Status': { fg: 'var(--t3)',  bg: 'var(--hover)' },
-  Cold:        { fg: '#3B82F6', bg: 'rgba(59,130,246,0.12)' },
-  Warm:        { fg: '#F59E0B', bg: 'rgba(245,158,11,0.14)' },
-  Hot:         { fg: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
-  Deal:        { fg: '#2FB673', bg: 'rgba(47,182,115,0.14)' },
-};
-const KATEGORIS = ['Reguler', 'Proven', 'Suka Suka', 'Autopilot'];
-const DEAL_REASONS = ['Attractive promo', 'Price fits budget', 'Strategic location', 'Referral', 'Other'];
 const PAGE_SIZE = 50;
+const COLS_KEY = 'wd-leads-cols-hidden';
+
+// Kolom tabel All Leads yang bisa disembunyikan lewat tombol Columns
+const ALL_COLUMNS = [
+  { key: 'date',     label: 'Date' },
+  { key: 'name',     label: 'Name' },
+  { key: 'phone',    label: 'Phone' },
+  { key: 'email',    label: 'Email' },
+  { key: 'city',     label: 'City' },
+  { key: 'category', label: 'Category' },
+  { key: 'campaign', label: 'Campaign' },
+  { key: 'sales',    label: 'Sales' },
+  { key: 'status',   label: 'Status' },
+  { key: 'fu',       label: 'Follow-up' },
+  { key: 'notes',    label: 'Notes' },
+  { key: 'closing',  label: 'Closing' },
+];
 
 function fmtDate(iso) {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
   return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 function fmtRp(v) {
-  if (v == null || v === '') return '—';
+  if (v == null || v === '') return '-';
   return 'Rp ' + Math.round(parseFloat(v)).toLocaleString('id-ID');
 }
+// Clean display: data kosong dari form → "-"
+function dash(v) { return v && String(v).trim() ? v : '-'; }
 
-/* Badge kategori promo */
 function KategoriBadge({ value }) {
-  if (!value) return <span style={{ ...TYPE.caption }}>—</span>;
+  if (!value) return <span style={{ ...TYPE.tableCell }}>-</span>;
   return (
     <span style={{
       display: 'inline-block', padding: '3px 9px', borderRadius: '999px',
       background: 'var(--cal-accent-soft, var(--hover))', color: 'var(--ac)',
       fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap',
-    }}>{value}</span>
+    }}>{kategoriLabel(value)}</span>
   );
 }
 
@@ -61,8 +72,8 @@ export default function LeadsListPage() {
   const isMobile = useIsMobile();
   const canEdit = role === 'admin' || role === 'marketing';
 
-  const [tab, setTab] = useState('list');            // 'inbox' | 'list' (inbox admin-only)
-  const [rows, setRows] = useState(null);            // data tab aktif
+  const [tab, setTab] = useState('list');            // 'inbox' (Black Box) | 'list'
+  const [rows, setRows] = useState(null);
   const [inboxCount, setInboxCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -73,20 +84,39 @@ export default function LeadsListPage() {
   const [q, setQ] = useState('');
   const [fKategori, setFKategori] = useState('Semua');
   const [fStatus, setFStatus] = useState('Semua');
+  const [fSales, setFSales] = useState('Semua');
   const [selected, setSelected] = useState(() => new Set());
   const [page, setPage] = useState(1);
 
+  // Kolom tersembunyi (persist di localStorage)
+  const [hiddenCols, setHiddenCols] = useState(() => new Set());
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(COLS_KEY) || '[]');
+      if (Array.isArray(saved)) setHiddenCols(new Set(saved));
+    } catch (e) {}
+  }, []);
+  function toggleCol(key) {
+    setHiddenCols(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      try { localStorage.setItem(COLS_KEY, JSON.stringify([...next])); } catch (e) {}
+      return next;
+    });
+  }
+  const col = (key) => tab === 'inbox' || !hiddenCols.has(key);
+
   // Popup
-  const [dealLead, setDealLead] = useState(null);    // lead yang mau di-set Deal
-  const [notesLead, setNotesLead] = useState(null);  // lead yang notes-nya diedit
-  const [openStatusFor, setOpenStatusFor] = useState(null); // id lead dropdown status terbuka
+  const [dealLead, setDealLead] = useState(null);
+  const [notesLead, setNotesLead] = useState(null);
+  const [showImport, setShowImport] = useState(false);
 
   function showToast(msg, isError = false) {
     setToast({ msg, isError });
     setTimeout(() => setToast(null), 2600);
   }
 
-  /* ── Data ── */
+  /* ── Data (urutan selalu terbaru di atas) ── */
   const fetchRows = useCallback(async (activeTab = tab) => {
     setLoading(true); setError(null);
     const verif = activeTab === 'inbox' ? 'unverified' : 'approved';
@@ -126,7 +156,7 @@ export default function LeadsListPage() {
       const res  = await authFetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'sync' }) });
       const json = await res.json();
       if (json.error) throw new Error(json.error);
-      showToast(`Sync complete — ${json.inserted} new lead${json.inserted === 1 ? '' : 's'} in Inbox`);
+      showToast(`Sync complete — ${json.inserted} new lead${json.inserted === 1 ? '' : 's'} in Black Box`);
       await fetchRows();
       await fetchInboxCount();
     } catch (err) {
@@ -135,22 +165,24 @@ export default function LeadsListPage() {
     setSyncing(false);
   }
 
-  /* ── Update helper (optimistik) ── */
+  /* ── Update helper (optimistik) ──
+     Setiap aksi apa pun menghapus label NEW (is_new → false). */
   async function updateLead(id, patch, successMsg) {
-    const { error } = await supabase.from('leads').update(patch).eq('id', id);
+    const full = { ...patch, is_new: false };
+    const { error } = await supabase.from('leads').update(full).eq('id', id);
     if (error) { showToast('Failed: ' + error.message, true); return false; }
-    setRows(prev => prev ? prev.map(r => (r.id === id ? { ...r, ...patch } : r)) : prev);
+    setRows(prev => prev ? prev.map(r => (r.id === id ? { ...r, ...full } : r)) : prev);
     if (successMsg) showToast(successMsg);
     return true;
   }
 
   async function verify(id, to) {
-    const ok = await updateLead(id, { verification: to });
-    if (ok) {
-      setRows(prev => prev.filter(r => r.id !== id));
-      setInboxCount(c => Math.max(0, c - 1));
-      showToast(to === 'approved' ? 'Lead approved → moved to Leads List' : 'Lead rejected');
-    }
+    // Approve/reject TIDAK menghapus NEW — biar di All Leads masih ketahuan lead baru
+    const { error } = await supabase.from('leads').update({ verification: to }).eq('id', id);
+    if (error) { showToast('Failed: ' + error.message, true); return; }
+    setRows(prev => prev.filter(r => r.id !== id));
+    setInboxCount(c => Math.max(0, c - 1));
+    showToast(to === 'approved' ? 'Lead approved → moved to All Leads' : 'Lead rejected');
   }
 
   async function bulkVerify(to) {
@@ -164,49 +196,42 @@ export default function LeadsListPage() {
     showToast(`${ids.length} lead${ids.length === 1 ? '' : 's'} ${to === 'approved' ? 'approved' : 'rejected'}`);
   }
 
-  async function bulkFollowUp() {
+  async function bulkPatch(patch, msg) {
     const ids = [...selected];
     if (!ids.length) return;
-    const { error } = await supabase.from('leads').update({ followed_up: true }).in('id', ids);
+    const full = { ...patch, is_new: false };
+    const { error } = await supabase.from('leads').update(full).in('id', ids);
     if (error) { showToast('Failed: ' + error.message, true); return; }
-    setRows(prev => prev.map(r => (selected.has(r.id) ? { ...r, followed_up: true } : r)));
+    setRows(prev => prev.map(r => (selected.has(r.id) ? { ...r, ...full } : r)));
     setSelected(new Set());
-    showToast(`${ids.length} lead${ids.length === 1 ? '' : 's'} marked as followed up`);
-  }
-
-  // Bulk ubah status (Deal dikecualikan — wajib isi nominal per lead)
-  async function bulkStatus(s) {
-    const ids = [...selected];
-    if (!ids.length) return;
-    const { error } = await supabase.from('leads').update({ status: s }).in('id', ids);
-    if (error) { showToast('Failed: ' + error.message, true); return; }
-    setRows(prev => prev.map(r => (selected.has(r.id) ? { ...r, status: s } : r)));
-    setSelected(new Set());
-    showToast(`${ids.length} lead${ids.length === 1 ? '' : 's'} → ${s}`);
+    showToast(msg(ids.length));
   }
 
   function bulkCopy() {
     const list = (rows || []).filter(r => selected.has(r.id));
     if (!list.length) return;
-    const text = list.map(r => `${r.name}\t${r.phone}`).join('\n');
-    navigator.clipboard?.writeText(text);
+    navigator.clipboard?.writeText(list.map(r => `${r.name}\t${r.phone}`).join('\n'));
+    const ids = list.map(r => r.id);
+    supabase.from('leads').update({ is_new: false }).in('id', ids).then(() => {});
+    setRows(prev => prev.map(r => (selected.has(r.id) ? { ...r, is_new: false } : r)));
+    setSelected(new Set());
     showToast(`${list.length} name${list.length === 1 ? '' : 's'} + number${list.length === 1 ? '' : 's'} copied — ready to paste`);
   }
 
   function copyPhone(r) {
     navigator.clipboard?.writeText(r.phone || '');
+    if (r.is_new) {
+      supabase.from('leads').update({ is_new: false }).eq('id', r.id).then(() => {});
+      setRows(prev => prev.map(x => (x.id === r.id ? { ...x, is_new: false } : x)));
+    }
     showToast(`${r.name || 'Lead'}'s number copied`);
   }
 
   function pickStatus(r, s) {
-    setOpenStatusFor(null);
     if (s === r.status) return;
     if (s === 'Deal') { setDealLead(r); return; } // wajib isi nominal closing
     updateLead(r.id, { status: s }, `Status → ${s}`);
   }
-
-  const [openBulkStatus, setOpenBulkStatus] = useState(false);
-  useEffect(() => { setOpenBulkStatus(false); }, [selected.size, tab]);
 
   /* ── Filter client-side ── */
   const filtered = useMemo(() => {
@@ -218,16 +243,20 @@ export default function LeadsListPage() {
         (r.phone || '').includes(s) ||
         (r.email || '').toLowerCase().includes(s));
     }
-    if (fKategori !== 'Semua') list = list.filter(r => (r.kategori_promo || '—') === fKategori);
+    if (fKategori !== 'Semua') list = list.filter(r => r.kategori_promo === fKategori);
     if (tab === 'list' && fStatus !== 'Semua') list = list.filter(r => r.status === fStatus);
+    if (tab === 'list' && fSales !== 'Semua') {
+      list = fSales === 'none' ? list.filter(r => !r.sales) : list.filter(r => r.sales === fSales);
+    }
     return list;
-  }, [rows, q, fKategori, fStatus, tab]);
+  }, [rows, q, fKategori, fStatus, fSales, tab]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   useEffect(() => { if (page > totalPages) setPage(1); }, [totalPages, page]);
 
   const allPageSelected = pageRows.length > 0 && pageRows.every(r => selected.has(r.id));
+  const allSelected = selected.size === filtered.length && filtered.length > 0;
   function toggleAllPage() {
     setSelected(prev => {
       const next = new Set(prev);
@@ -257,6 +286,7 @@ export default function LeadsListPage() {
     fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
     transition: 'opacity 0.15s, background 0.15s',
   });
+  // Header kolom data rata kiri; kolom aksi (Sales/Status/FU/Notes) tetap center
   const thStyle = (align = 'left') => ({
     ...TYPE.tableHeader, textAlign: align, padding: '9px 10px',
     borderBottom: '1px solid var(--br)', whiteSpace: 'nowrap',
@@ -266,11 +296,15 @@ export default function LeadsListPage() {
     ...TYPE.tableCell, textAlign: align, padding: '8px 10px',
     borderBottom: '1px solid var(--br)', verticalAlign: 'middle',
   });
-  const selectStyle = {
-    padding: '7px 10px', borderRadius: '9px', border: '1px solid var(--br)',
-    background: 'var(--cd)', color: 'var(--t1)', fontSize: '12px', fontWeight: 500,
-    outline: 'none', cursor: 'pointer', fontFamily: 'inherit',
-  };
+  const tabBtn = (active) => ({
+    display: 'flex', alignItems: 'center', gap: '7px',
+    padding: '8px 14px', borderRadius: '10px',
+    border: active ? 'none' : '1px solid var(--br)',
+    background: active ? 'var(--cal-accent)' : 'var(--cd)',
+    color: active ? 'var(--cal-accent-fg)' : 'var(--t1)',
+    fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+    transition: 'background 0.18s, color 0.18s',
+  });
 
   if (!role) return null;
 
@@ -289,64 +323,57 @@ export default function LeadsListPage() {
           <h1 style={{ ...TYPE.h1, ...(isMobile ? { fontSize: '20px' } : null) }}>Leads List</h1>
           <p style={{ ...TYPE.small, marginTop: '3px' }}>
             Leads Hub · {rows === null ? '…' : `${filtered.length} leads`}
-            {isAdmin && inboxCount > 0 && tab !== 'inbox' ? ` · ${inboxCount} awaiting verification` : ''}
+            {isAdmin && inboxCount > 0 && tab !== 'inbox' ? ` · ${inboxCount} in Black Box` : ''}
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {isAdmin && (
-            <button onClick={handleSync} disabled={syncing} style={{ ...btn(true), opacity: syncing ? 0.65 : 1 }}>
-              <Download size={14} style={syncing ? { animation: 'wdSpin 1s linear infinite' } : null} />
-              {syncing ? 'Syncing…' : 'Sync Meta Leads'}
-            </button>
+            <Dropdown
+              primary
+              icon={Plus}
+              label={syncing ? 'Syncing…' : 'Add Leads'}
+              minWidth={190}
+              align="right"
+              showCheck={false}
+              options={[
+                { value: 'sync',   label: 'Sync Meta Leads', icon: Download, hint: 'instant form' },
+                { value: 'import', label: 'Import from File', icon: Upload, hint: 'xlsx / csv' },
+              ]}
+              onSelect={(v) => { if (v === 'sync') handleSync(); else setShowImport(true); }}
+            />
           )}
-          <button onClick={() => { fetchRows(); fetchInboxCount(); }} title="Refresh" style={btn(false)}>
-            <RefreshCw size={14} />
-            {!isMobile && 'Refresh'}
+          <button onClick={() => { fetchRows(); fetchInboxCount(); }} title="Refresh" style={{ ...btn(false), padding: '8px 10px' }}>
+            <RefreshCw size={14} style={syncing ? { animation: 'wdSpin 1s linear infinite' } : null} />
           </button>
           {!isMobile && <ThemeToggle size={34} iconSize={14} />}
         </div>
       </header>
 
-      {/* ══ TOOLBAR: tabs + filter ══ */}
+      {/* ══ TOOLBAR: Black Box · search · All Leads · All Status · Followed by ══ */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+        display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap',
         padding: isMobile ? '12px 16px 0' : '10px 16px 0', flexShrink: 0,
       }}>
-        {/* Tabs (admin) */}
+        {/* 1. Black Box (admin) */}
         {isAdmin && (
-          <div style={{ display: 'flex', gap: '4px', padding: '4px', borderRadius: '12px', background: 'var(--hover)' }}>
-            {[
-              { key: 'inbox', label: 'Inbox', Icon: Inbox, badge: inboxCount },
-              { key: 'list',  label: 'All Leads', Icon: Users },
-            ].map(t => (
-              <button key={t.key} onClick={() => setTab(t.key)} style={{
-                display: 'flex', alignItems: 'center', gap: '7px',
-                padding: '7px 14px', borderRadius: '9px', border: 'none',
-                background: tab === t.key ? 'var(--cd)' : 'transparent',
-                color: tab === t.key ? 'var(--t1)' : 'var(--t2)',
-                fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                boxShadow: tab === t.key ? 'var(--shadow)' : 'none',
-                transition: 'background 0.18s, color 0.18s',
-              }}>
-                <t.Icon size={14} />
-                {t.label}
-                {t.badge > 0 && (
-                  <span style={{
-                    minWidth: '18px', height: '18px', padding: '0 5px', borderRadius: '999px',
-                    background: tab === t.key ? 'var(--cal-accent)' : 'var(--t3)',
-                    color: tab === t.key ? 'var(--cal-accent-fg)' : 'var(--cd)',
-                    fontSize: '10px', fontWeight: 700,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  }}>{t.badge}</span>
-                )}
-              </button>
-            ))}
-          </div>
+          <button onClick={() => setTab('inbox')} style={tabBtn(tab === 'inbox')}>
+            <Inbox size={14} />
+            Black Box
+            {inboxCount > 0 && (
+              <span style={{
+                minWidth: '18px', height: '18px', padding: '0 5px', borderRadius: '999px',
+                background: tab === 'inbox' ? 'var(--cal-accent-fg)' : '#EF4444',
+                color: tab === 'inbox' ? 'var(--cal-accent)' : '#fff',
+                fontSize: '10px', fontWeight: 700,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              }}>{inboxCount}</span>
+            )}
+          </button>
         )}
 
-        {/* Search */}
+        {/* 2. Search */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: '8px', flex: isMobile ? '1 1 100%' : '0 1 260px',
+          display: 'flex', alignItems: 'center', gap: '8px', flex: isMobile ? '1 1 100%' : '0 1 240px',
           padding: '0 12px', height: '34px', borderRadius: '10px',
           border: '1px solid var(--br)', background: 'var(--cd)',
         }}>
@@ -359,19 +386,85 @@ export default function LeadsListPage() {
           {q && <button onClick={() => setQ('')} style={{ display: 'flex', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t3)', padding: 0 }}><X size={13} /></button>}
         </div>
 
-        {/* Filter kategori */}
-        <select value={fKategori} onChange={e => { setFKategori(e.target.value); setPage(1); }} style={selectStyle}>
-          <option value="Semua">All Categories</option>
-          {KATEGORIS.map(k => <option key={k}>{k}</option>)}
-          <option value="—">Uncategorized</option>
-        </select>
+        {/* 3. All Leads — SPLIT BUTTON: klik nama = langsung pindah tab,
+              klik panah = pilih kategori (UX request Nadir) */}
+        <div style={{ display: 'inline-flex' }}>
+          <button
+            onClick={() => setTab('list')}
+            style={{
+              ...tabBtn(tab === 'list'),
+              borderRadius: '10px 0 0 10px',
+              ...(tab === 'list' ? {} : { borderRight: 'none' }),
+            }}
+          >
+            <Users size={14} />
+            {fKategori === 'Semua' ? 'All Leads' : kategoriLabel(fKategori)}
+          </button>
+          <Dropdown
+            label=""
+            value={fKategori}
+            minWidth={220}
+            align="center"
+            buttonStyle={{
+              padding: '8px 8px', borderRadius: '0 10px 10px 0', gap: 0,
+              ...(tab === 'list'
+                ? { border: 'none', background: 'var(--cal-accent)', color: 'var(--cal-accent-fg)', boxShadow: 'inset 1px 0 0 rgba(0,0,0,0.14)' }
+                : { borderLeft: '1px solid var(--br)' }),
+            }}
+            options={[
+              { value: 'Semua', label: 'All Leads' },
+              ...CATEGORIES.map(c => ({ value: c.value, label: c.label })),
+            ]}
+            onSelect={(v) => { setTab('list'); setFKategori(v); setPage(1); }}
+          />
+        </div>
 
-        {/* Filter status (hanya tab list) */}
-        {tab === 'list' && (
-          <select value={fStatus} onChange={e => { setFStatus(e.target.value); setPage(1); }} style={selectStyle}>
-            <option value="Semua">All Status</option>
-            {STATUSES.map(s => <option key={s}>{s}</option>)}
-          </select>
+        {/* 4. All Status (di Black Box tampil tapi nonaktif) */}
+        <Dropdown
+          label={fStatus === 'Semua' ? 'All Status' : fStatus}
+          value={fStatus}
+          minWidth={140}
+          align="center"
+          disabled={tab === 'inbox'}
+          title={tab === 'inbox' ? 'Only available in All Leads' : undefined}
+          options={[
+            { value: 'Semua', label: 'All Status' },
+            ...STATUSES.map(s => ({ value: s, label: s, color: STATUS_COLOR[s]?.fg })),
+          ]}
+          onSelect={(v) => { setFStatus(v); setPage(1); }}
+        />
+
+        {/* 5. Followed by / sales (di Black Box tampil tapi nonaktif) */}
+        <Dropdown
+          icon={UserRound}
+          label={fSales === 'Semua' ? 'All Sales' : fSales === 'none' ? 'Unassigned' : fSales}
+          value={fSales}
+          minWidth={150}
+          align="center"
+          disabled={tab === 'inbox'}
+          title={tab === 'inbox' ? 'Only available in All Leads' : undefined}
+          options={[
+            { value: 'Semua', label: 'All Sales' },
+            ...SALES.map(s => ({ value: s, label: s, color: SALES_COLOR[s]?.fg })),
+            { value: 'none', label: 'Unassigned' },
+          ]}
+          onSelect={(v) => { setFSales(v); setPage(1); }}
+        />
+
+        {/* Columns (hide/show) — paling kanan */}
+        {tab === 'list' && !isMobile && (
+          <div style={{ marginLeft: 'auto' }}>
+            <Dropdown
+              icon={SlidersHorizontal}
+              label="Columns"
+              align="right"
+              minWidth={160}
+              keepOpen
+              options={ALL_COLUMNS.map(c => ({ value: c.key, label: c.label, checked: !hiddenCols.has(c.key) }))}
+              onSelect={toggleCol}
+              footer={<span style={{ ...TYPE.caption }}>Click to show / hide</span>}
+            />
+          </div>
         )}
       </div>
 
@@ -384,7 +477,6 @@ export default function LeadsListPage() {
               <div style={{ ...TYPE.body }}>Failed to load leads: {error}</div>
             </div>
           ) : loading ? (
-            /* Skeleton rows */
             <div style={{ padding: '14px 16px' }}>
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} style={{
@@ -395,20 +487,19 @@ export default function LeadsListPage() {
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            /* Empty state */
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '56px 20px', textAlign: 'center' }}>
               {tab === 'inbox' ? <CheckCircle2 size={36} color="var(--cal-accent)" /> : <Users size={36} color="var(--t3)" />}
               <div style={{ ...TYPE.h3 }}>
-                {tab === 'inbox' ? 'Inbox clear — every lead has been verified' : (rows?.length ? 'No leads match your filters' : 'No leads yet')}
+                {tab === 'inbox' ? 'Black Box clear — every lead has been verified' : (rows?.length ? 'No leads match your filters' : 'No leads yet')}
               </div>
               <div style={{ ...TYPE.small, maxWidth: '380px' }}>
                 {tab === 'inbox'
-                  ? 'New leads from Meta instant forms will appear here after a Sync. Approve them to move them into the Leads List.'
-                  : (rows?.length ? 'Try a different keyword or reset the category/status filters.' : (isAdmin ? 'Click "Sync Meta Leads" to pull leads from your instant forms, then approve them from the Inbox tab.' : 'Leads verified by the admin will show up here.'))}
+                  ? 'New leads from Meta instant forms will appear here after a Sync. Approve them to move them into All Leads.'
+                  : (rows?.length ? 'Try a different keyword or reset the filters.' : (isAdmin ? 'Click "Add Leads" → Sync Meta Leads to pull leads from your instant forms, then approve them from Black Box.' : 'Leads verified by the admin will show up here.'))}
               </div>
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? '860px' : 'auto' }}>
+            <table key={`${tab}-${page}`} style={{ width: '100%', borderCollapse: 'collapse', minWidth: tab === 'list' ? '1080px' : '860px', animation: 'wdFadeUp 0.28s cubic-bezier(0.4,0,0.2,1)' }}>
               <thead>
                 <tr>
                   {canEdit && (
@@ -417,28 +508,34 @@ export default function LeadsListPage() {
                         style={{ width: '14px', height: '14px', accentColor: 'var(--cal-accent)', cursor: 'pointer' }} />
                     </th>
                   )}
-                  <th style={thStyle()}>Date</th>
-                  <th style={thStyle()}>Name</th>
-                  <th style={thStyle()}>Phone</th>
-                  <th style={thStyle()}>Email</th>
-                  <th style={thStyle()}>Category</th>
-                  <th style={thStyle()}>Campaign</th>
+                  {col('date')     && <th style={thStyle()}>Date</th>}
+                  {col('name')     && <th style={thStyle()}>Name</th>}
+                  {col('phone')    && <th style={thStyle()}>Phone</th>}
+                  {col('email')    && <th style={thStyle()}>Email</th>}
+                  {col('city')     && <th style={thStyle()}>City</th>}
+                  {col('category') && <th style={thStyle()}>Category</th>}
+                  {col('campaign') && <th style={thStyle()}>Campaign</th>}
                   {tab === 'inbox' ? (
                     <th style={thStyle('center')}>Verify</th>
                   ) : (
                     <>
-                      <th style={thStyle('center')}>Status</th>
-                      <th style={thStyle('center')}>Follow-up</th>
-                      <th style={thStyle('center')}>Notes</th>
-                      <th style={thStyle('right')}>Closing</th>
+                      {col('sales')   && <th style={thStyle('center')}>Sales</th>}
+                      {col('status')  && <th style={thStyle('center')}>Status</th>}
+                      {col('fu')      && <th style={thStyle('center')}>Follow-up</th>}
+                      {col('notes')   && <th style={thStyle('center')}>Notes</th>}
+                      {col('closing') && <th style={thStyle('right')}>Closing</th>}
                     </>
                   )}
                 </tr>
               </thead>
               <tbody>
-                {pageRows.map(r => (
+                {pageRows.map((r, ri) => (
                   <tr key={r.id}
-                    style={{ background: selected.has(r.id) ? 'var(--hover)' : 'transparent', transition: 'background 0.15s' }}
+                    style={{
+                      background: selected.has(r.id) ? 'var(--hover)' : 'transparent', transition: 'background 0.15s',
+                      // Entrance stagger — hanya ~15 baris pertama biar tetap ringan
+                      animation: `wdFadeUp 0.26s cubic-bezier(0.4,0,0.2,1) ${Math.min(ri, 15) * 26}ms backwards`,
+                    }}
                     onMouseEnter={e => { if (!selected.has(r.id)) e.currentTarget.style.background = 'var(--hover)'; }}
                     onMouseLeave={e => { if (!selected.has(r.id)) e.currentTarget.style.background = 'transparent'; }}
                   >
@@ -448,27 +545,45 @@ export default function LeadsListPage() {
                           style={{ width: '14px', height: '14px', accentColor: 'var(--cal-accent)', cursor: 'pointer' }} />
                       </td>
                     )}
-                    <td style={{ ...tdStyle(), whiteSpace: 'nowrap' }}>{fmtDate(r.created_at)}</td>
-                    <td style={{ ...tdStyle(), ...TYPE.tableCellStrong, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.name}>{r.name || '—'}</td>
-                    <td style={{ ...tdStyle(), whiteSpace: 'nowrap' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                        {r.phone || '—'}
-                        {r.phone && (
-                          <button onClick={() => copyPhone(r)} title="Copy number" style={{
-                            display: 'inline-flex', background: 'none', border: 'none', cursor: 'pointer',
-                            color: 'var(--t3)', padding: '2px', borderRadius: '5px',
-                          }}
-                            onMouseEnter={e => e.currentTarget.style.color = 'var(--ac)'}
-                            onMouseLeave={e => e.currentTarget.style.color = 'var(--t3)'}
-                          ><Copy size={12} /></button>
-                        )}
-                      </span>
-                    </td>
-                    <td style={{ ...tdStyle(), maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.email || ''}>{r.email || '—'}</td>
-                    <td style={tdStyle()}><KategoriBadge value={r.kategori_promo} /></td>
-                    <td style={{ ...tdStyle(), maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.campaign_ref?.name || ''}>
-                      {r.campaign_ref?.name || '—'}
-                    </td>
+                    {col('date') && <td style={{ ...tdStyle(), whiteSpace: 'nowrap' }}>{fmtDate(r.created_at)}</td>}
+                    {col('name') && (
+                      <td style={{ ...tdStyle(), ...TYPE.tableCellStrong, maxWidth: '190px', whiteSpace: 'nowrap' }} title={r.name}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', maxWidth: '100%' }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{dash(r.name)}</span>
+                          {r.is_new && (
+                            <span style={{
+                              padding: '2px 6px', borderRadius: '999px', flexShrink: 0,
+                              background: '#EF4444', color: '#fff',
+                              fontSize: '9px', fontWeight: 800, letterSpacing: '0.5px', textTransform: 'uppercase',
+                            }}>New</span>
+                          )}
+                        </span>
+                      </td>
+                    )}
+                    {col('phone') && (
+                      <td style={{ ...tdStyle(), whiteSpace: 'nowrap' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          {dash(r.phone)}
+                          {r.phone && (
+                            <button onClick={() => copyPhone(r)} title="Copy number" style={{
+                              display: 'inline-flex', background: 'none', border: 'none', cursor: 'pointer',
+                              color: 'var(--t3)', padding: '2px', borderRadius: '5px',
+                            }}
+                              onMouseEnter={e => e.currentTarget.style.color = 'var(--ac)'}
+                              onMouseLeave={e => e.currentTarget.style.color = 'var(--t3)'}
+                            ><Copy size={12} /></button>
+                          )}
+                        </span>
+                      </td>
+                    )}
+                    {col('email') && <td style={{ ...tdStyle(), maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.email || ''}>{dash(r.email)}</td>}
+                    {col('city') && <td style={{ ...tdStyle(), whiteSpace: 'nowrap' }}>{dash(r.domicile)}</td>}
+                    {col('category') && <td style={tdStyle()}><KategoriBadge value={r.kategori_promo} /></td>}
+                    {col('campaign') && (
+                      <td style={{ ...tdStyle(), maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.campaign_ref?.name || ''}>
+                        {dash(r.campaign_ref?.name)}
+                      </td>
+                    )}
 
                     {tab === 'inbox' ? (
                       <td style={{ ...tdStyle('center'), whiteSpace: 'nowrap' }}>
@@ -485,87 +600,110 @@ export default function LeadsListPage() {
                       </td>
                     ) : (
                       <>
-                        {/* Status dropdown */}
-                        <td style={{ ...tdStyle('center'), position: 'relative', whiteSpace: 'nowrap' }}>
-                          <button
-                            onClick={() => canEdit && setOpenStatusFor(openStatusFor === r.id ? null : r.id)}
-                            title={r.status === 'Deal' && r.closing_amount ? `Closing: ${fmtRp(r.closing_amount)}` : undefined}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', gap: '5px',
-                              padding: '4px 10px', borderRadius: '999px', border: 'none',
-                              background: STATUS_COLOR[r.status]?.bg, color: STATUS_COLOR[r.status]?.fg,
-                              fontSize: '11px', fontWeight: 700, cursor: canEdit ? 'pointer' : 'default',
-                            }}>
-                            {r.status}
-                            {canEdit && <ChevronDown size={11} />}
-                          </button>
-                          {openStatusFor === r.id && (
-                            <>
-                              <div onClick={() => setOpenStatusFor(null)} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
-                              <div style={{
-                                position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 31,
-                                background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '11px',
-                                boxShadow: 'var(--pop-shadow)', padding: '5px', minWidth: '120px',
-                                animation: 'wdScaleIn 0.14s cubic-bezier(0.4,0,0.2,1)',
-                              }}>
-                                {STATUSES.map(s => (
-                                  <button key={s} onClick={() => pickStatus(r, s)} style={{
-                                    display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
-                                    padding: '7px 10px', borderRadius: '8px', border: 'none',
-                                    background: s === r.status ? 'var(--hover)' : 'transparent',
-                                    color: STATUS_COLOR[s]?.fg, fontSize: '12px', fontWeight: 600,
-                                    cursor: 'pointer', textAlign: 'left',
-                                  }}
-                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--hover)'}
-                                    onMouseLeave={e => e.currentTarget.style.background = s === r.status ? 'var(--hover)' : 'transparent'}
-                                  >
-                                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: STATUS_COLOR[s]?.fg }} />
-                                    {s}
-                                    {s === r.status && <Check size={12} style={{ marginLeft: 'auto' }} />}
-                                  </button>
-                                ))}
-                              </div>
-                            </>
-                          )}
-                        </td>
+                        {/* Sales (siapa yang handle) */}
+                        {col('sales') && (
+                          <td style={{ ...tdStyle('center'), whiteSpace: 'nowrap' }}>
+                            {canEdit ? (
+                              <Dropdown
+                                label={r.sales || '-'}
+                                value={r.sales || 'none'}
+                                align="center"
+                                minWidth={130}
+                                buttonStyle={{
+                                  padding: '4px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 700,
+                                  border: 'none',
+                                  background: r.sales ? (SALES_COLOR[r.sales]?.bg || 'var(--hover)') : 'var(--hover)',
+                                  color: r.sales ? (SALES_COLOR[r.sales]?.fg || 'var(--t1)') : 'var(--t3)',
+                                }}
+                                options={[
+                                  ...SALES.map(s => ({ value: s, label: s, color: SALES_COLOR[s]?.fg })),
+                                  { value: 'none', label: 'Unassigned' },
+                                ]}
+                                onSelect={(v) => updateLead(r.id, { sales: v === 'none' ? null : v }, v === 'none' ? 'Sales unassigned' : `Assigned to ${v}`)}
+                              />
+                            ) : (
+                              <span style={{
+                                ...TYPE.tableCell,
+                                ...(r.sales ? {
+                                  display: 'inline-flex', padding: '4px 10px', borderRadius: '999px',
+                                  background: SALES_COLOR[r.sales]?.bg, color: SALES_COLOR[r.sales]?.fg,
+                                  fontSize: '11px', fontWeight: 700,
+                                } : null),
+                              }}>{dash(r.sales)}</span>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Status pill dropdown */}
+                        {col('status') && (
+                          <td style={{ ...tdStyle('center'), whiteSpace: 'nowrap' }}>
+                            {canEdit ? (
+                              <Dropdown
+                                label={r.status}
+                                value={r.status}
+                                align="center"
+                                minWidth={130}
+                                buttonStyle={{
+                                  padding: '4px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 700,
+                                  border: 'none',
+                                  background: STATUS_COLOR[r.status]?.bg, color: STATUS_COLOR[r.status]?.fg,
+                                }}
+                                options={STATUSES.map(s => ({ value: s, label: s, color: STATUS_COLOR[s]?.fg }))}
+                                onSelect={(v) => pickStatus(r, v)}
+                              />
+                            ) : (
+                              <span style={{
+                                display: 'inline-flex', padding: '4px 10px', borderRadius: '999px',
+                                background: STATUS_COLOR[r.status]?.bg, color: STATUS_COLOR[r.status]?.fg,
+                                fontSize: '11px', fontWeight: 700,
+                              }}>{r.status}</span>
+                            )}
+                          </td>
+                        )}
 
                         {/* Followed up toggle */}
-                        <td style={tdStyle('center')}>
-                          <button
-                            onClick={() => canEdit && updateLead(r.id, { followed_up: !r.followed_up }, r.followed_up ? 'Follow-up unmarked' : 'Marked as followed up')}
-                            title={r.followed_up ? 'Followed up (click to undo)' : 'Not followed up yet (click to mark)'}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                              width: '26px', height: '26px', borderRadius: '8px',
-                              border: r.followed_up ? 'none' : '1px dashed var(--br)',
-                              background: r.followed_up ? 'rgba(47,182,115,0.14)' : 'transparent',
-                              color: r.followed_up ? '#2FB673' : 'var(--t3)',
-                              cursor: canEdit ? 'pointer' : 'default', transition: 'background 0.15s',
-                            }}>
-                            <Check size={14} />
-                          </button>
-                        </td>
+                        {col('fu') && (
+                          <td style={tdStyle('center')}>
+                            <button
+                              onClick={() => canEdit && updateLead(r.id, { followed_up: !r.followed_up }, r.followed_up ? 'Follow-up unmarked' : 'Marked as followed up')}
+                              title={r.followed_up ? 'Followed up (click to undo)' : 'Not followed up yet (click to mark)'}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                width: '26px', height: '26px', borderRadius: '8px',
+                                border: r.followed_up ? 'none' : '1px dashed var(--br)',
+                                background: r.followed_up ? 'rgba(47,182,115,0.14)' : 'transparent',
+                                color: r.followed_up ? '#2FB673' : 'var(--t3)',
+                                cursor: canEdit ? 'pointer' : 'default', transition: 'background 0.15s',
+                              }}>
+                              <Check size={14} />
+                            </button>
+                          </td>
+                        )}
 
                         {/* Notes */}
-                        <td style={tdStyle('center')}>
-                          <button
-                            onClick={() => canEdit && setNotesLead(r)}
-                            title={r.notes || 'Add a note'}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                              width: '26px', height: '26px', borderRadius: '8px', border: 'none',
-                              background: r.notes ? 'var(--cal-accent-soft, var(--hover))' : 'transparent',
-                              color: r.notes ? 'var(--ac)' : 'var(--t3)',
-                              cursor: canEdit ? 'pointer' : 'default',
-                            }}>
-                            <Pencil size={13} />
-                          </button>
-                        </td>
+                        {col('notes') && (
+                          <td style={tdStyle('center')}>
+                            <button
+                              onClick={() => canEdit && setNotesLead(r)}
+                              title={r.notes || 'Add a note'}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                width: '26px', height: '26px', borderRadius: '8px', border: 'none',
+                                background: r.notes ? 'var(--cal-accent-soft, var(--hover))' : 'transparent',
+                                color: r.notes ? 'var(--ac)' : 'var(--t3)',
+                                cursor: canEdit ? 'pointer' : 'default',
+                              }}>
+                              <Pencil size={13} />
+                            </button>
+                          </td>
+                        )}
 
                         {/* Closing */}
-                        <td style={{ ...tdStyle('right'), ...(r.closing_amount ? { color: '#2FB673', fontWeight: 600 } : null), whiteSpace: 'nowrap' }}>
-                          {r.status === 'Deal' ? fmtRp(r.closing_amount) : '—'}
-                        </td>
+                        {col('closing') && (
+                          <td style={{ ...tdStyle('right'), ...(r.closing_amount ? { color: '#2FB673', fontWeight: 600 } : null), whiteSpace: 'nowrap' }}>
+                            {r.status === 'Deal' ? fmtRp(r.closing_amount) : '-'}
+                          </td>
+                        )}
                       </>
                     )}
                   </tr>
@@ -596,62 +734,53 @@ export default function LeadsListPage() {
           maxWidth: 'calc(100% - 32px)',
         }}>
           <span style={{ ...TYPE.small, fontWeight: 600, color: 'var(--t1)' }}>
-            {selected.size === filtered.length && filtered.length > 0 ? `All ${selected.size} selected` : `${selected.size} selected`}
+            {allSelected ? `All ${selected.size} selected` : `${selected.size} selected`}
           </span>
           {tab === 'inbox' ? (
             <>
-              {/* Label menyesuaikan konteks: semua tercentang → "all", sebagian → jumlah */}
               <button onClick={() => bulkVerify('approved')} style={{ ...btn(true) }}>
-                ✓ {selected.size === filtered.length && filtered.length > 0 ? 'Approve all' : `Approve (${selected.size})`}
+                ✓ {allSelected ? 'Approve all' : `Approve (${selected.size})`}
               </button>
               <button onClick={() => bulkVerify('rejected')} style={{ ...btn(false), color: '#EF4444' }}>
-                ✕ {selected.size === filtered.length && filtered.length > 0 ? 'Reject all' : `Reject (${selected.size})`}
+                ✕ {allSelected ? 'Reject all' : `Reject (${selected.size})`}
               </button>
             </>
           ) : (
             <>
               <button onClick={bulkCopy} style={btn(true)}><Copy size={13} /> Copy name + number</button>
-              <button onClick={bulkFollowUp} style={btn(false)}><Check size={13} /> Mark followed-up</button>
-
-              {/* Bulk set status (Deal dikecualikan — closing wajib per lead) */}
-              <div style={{ position: 'relative' }}>
-                <button onClick={() => setOpenBulkStatus(v => !v)} style={btn(false)}>
-                  Set status <ChevronDown size={12} style={{ transform: openBulkStatus ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }} />
-                </button>
-                {openBulkStatus && (
-                  <div style={{
-                    position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)',
-                    background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '11px',
-                    boxShadow: 'var(--pop-shadow)', padding: '5px', minWidth: '130px', zIndex: 41,
-                    animation: 'wdScaleIn 0.14s cubic-bezier(0.4,0,0.2,1)',
-                  }}>
-                    {STATUSES.filter(s => s !== 'Deal').map(s => (
-                      <button key={s} onClick={() => bulkStatus(s)} style={{
-                        display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
-                        padding: '7px 10px', borderRadius: '8px', border: 'none', background: 'transparent',
-                        color: STATUS_COLOR[s]?.fg, fontSize: '12px', fontWeight: 600,
-                        cursor: 'pointer', textAlign: 'left',
-                      }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--hover)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                      >
-                        <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: STATUS_COLOR[s]?.fg }} />
-                        {s}
-                      </button>
-                    ))}
-                    <div style={{ ...TYPE.caption, padding: '6px 10px 4px', borderTop: '1px solid var(--br)', marginTop: '4px' }}>
-                      Deal is set per lead (closing amount required)
-                    </div>
-                  </div>
-                )}
-              </div>
+              <button onClick={() => bulkPatch({ followed_up: true }, n => `${n} lead${n === 1 ? '' : 's'} marked as followed up`)} style={btn(false)}>
+                <Check size={13} /> Mark followed-up
+              </button>
+              <Dropdown
+                label="Set status"
+                direction="up"
+                align="center"
+                minWidth={140}
+                showCheck={false}
+                options={STATUSES.filter(s => s !== 'Deal').map(s => ({ value: s, label: s, color: STATUS_COLOR[s]?.fg }))}
+                onSelect={(s) => bulkPatch({ status: s }, n => `${n} lead${n === 1 ? '' : 's'} → ${s}`)}
+                footer={<span style={{ ...TYPE.caption }}>Deal is set per lead (closing amount)</span>}
+              />
+              <Dropdown
+                label="Assign sales"
+                icon={UserRound}
+                direction="up"
+                align="center"
+                minWidth={140}
+                showCheck={false}
+                options={[
+                  ...SALES.map(s => ({ value: s, label: s, color: SALES_COLOR[s]?.fg })),
+                  { value: 'none', label: 'Unassigned' },
+                ]}
+                onSelect={(v) => bulkPatch({ sales: v === 'none' ? null : v }, n => v === 'none' ? `${n} lead${n === 1 ? '' : 's'} unassigned` : `${n} lead${n === 1 ? '' : 's'} → ${v}`)}
+              />
             </>
           )}
           <button onClick={() => setSelected(new Set())} style={{ ...btn(false), padding: '8px 10px' }}><X size={13} /></button>
         </div>
       )}
 
-      {/* ══ MODAL DEAL (nominal closing wajib) ══ */}
+      {/* ══ MODAL DEAL ══ */}
       {dealLead && (
         <DealModal
           lead={dealLead}
@@ -673,6 +802,27 @@ export default function LeadsListPage() {
             if (ok) setNotesLead(null);
           }}
         />
+      )}
+
+      {/* ══ MODAL IMPORT (placeholder — dibangun setelah file contoh dari Nadir) ══ */}
+      {showImport && (
+        <ModalShell title="Import from File" onClose={() => setShowImport(false)}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '10px 0 4px', textAlign: 'center' }}>
+            <div style={{
+              width: '52px', height: '52px', borderRadius: '16px',
+              background: 'var(--cal-accent-soft, var(--hover))',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Upload size={24} color="var(--ac)" />
+            </div>
+            <div style={{ ...TYPE.h4 }}>Smart Import is on the way</div>
+            <div style={{ ...TYPE.small, maxWidth: '300px', lineHeight: 1.55 }}>
+              Upload your spreadsheet, then map its columns to Leads List fields with a guided
+              data-cleaning step (just like Meta&apos;s import flow) before anything is saved.
+            </div>
+            <div style={{ ...TYPE.caption }}>Coming in the next update.</div>
+          </div>
+        </ModalShell>
       )}
 
       {/* ══ TOAST ══ */}
@@ -734,8 +884,7 @@ const fieldInput = {
 function DealModal({ lead, onClose, onSave }) {
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [reason, setReason] = useState(DEAL_REASONS[0]);
-  const [detail, setDetail] = useState('');
+  const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
 
   const numeric = parseInt((amount || '').replace(/\D/g, '') || '0');
@@ -750,7 +899,7 @@ function DealModal({ lead, onClose, onSave }) {
     await onSave({
       closing_amount: numeric,
       deal_date: date,
-      deal_reason: detail.trim() ? `${reason} — ${detail.trim()}` : reason,
+      deal_reason: reason.trim() || null,
     });
     setBusy(false);
   }
@@ -771,12 +920,10 @@ function DealModal({ lead, onClose, onSave }) {
           <input type="date" value={date} onChange={e => setDate(e.target.value)} style={fieldInput} />
         </div>
         <div>
-          <label style={fieldLabel}>Why did it close?</label>
-          <select value={reason} onChange={e => setReason(e.target.value)} style={{ ...fieldInput, cursor: 'pointer' }}>
-            {DEAL_REASONS.map(r => <option key={r}>{r}</option>)}
-          </select>
-          <input value={detail} onChange={e => setDetail(e.target.value)} placeholder="Additional detail (optional)…"
-            style={{ ...fieldInput, marginTop: '8px' }} />
+          <label style={fieldLabel}>Why did it close? (optional)</label>
+          <input value={reason} onChange={e => setReason(e.target.value)}
+            placeholder="e.g. promo discount, strategic location…"
+            style={fieldInput} />
         </div>
         <button onClick={save} disabled={!numeric || busy} style={{
           padding: '12px', borderRadius: '11px', border: 'none',
