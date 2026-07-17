@@ -274,7 +274,7 @@ export default function ExportMenu({ summary, chartData = {}, rangeLabel = '', a
         {/* Footer */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '18px', paddingTop: '14px', borderTop: `1px solid ${BORDER}`, fontSize: '11px', color: MUTE, flexShrink: 0 }}>
           <span>WILL OF D · Performance Marketing Dashboard</span>
-          <span>Data source: Meta Ads · dashboard-ads-six.vercel.app</span>
+          <span>Data source: Meta Ads · dashboard-ads-babarafi.vercel.app</span>
         </div>
       </div>
     </div>

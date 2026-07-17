@@ -22,7 +22,7 @@ Status: **project aktif & sudah live dengan data real** (bukan lagi tahap dummy/
 - **Next.js 16** (App Router, JavaScript — NO TypeScript, no `src` dir, **Turbopack aktif**). Styling: CSS variables di `globals.css` + inline style (bukan Tailwind class-based, walau Tailwind ada).
 - **Icon: `lucide-react`.** CATATAN: versi lucide ini MINIM brand icon — `Facebook`, `Chrome` TIDAK ADA. Meta = `Square` (fill biru), Google = `Globe`. Selalu cek icon ada sebelum pakai.
 - **GitHub:** `nadirmhmmd02/dashboard-ads` (branch `main`, trunk-based — tiap commit langsung ke main).
-- **Hosting:** Vercel — live `https://dashboard-ads-six.vercel.app` (auto-deploy tiap push).
+- **Hosting:** Vercel — live `https://dashboard-ads-babarafi.vercel.app` (auto-deploy tiap push; domain diganti Nadir 17 Jul 2026, alamat lama dashboard-ads-six sudah mati).
 - **Database:** Supabase (ref `tduskxqmsqcgurvxnjzo`, region Tokyo) — dipakai halaman Calendar + Suggestions.
 - **Meta Ads API:** Graph v19.0, account `act_433644183932983`.
 - **Local:** `C:\Users\Nadir.Muhammad\Desktop\dashboard-ads`, VS Code.
