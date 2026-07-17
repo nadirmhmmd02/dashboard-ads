@@ -690,15 +690,16 @@ export default function DashboardPage() {
   return (
     <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', background: BG }}>
 
-      {/* ══ HEADER (72px desktop · 2 baris mobile) ══ */}
+      {/* ══ HEADER — mobile 2 baris (lama) · desktop: CARD mengambang (redesain, dari referensi Nadir) ══ */}
       <header style={ isMobile ? {
         display:'flex', flexDirection:'column', alignItems:'stretch', gap:'12px',
         padding:'14px 16px', flexShrink:0,
         borderBottom:`1px solid ${BORDER}`,
       } : {
         display:'flex', alignItems:'center', justifyContent:'space-between',
-        padding:'0 24px', height:'72px', flexShrink:0,
-        borderBottom:`1px solid ${BORDER}`,
+        padding:'12px 20px', margin:'12px 16px 0', flexShrink:0,
+        background: CARD, border:`1px solid ${BORDER}`, borderRadius:'18px',
+        boxShadow:'var(--shadow)',
       }}>
         <div>
           <h1 style={{ ...TYPE.h1, ...(isMobile ? { fontSize:'20px' } : null) }}>Dashboard</h1>
@@ -790,8 +791,8 @@ export default function DashboardPage() {
       {/* ══ CONTENT ══ */}
       <div style={{
         flex:1, minHeight:0, display:'flex', flexDirection:'column',
-        padding: isMobile ? '16px' : '24px',
-        gap:     isMobile ? '16px' : '20px',
+        padding: isMobile ? '16px' : '12px 16px 16px',
+        gap:     isMobile ? '16px' : '10px',
         overflowY: isMobile ? 'auto' : 'hidden',
         overflowX: 'hidden',
       }}>
@@ -844,19 +845,23 @@ export default function DashboardPage() {
               </div>
             );
             return (
-              <div style={{ flex:'1 1 0', minHeight:'150px', maxHeight:'190px', display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:'16px' }}>
+              <div style={{ flex:'1 1 0', minHeight:'150px', maxHeight:'190px', display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:'10px' }}>
                 {kpis.map((k, i) => <KpiCard key={k.label} {...k} delay={i * 55}/>)}
               </div>
             );
           })()}
 
-          {/* ══ ROW 2: SECONDARY METRICS — 4 KARTU TERPISAH (desktop) · 1 kartu 2x2 (mobile, tidak berubah) ══ */}
+          {/* ══ ROW 2: SECONDARY METRICS — 4 KARTU TERPISAH + sparkline (desktop) · 1 kartu 2x2 (mobile, tidak berubah) ══ */}
           {(() => {
+            // Tren harian untuk sparkline — dihitung dari series daily yang sudah ada
+            // (basis blended level akun; angka utama kartu tetap pakai kalkulasi final per tipe).
+            const _s = chartData.spend || [], _i = chartData.awareness || [], _t = chartData.traffic || [], _l = chartData.leads || [];
+            const _div = (a, b, mul = 1) => a.map((v, idx) => (v != null && b[idx] > 0) ? (v / b[idx]) * mul : null);
             const mini = [
-              { label:'CPM', value: summary.calcCPM ? fmtSpendFull(summary.calcCPM) : '—', sub:'cost per 1K impressions', icon: ScanLine },
-              { label:'CPC', value: summary.calcCPC ? fmtSpendFull(summary.calcCPC) : '—', sub:'cost per click',          icon: MousePointerClick },
-              { label:'CPL', value: summary.calcCPL ? fmtSpendFull(summary.calcCPL) : '—', sub:'cost per lead',           icon: UserPlus },
-              { label:'CTR', value: summary.calcCTR ? summary.calcCTR.toFixed(2)+'%' : '—', sub:'click through rate',  icon: Target },
+              { label:'CPM', value: summary.calcCPM ? fmtSpendFull(summary.calcCPM) : '—', sub:'cost per 1K impressions', icon: ScanLine,          spark:_div(_s, _i, 1000) },
+              { label:'CPC', value: summary.calcCPC ? fmtSpendFull(summary.calcCPC) : '—', sub:'cost per click',          icon: MousePointerClick, spark:_div(_s, _t) },
+              { label:'CPL', value: summary.calcCPL ? fmtSpendFull(summary.calcCPL) : '—', sub:'cost per lead',           icon: UserPlus,          spark:_div(_s, _l) },
+              { label:'CTR', value: summary.calcCTR ? summary.calcCTR.toFixed(2)+'%' : '—', sub:'click through rate',  icon: Target,            spark:_div(_t, _i, 100) },
             ];
             if (isMobile) return (
               <div style={{
@@ -886,24 +891,33 @@ export default function DashboardPage() {
             );
             return (
               <div style={{
-                flex:'1 1 0', minHeight:'74px', maxHeight:'92px',
-                display:'grid', gridTemplateColumns:'repeat(4, minmax(0,1fr))', gap:'16px',
+                flex:'1 1 0', minHeight:'74px', maxHeight:'96px',
+                display:'grid', gridTemplateColumns:'repeat(4, minmax(0,1fr))', gap:'10px',
               }}>
                 {mini.map((m, i) => {
                   const Ic = m.icon;
                   return (
                     <div key={m.label} style={{
                       ...CARD_BASE, overflow:'hidden',
-                      display:'flex', alignItems:'center', justifyContent:'space-between',
-                      padding:'0 22px',
+                      display:'flex', alignItems:'center', gap:'12px',
+                      padding:'0 18px',
                       animation:`wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) ${260 + i * 45}ms backwards`,
                     }}>
-                      <div>
+                      <div style={{
+                        width:'38px', height:'38px', borderRadius:'50%', flexShrink:0,
+                        background:'var(--s2)', border:`1px solid ${BORDER}`,
+                        display:'flex', alignItems:'center', justifyContent:'center',
+                      }}>
+                        <Ic size={16} color={SUB}/>
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ ...TYPE.small, marginBottom:'3px' }}>{m.label}</div>
                         <div style={{ ...TYPE.metricValueSm }}>{m.value}</div>
-                        <div style={{ ...TYPE.metricSub, marginTop:'3px' }}>{m.sub}</div>
+                        <div style={{ ...TYPE.metricSub, marginTop:'3px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{m.sub}</div>
                       </div>
-                      <Ic size={18} color="var(--icon-muted)"/>
+                      <div style={{ width:'70px', flexShrink:0 }}>
+                        <Sparkline data={m.spark} color={GREEN} h={26}/>
+                      </div>
                     </div>
                   );
                 })}
@@ -915,7 +929,7 @@ export default function DashboardPage() {
           <div style={ isMobile ? {
             display:'flex', flexDirection:'column', gap:'16px', flexShrink:0,
           } : {
-            flex:'1 1 0', minHeight:'260px', maxHeight:'500px', display:'grid', gridTemplateColumns:'2.55fr 4.45fr 3fr', gap:'16px',
+            flex:'1 1 0', minHeight:'260px', maxHeight:'500px', display:'grid', gridTemplateColumns:'2.8fr 4.2fr 3fr', gap:'10px',
           }}>
 
             {/* Spend Breakdown (donut) */}
@@ -925,8 +939,9 @@ export default function DashboardPage() {
                 <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', color:SUB }}>No data</div>
               ) : (
                 <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'20px', overflow:'hidden', marginTop: isMobile ? '16px' : 0 }}>
-                  <div style={{ position:'relative', width:'200px', height:'200px', flexShrink:0 }}>
-                    <svg viewBox="0 0 100 100" style={{ width:'200px', height:'200px' }}>
+                  <div style={{ position:'relative', flexShrink:0,
+                    width: isMobile ? '200px' : '236px', height: isMobile ? '200px' : '236px' }}>
+                    <svg viewBox="0 0 100 100" style={{ width:'100%', height:'100%' }}>
                       <circle cx="50" cy="50" r="38" fill="none" stroke="var(--track)" strokeWidth="16"/>
                       {donutSegs.map((seg, i) => {
                         let sw=16, op=1;

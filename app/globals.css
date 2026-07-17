@@ -92,6 +92,10 @@
   --cal-accent-line: #1B5E42;
   --cal-glow: rgba(30,107,75,0.30);
   --cal-range: rgba(30,107,75,0.14);
+
+  /* glassmorphism halus (header floating + banner insight) */
+  --glass-bg: rgba(255,255,255,0.72);
+  --glass-br: rgba(16,25,21,0.08);
 }
 
 /* ===== DARK MODE — Redesain 2026: dark forest premium =====
@@ -181,6 +185,10 @@ html[data-theme="dark"] {
   --cal-accent-line: #C8F169;
   --cal-glow: rgba(200,241,105,0.28);
   --cal-range: rgba(200,241,105,0.13);
+
+  /* glassmorphism halus (header floating + banner insight) */
+  --glass-bg: rgba(19,26,21,0.66);
+  --glass-br: rgba(242,247,239,0.08);
 }
 
 /* Saat ganti tema: matikan semua transition sekejap supaya var() ter-resolve
@@ -285,6 +293,12 @@ button {
   -webkit-overflow-scrolling: touch;
 }
 .wd-hscroll::-webkit-scrollbar { display: none; }
+/* Scroll area tanpa scrollbar terlihat (tabel Top Campaigns, dll) */
+.wd-noscroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.wd-noscroll::-webkit-scrollbar { display: none; }
 /* Chart line "menggambar" dari kiri ke kanan (butuh pathLength="1") */
 @keyframes wdDrawLine {
   from { stroke-dashoffset: 1; }
