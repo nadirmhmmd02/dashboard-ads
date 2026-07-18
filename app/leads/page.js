@@ -558,8 +558,11 @@ export default function LeadsDashboardPage() {
         ) : (
           /* ════════ DESKTOP — redesain G1 (fit 1 layar) ════════ */
           <>
-            {/* ── 1 · KPI PAIR: New Leads + Follow-up ── */}
-            <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '1fr 1fr', flexShrink: 0 }}>
+            {/* ── 1 · KPI PAIR: New Leads + Follow-up ──
+                Sisa tinggi layar dibagi proporsional ke semua baris (flex-grow kecil
+                per baris) supaya dashboard menyentuh dasar layar tanpa ada baris yang
+                menggelembung sendirian. */}
+            <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '1fr 1fr', flex: '0.6 0 auto' }}>
               {/* New Leads + sparkline harian */}
               <div style={{ ...card, padding: '15px 18px', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, position: 'relative', overflow: 'hidden', minHeight: '118px', animation: 'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 0ms backwards' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -601,7 +604,7 @@ export default function LeadsDashboardPage() {
             <div style={{
               background: FOREST, border: `1px solid ${FOREST}`, borderRadius: '18px', boxShadow: 'var(--shadow)',
               padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px',
-              flexShrink: 0, minWidth: 0,
+              flex: '1.2 0 auto', minWidth: 0,
               animation: 'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 120ms backwards',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -613,7 +616,7 @@ export default function LeadsDashboardPage() {
                   {loading || !d ? '…' : `${d.total.toLocaleString('id-ID')} total leads`}
                 </span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0,1fr))', gap: '12px', minWidth: 0 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0,1fr))', gap: '12px', minWidth: 0, flex: 1 }}>
                 {STATUSES.map(s => {
                   const n = d?.statusCounts?.[s] || 0;
                   const pct = d?.total ? (n / d.total) * 100 : 0;
@@ -645,8 +648,8 @@ export default function LeadsDashboardPage() {
               </div>
             </div>
 
-            {/* ── 3 · LEADS BY SALES + BY CATEGORY (tinggi natural sesuai isi) ── */}
-            <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '7fr 5fr', flexShrink: 0 }}>
+            {/* ── 3 · LEADS BY SALES + BY CATEGORY (konten mulai dari atas) ── */}
+            <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '7fr 5fr', flex: '1 0 auto' }}>
               {/* Leads by Sales — baris per sales (gaya G1) */}
               <div style={{ ...card, padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, animation: 'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 200ms backwards' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
@@ -728,7 +731,7 @@ export default function LeadsDashboardPage() {
             </div>
 
             {/* ── 4 · MONEY ROW (dormant sampai ada Deal) ── */}
-            <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '5fr 7fr', flexShrink: 0 }}>
+            <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '5fr 7fr', flex: '0.6 0 auto' }}>
               {/* Total Closing */}
               <div style={{
                 ...(dormant ? dormCard : card), padding: '14px 18px', minWidth: 0, minHeight: '116px',
