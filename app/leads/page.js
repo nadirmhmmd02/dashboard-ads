@@ -561,7 +561,7 @@ export default function LeadsDashboardPage() {
             {/* ── 1 · KPI PAIR: New Leads + Follow-up ── */}
             <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '1fr 1fr', flexShrink: 0 }}>
               {/* New Leads + sparkline harian */}
-              <div style={{ ...card, padding: '15px 18px', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, position: 'relative', overflow: 'hidden', minHeight: '118px' }}>
+              <div style={{ ...card, padding: '15px 18px', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, position: 'relative', overflow: 'hidden', minHeight: '118px', animation: 'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 0ms backwards' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
                     <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -578,7 +578,7 @@ export default function LeadsDashboardPage() {
               </div>
 
               {/* Follow-up + meter barcode */}
-              <div style={{ ...card, padding: '15px 18px', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, minHeight: '118px' }}>
+              <div style={{ ...card, padding: '15px 18px', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, minHeight: '118px', animation: 'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 60ms backwards' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
                   <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <PhoneCall size={15} color="var(--cal-accent)" />
@@ -597,11 +597,12 @@ export default function LeadsDashboardPage() {
               </div>
             </div>
 
-            {/* ── 2 · PANEL FOREST: Leads by Status ── */}
+            {/* ── 2 · PANEL FOREST: Leads by Status (tanpa donut — tile full width) ── */}
             <div style={{
               background: FOREST, border: `1px solid ${FOREST}`, borderRadius: '18px', boxShadow: 'var(--shadow)',
               padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px',
-              flex: '1 1 auto', minHeight: '212px', minWidth: 0,
+              flexShrink: 0, minWidth: 0,
+              animation: 'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 120ms backwards',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ ...TYPE.cardTitle, color: '#FFFFFF' }}>Leads by Status</span>
@@ -612,81 +613,74 @@ export default function LeadsDashboardPage() {
                   {loading || !d ? '…' : `${d.total.toLocaleString('id-ID')} total leads`}
                 </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flex: 1, minHeight: 0 }}>
-                <Donut
-                  counts={d?.statusCounts} total={d?.total || 0} loading={loading}
-                  colors={PANEL_STATUS_COLOR} baseStroke="rgba(255,255,255,0.1)"
-                  centerColor="#FFFFFF" subColor="#A8BCAF"
-                />
-                <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0,1fr))', gap: '10px', alignSelf: 'stretch', alignItems: 'stretch', minWidth: 0 }}>
-                  {STATUSES.map(s => {
-                    const n = d?.statusCounts?.[s] || 0;
-                    const pct = d?.total ? (n / d.total) * 100 : 0;
-                    const c = PANEL_STATUS_COLOR[s];
-                    return (
-                      <div key={s} style={{
-                        background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.09)',
-                        borderRadius: '14px', padding: '12px 14px', minWidth: 0,
-                        display: 'flex', flexDirection: 'column', gap: '3px',
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: c, flexShrink: 0 }} />
-                          <span style={{ ...TYPE.caption, fontWeight: 700, color: '#BFD3C6', whiteSpace: 'nowrap' }}>{s}</span>
-                        </div>
-                        <div style={{ ...TYPE.metricValueSm, fontSize: '23px', color: '#FFFFFF', marginTop: '2px' }}>
-                          {loading || !d ? '—' : <CountUp value={n} display={n.toLocaleString('id-ID')} />}
-                        </div>
-                        <span style={{ ...TYPE.caption, fontWeight: 700, color: '#A8BCAF' }}>{loading || !d ? '' : `${pct.toFixed(0)}%`}</span>
-                        <div style={{ height: '5px', borderRadius: '999px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden', marginTop: 'auto' }}>
-                          <div style={{
-                            width: '100%', height: '100%', borderRadius: '999px', background: c,
-                            transform: `scaleX(${(d ? n / maxStatus : 0)})`, transformOrigin: 'left',
-                            transition: 'transform 0.6s cubic-bezier(0.4,0,0.2,1)',
-                          }} />
-                        </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0,1fr))', gap: '12px', minWidth: 0 }}>
+                {STATUSES.map(s => {
+                  const n = d?.statusCounts?.[s] || 0;
+                  const pct = d?.total ? (n / d.total) * 100 : 0;
+                  const c = PANEL_STATUS_COLOR[s];
+                  return (
+                    <div key={s} style={{
+                      background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.09)',
+                      borderRadius: '15px', padding: '15px 17px', minWidth: 0, minHeight: '122px',
+                      display: 'flex', flexDirection: 'column', gap: '4px',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                        <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: c, flexShrink: 0 }} />
+                        <span style={{ ...TYPE.small, fontWeight: 700, color: '#BFD3C6', whiteSpace: 'nowrap' }}>{s}</span>
                       </div>
-                    );
-                  })}
-                </div>
+                      <div style={{ ...TYPE.metricValueSm, fontSize: '29px', color: '#FFFFFF', marginTop: '2px' }}>
+                        {loading || !d ? '—' : <CountUp value={n} display={n.toLocaleString('id-ID')} />}
+                      </div>
+                      <span style={{ ...TYPE.small, fontSize: '12px', fontWeight: 700, color: '#A8BCAF' }}>{loading || !d ? '' : `${pct.toFixed(0)}% of leads`}</span>
+                      <div style={{ height: '6px', borderRadius: '999px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden', marginTop: 'auto' }}>
+                        <div style={{
+                          width: '100%', height: '100%', borderRadius: '999px', background: c,
+                          transform: `scaleX(${(d ? n / maxStatus : 0)})`, transformOrigin: 'left',
+                          transition: 'transform 0.6s cubic-bezier(0.4,0,0.2,1)',
+                        }} />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* ── 3 · LEADS BY SALES + BY CATEGORY (compact) ── */}
+            {/* ── 3 · LEADS BY SALES + BY CATEGORY (tinggi natural sesuai isi) ── */}
             <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '7fr 5fr', flexShrink: 0 }}>
-              {/* Leads by Sales — strip inline */}
-              <div style={{ ...card, padding: '13px 18px', display: 'flex', flexDirection: 'column', gap: '10px', minWidth: 0 }}>
+              {/* Leads by Sales — baris per sales (gaya G1) */}
+              <div style={{ ...card, padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, animation: 'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 200ms backwards' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                   <span style={{ ...TYPE.cardTitle }}>Leads by Sales</span>
                   <span style={{ ...TYPE.caption }}>distribution of assigned leads</span>
                 </div>
-                <div style={{ display: 'flex', gap: '22px', alignItems: 'center', flex: 1 }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {(() => {
                     const entries = [...SALES, '—'].filter(s => s !== '—' || (d?.bySales?.['—']?.leads || 0) > 0);
                     const maxLeads = Math.max(...entries.map(s => d?.bySales?.[s]?.leads || 0), 1);
-                    return entries.map(s => {
+                    return entries.map((s, i) => {
                       const row = d?.bySales?.[s] || { leads: 0, deals: 0 };
                       const pct = d?.total ? (row.leads / d.total) * 100 : 0;
                       const fg = s === '—' ? 'var(--t3)' : SALES_COLOR[s]?.fg || 'var(--t1)';
                       const bg = s === '—' ? 'var(--hover)' : SALES_COLOR[s]?.bg || 'var(--hover)';
                       return (
-                        <div key={s} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div key={s} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '9px 0', borderTop: i === 0 ? 'none' : '1px solid var(--br)' }}>
                           <span style={{
-                            width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0,
+                            width: '34px', height: '34px', borderRadius: '50%', flexShrink: 0,
                             background: bg, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: '12px', fontWeight: 800,
+                            fontSize: '13px', fontWeight: 800,
                           }}>{s === '—' ? 'U' : s.charAt(0)}</span>
-                          <div style={{ minWidth: 0, width: '68px', flexShrink: 0 }}>
-                            <div style={{ ...TYPE.small, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s === '—' ? 'Unassigned' : s}</div>
-                            <div style={{ ...TYPE.caption, whiteSpace: 'nowrap' }}>{loading ? '' : `${pct.toFixed(1)}%${row.deals ? ` · ${row.deals} deal${row.deals === 1 ? '' : 's'}` : ''}`}</div>
+                          <div style={{ minWidth: 0, width: '94px', flexShrink: 0 }}>
+                            <div style={{ ...TYPE.small, fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s === '—' ? 'Unassigned' : s}</div>
+                            <div style={{ ...TYPE.caption, whiteSpace: 'nowrap' }}>{loading ? '' : `${pct.toFixed(1)}% of leads${row.deals ? ` · ${row.deals} deal${row.deals === 1 ? '' : 's'}` : ''}`}</div>
                           </div>
-                          <div style={{ flex: 1, height: '9px', borderRadius: '999px', background: 'var(--hover)', overflow: 'hidden', minWidth: '30px' }}>
+                          <div style={{ flex: 1, height: '11px', borderRadius: '999px', background: 'var(--hover)', overflow: 'hidden', minWidth: '30px' }}>
                             <div style={{
                               width: '100%', height: '100%', borderRadius: '999px', background: fg,
                               transform: `scaleX(${(row.leads / maxLeads) || 0})`, transformOrigin: 'left',
                               transition: 'transform 0.6s cubic-bezier(0.4,0,0.2,1)',
                             }} />
                           </div>
-                          <span style={{ ...TYPE.tableCellStrong, fontSize: '15px', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                          <span style={{ ...TYPE.tableCellStrong, fontSize: '16px', fontVariantNumeric: 'tabular-nums', flexShrink: 0, width: '36px', textAlign: 'right' }}>
                             {loading ? '—' : row.leads}
                           </span>
                         </div>
@@ -696,23 +690,28 @@ export default function LeadsDashboardPage() {
                 </div>
               </div>
 
-              {/* By Category — compact */}
-              <div style={{ ...card, padding: '13px 18px', display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+              {/* By Category — baris per kategori (gaya G1) */}
+              <div style={{ ...card, padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, animation: 'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 260ms backwards' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                   <span style={{ ...TYPE.cardTitle }}>By Category</span>
                   <span style={{ ...TYPE.caption }}>from campaign name</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, justifyContent: 'center' }}>
-                  {[...CATEGORIES.map(c => c.value), '—'].map(k => {
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {[...CATEGORIES.map(c => c.value), '—'].map((k, i) => {
                     const n = d?.byKategori?.[k] || 0;
                     const pct = d?.total ? (n / d.total) * 100 : 0;
                     if (k === '—' && n === 0) return null;
                     return (
-                      <div key={k} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ ...TYPE.small, width: '150px', flexShrink: 0, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {k === '—' ? 'Uncategorized' : kategoriLabel(k)}
-                        </span>
-                        <div style={{ flex: 1, height: '7px', borderRadius: '999px', background: 'var(--hover)', overflow: 'hidden' }}>
+                      <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: '7px', padding: '9px 0', borderTop: i === 0 ? 'none' : '1px solid var(--br)' }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px' }}>
+                          <span style={{ ...TYPE.small, fontSize: '12.5px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {k === '—' ? 'Uncategorized' : kategoriLabel(k)}
+                          </span>
+                          <span style={{ ...TYPE.tableCellStrong, fontSize: '16px', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                            {loading ? '—' : n}
+                          </span>
+                        </div>
+                        <div style={{ height: '9px', borderRadius: '999px', background: 'var(--hover)', overflow: 'hidden' }}>
                           <div style={{
                             width: '100%', height: '100%', borderRadius: '999px',
                             background: k === '—' ? 'var(--t3)' : 'var(--cal-accent)',
@@ -720,9 +719,7 @@ export default function LeadsDashboardPage() {
                             transition: 'transform 0.6s cubic-bezier(0.4,0,0.2,1)',
                           }} />
                         </div>
-                        <span style={{ ...TYPE.tableCellStrong, width: '62px', textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                          {loading ? '—' : n}<span style={{ ...TYPE.caption }}> · {pct.toFixed(0)}%</span>
-                        </span>
+                        <span style={{ ...TYPE.caption }}>{loading ? '' : `${pct.toFixed(0)}% of all leads`}</span>
                       </div>
                     );
                   })}
@@ -739,6 +736,7 @@ export default function LeadsDashboardPage() {
                 alignItems: dormant || loading || !d ? 'stretch' : 'center',
                 justifyContent: 'center', gap: dormant || loading || !d ? '4px' : '16px',
                 transition: 'background 0.3s, border-color 0.3s',
+                animation: 'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 320ms backwards',
               }}>
                 {hasDeal && (
                   <div style={{ position: 'relative', width: '76px', height: '76px', flexShrink: 0 }}>
@@ -779,6 +777,7 @@ export default function LeadsDashboardPage() {
                 ...(dormant ? dormCard : card), padding: '14px 18px', minWidth: 0, minHeight: '116px',
                 display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '10px',
                 transition: 'background 0.3s, border-color 0.3s',
+                animation: 'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 380ms backwards',
               }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px' }}>
                   <span style={{ ...TYPE.cardTitle, color: dormant ? 'var(--t3)' : 'var(--t1)' }}>Cost &amp; ROI</span>

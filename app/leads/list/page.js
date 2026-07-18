@@ -723,15 +723,22 @@ export default function LeadsListPage() {
         )}
       </div>
 
-      {/* ══ BULK BAR ══ */}
+      {/* ══ BULK BAR ══
+          Lapisan POSISI (wrapper full-width center) DIPISAH dari lapisan ANIMASI
+          (wdSlideUp pakai transform — kalau digabung dgn translateX(-50%) bar
+          nongol di kanan dulu baru lompat ke tengah). */}
       {canEdit && selected.size > 0 && (
         <div style={{
-          position: 'absolute', bottom: '18px', left: '50%', transform: 'translateX(-50%)', zIndex: 40,
+          position: 'absolute', bottom: '18px', left: 0, right: 0, zIndex: 40,
+          display: 'flex', justifyContent: 'center', pointerEvents: 'none',
+          padding: '0 16px',
+        }}>
+        <div style={{
           display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'center',
-          padding: '10px 14px', borderRadius: '14px',
+          padding: '10px 14px', borderRadius: '14px', pointerEvents: 'auto',
           background: 'var(--cd)', border: '1px solid var(--br)', boxShadow: 'var(--pop-shadow)',
           animation: 'wdSlideUp 0.22s cubic-bezier(0.4,0,0.2,1)',
-          maxWidth: 'calc(100% - 32px)',
+          maxWidth: '100%',
         }}>
           <span style={{ ...TYPE.small, fontWeight: 600, color: 'var(--t1)' }}>
             {allSelected ? `All ${selected.size} selected` : `${selected.size} selected`}
@@ -777,6 +784,7 @@ export default function LeadsListPage() {
             </>
           )}
           <button onClick={() => setSelected(new Set())} style={{ ...btn(false), padding: '8px 10px' }}><X size={13} /></button>
+        </div>
         </div>
       )}
 
