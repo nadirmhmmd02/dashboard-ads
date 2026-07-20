@@ -187,8 +187,12 @@ export default function ExportMenu({ summary, chartData = {}, rangeLabel = '', a
 
       {/* ── Dropdown format ── */}
       {open && !busy && (
+        /* Lapisan POSISI (rata tengah thd tombol) dipisah dari lapisan ANIMASI —
+           wdScaleIn pakai transform, kalau digabung translateX(-50%) popup meleset. */
         <div style={{
-          position: 'absolute', top: '46px', right: 0, zIndex: 50,
+          position: 'absolute', top: '46px', left: '50%', transform: 'translateX(-50%)', zIndex: 50,
+        }}>
+        <div style={{
           background: UI_CARD, border: `1px solid ${UI_BORDER}`, borderRadius: '12px', minWidth: '190px',
           boxShadow: 'var(--pop-shadow)', animation: 'wdScaleIn 0.15s cubic-bezier(0.4,0,0.2,1)', overflow: 'hidden', padding: '6px',
         }}>
@@ -211,6 +215,7 @@ export default function ExportMenu({ summary, chartData = {}, rangeLabel = '', a
               </div>
             );
           })}
+        </div>
         </div>
       )}
 

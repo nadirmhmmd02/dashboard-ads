@@ -315,6 +315,28 @@ button {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ── Editor catatan (NotesPanel) ── */
+.wd-note-editor:empty::before {
+  content: "Start typing…";
+  color: var(--t3);
+  pointer-events: none;
+}
+.wd-note-editor h3 { font-size: 16px; font-weight: 800; margin: 14px 0 6px; letter-spacing: -0.2px; }
+.wd-note-editor h3:first-child { margin-top: 0; }
+.wd-note-editor ul,
+.wd-note-editor ol { padding-left: 22px; margin: 6px 0; }
+.wd-note-editor li { margin: 3px 0; }
+.wd-note-editor a { color: var(--ac); }
+/* Kotak centang bisa diklik — dibuat non-editable supaya tidak terhapus separuh */
+.wd-note-editor .wd-check {
+  cursor: pointer;
+  user-select: none;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--ac);
+}
+.wd-note-editor .wd-check[data-done="1"] { opacity: 0.75; }
+
 /* scrollbar tipis */
 ::-webkit-scrollbar       { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

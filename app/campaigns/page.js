@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, Calculator, Check, ChevronDown, ChevronLeft, ChevronRight, Pause, Pencil, Play, RefreshCw, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Calculator, Check, ChevronDown, ChevronLeft, ChevronRight, Pause, Pencil, Play, RefreshCw, X } from 'lucide-react';
 import { useCampaignsFilter, DATE_PRESETS_CAMPAIGNS } from '../components/DateFilterContext';
 import { useAuth } from '../components/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
@@ -67,9 +67,21 @@ function getLinkClicks(actions) {
   return getActionValue(actions, ['link_click']);
 }
 
+/* Objective Meta yang berarti campaign Awareness (result = Reach/Impressions). */
+const AWARENESS_OBJECTIVES = ['OUTCOME_AWARENESS', 'BRAND_AWARENESS', 'REACH'];
+
 function getResult(campaign, insights) {
   const name = campaign.name?.toUpperCase() || '';
   const actions = insights?.actions || [];
+
+  // Objective asli Meta menang atas nama untuk campaign Awareness — ada campaign
+  // bernama "…TRAFFIC…" yang objective-nya OUTCOME_AWARENESS, hasilnya bukan link click.
+  if (AWARENESS_OBJECTIVES.includes(campaign.objective)) {
+    return name.includes('REACH')
+      ? { label: 'Reach', value: fmtNum(insights?.reach) }
+      : { label: 'Impressions', value: fmtNum(insights?.impressions) };
+  }
+
   if (name.includes('AWR REACH')) return { label: 'Reach', value: fmtNum(insights?.reach) };
   if (name.includes('AWR IMPR')) return { label: 'Impressions', value: fmtNum(insights?.impressions) };
   if (name.includes('AWR')) return { label: 'Impressions', value: fmtNum(insights?.impressions) };
@@ -102,6 +114,51 @@ const OBJ_STYLE = {
 
 const OBJ_ORDER = ['Awareness', 'Traffic', 'Conversion'];
 
+/* ─── SORT TABEL ───
+   Nilai mentah per kolom (versi angka dari sel yang tampil). Sort diterapkan
+   di dalam tiap grup objektif DAN tetap menghormati aturan lama "active di atas". */
+function resultRaw(c, ci) {
+  const name = c.name?.toUpperCase() || '';
+  if (AWARENESS_OBJECTIVES.includes(c.objective)) {
+    return parseFloat((name.includes('REACH') ? ci?.reach : ci?.impressions) || 0);
+  }
+  if (name.includes('AWR REACH')) return parseFloat(ci?.reach || 0);
+  if (name.includes('AWR')) return parseFloat(ci?.impressions || 0);
+  if (name.includes('TRAFFIC')) return getLinkClicks(ci?.actions) || 0;
+  if (name.includes('PROSPEK') || name.includes('KONVERSI')) return getLeads(ci?.actions) || 0;
+  return 0;
+}
+
+const SORT_COLS = {
+  name:        { label: 'Campaign',     get: c => (c.name || '').toLowerCase() },
+  budget:      { label: 'Daily Budget', get: c => parseFloat(c.daily_budget || 0) },
+  result:      { label: 'Result',       get: c => resultRaw(c, c.insights?.data?.[0] || {}) },
+  reach:       { label: 'Reach',        get: c => parseFloat(c.insights?.data?.[0]?.reach || 0) },
+  impressions: { label: 'Impressions',  get: c => parseFloat(c.insights?.data?.[0]?.impressions || 0) },
+  traffic:     { label: 'Traffic',      get: c => getLinkClicks(c.insights?.data?.[0]?.actions) || 0 },
+  leads:       { label: 'Leads',        get: c => getLeads(c.insights?.data?.[0]?.actions) || 0 },
+  cpm:         { label: 'CPM',          get: c => { const ci = c.insights?.data?.[0] || {}; const im = parseFloat(ci.impressions || 0); return im > 0 ? (parseFloat(ci.spend || 0) / im) * 1000 : null; } },
+  cpc:         { label: 'CPC',          get: c => { const ci = c.insights?.data?.[0] || {}; const lc = getLinkClicks(ci.actions); return lc > 0 ? parseFloat(ci.spend || 0) / lc : null; } },
+  cpl:         { label: 'CPL',          get: c => { const ci = c.insights?.data?.[0] || {}; const ld = getLeads(ci.actions); return ld > 0 ? parseFloat(ci.spend || 0) / ld : null; } },
+  spend:       { label: 'Total Spend',  get: c => parseFloat(c.insights?.data?.[0]?.spend || 0) },
+};
+
+function applySort(list, sort) {
+  const col = sort && SORT_COLS[sort.key];
+  if (!col) return list;
+  return [...list].sort((a, b) => {
+    const va = col.get(a), vb = col.get(b);
+    if (typeof va === 'string' || typeof vb === 'string') {
+      return sort.dir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+    }
+    // Nilai kosong (—) selalu ditaruh di bawah, apa pun arah sortnya
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    return sort.dir === 'asc' ? va - vb : vb - va;
+  });
+}
+
 export default function CampaignsPage() {
   const { dateOpt, customSince, setCustomSince, customUntil, setCustomUntil, isCustom, selectPreset, applyCustom } = useCampaignsFilter();
   const { isAdmin } = useAuth();
@@ -120,6 +177,7 @@ export default function CampaignsPage() {
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [selectedIds, setSelectedIds]           = useState([]);   // pilihan untuk hitung gabungan
   const [showCombine, setShowCombine]           = useState(false);
+  const [sort, setSort]                         = useState(null); // { key, dir } — null = urutan default
 
   // Aksi kontrol iklan (admin-only): stop/run + edit daily budget
   const [actionModal, setActionModal] = useState(null);  // { type:'status'|'budget', campaign, nextStatus }
@@ -368,13 +426,29 @@ export default function CampaignsPage() {
       return acc;
     }, {});
 
-  // Gabungkan per grup: aktif di atas, non-aktif di bawah
+  // Default: aktif di atas, non-aktif di bawah.
+  // Saat sort kolom aktif: campur semua status lalu urutkan murni per nilai kolom —
+  // campaign yang sudah berhenti ikut naik kalau angkanya memang paling besar.
   const mergedGrouped = {};
   OBJ_ORDER.forEach(grp => {
-    const active = (groupCampaigns(activeCampaigns)[grp] || []);
-    const inactive = (groupCampaigns(inactiveCampaigns)[grp] || []);
-    if (active.length || inactive.length) mergedGrouped[grp] = [...active, ...inactive];
+    const active = groupCampaigns(activeCampaigns)[grp] || [];
+    const inactive = groupCampaigns(inactiveCampaigns)[grp] || [];
+    if (!active.length && !inactive.length) return;
+    mergedGrouped[grp] = sort
+      ? applySort([...active, ...inactive], sort)
+      : [...active, ...inactive];
   });
+
+  /* Klik 1 = tertinggi dulu (paling sering dipakai saat analisis), klik 2 = terendah,
+     klik 3 = balik ke urutan default. Kolom Campaign mulai dari A–Z. */
+  function toggleSort(key) {
+    const firstDir = key === 'name' ? 'asc' : 'desc';
+    setSort(prev => {
+      if (!prev || prev.key !== key) return { key, dir: firstDir };
+      if (prev.dir === firstDir) return { key, dir: firstDir === 'asc' ? 'desc' : 'asc' };
+      return null;
+    });
+  }
 
   // Jumlah kolom tabel — admin dapat kolom Actions ekstra
   const totalCols = isAdmin ? 14 : 13;
@@ -397,6 +471,42 @@ export default function CampaignsPage() {
     whiteSpace: 'nowrap',
     fontSize: '12px',
   });
+
+  /* Header kolom yang bisa diklik untuk mengurutkan (pola tabel data standar:
+     panah samar saat hover, panah tegas + warna aksen saat kolom itu aktif). */
+  function SortTh({ colKey, align = 'right', style: extra }) {
+    const active = sort?.key === colKey;
+    const [hover, setHover] = useState(false);
+    const Icon = active ? (sort.dir === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+    return (
+      <th
+        onClick={() => toggleSort(colKey)}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        title={active
+          ? `Sorted by ${SORT_COLS[colKey].label} — click to ${sort.dir === 'desc' ? 'reverse' : 'reset'}`
+          : `Sort by ${SORT_COLS[colKey].label}`}
+        style={{
+          ...thStyle(align), ...extra,
+          cursor: 'pointer', userSelect: 'none',
+          color: active ? 'var(--ac)' : 'var(--t3)',
+          transition: 'color 0.15s',
+        }}
+      >
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: '4px',
+          justifyContent: align === 'right' ? 'flex-end' : align === 'center' ? 'center' : 'flex-start',
+        }}>
+          {SORT_COLS[colKey].label}
+          <Icon
+            size={11}
+            strokeWidth={active ? 3 : 2}
+            style={{ opacity: active ? 1 : hover ? 0.55 : 0, transition: 'opacity 0.15s', flexShrink: 0 }}
+          />
+        </span>
+      </th>
+    );
+  }
 
   function renderCampaignRow(c, rowIdx = 0) {
     const isActive = c.status === 'ACTIVE';
@@ -527,6 +637,24 @@ export default function CampaignsPage() {
           <span style={{ fontSize: '10px', fontWeight: '600', color: 'var(--t2)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ padding: '2px 9px', borderRadius: '20px', fontSize: '10px', fontWeight: '500', background: OBJ_STYLE[grp]?.bg || 'var(--sf)', color: OBJ_STYLE[grp]?.color || 'var(--t2)' }}>{grp}</span>
             {rows.length} campaign{rows.length > 1 ? 's' : ''}
+            {/* Ruang kosong di baris objektif dipakai untuk menandai urutan yang sedang aktif
+                di grup ini — klik untuk kembali ke urutan default. */}
+            {sort && SORT_COLS[sort.key] && (
+              <span
+                onClick={() => setSort(null)}
+                title="Back to default order"
+                style={{
+                  marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '4px',
+                  padding: '2px 9px', borderRadius: '20px', cursor: 'pointer',
+                  background: 'var(--sf)', border: '1px solid var(--br)',
+                  color: 'var(--ac)', fontSize: '10px', fontWeight: '600',
+                }}
+              >
+                {sort.dir === 'asc' ? <ArrowUp size={10} strokeWidth={3} /> : <ArrowDown size={10} strokeWidth={3} />}
+                {SORT_COLS[sort.key].label}
+                <X size={10} strokeWidth={3} style={{ opacity: 0.55 }} />
+              </span>
+            )}
           </span>
         </td>
       </tr>,
@@ -663,8 +791,23 @@ export default function CampaignsPage() {
               <thead>
                 <tr style={{ background: 'var(--sf)' }}>
                   <th style={{ ...thStyle('center'), width: '36px', padding: '10px 6px 10px 12px' }}></th>
-                  <th style={{ ...thStyle('left'), position: 'relative', width: campW, minWidth: campW, maxWidth: campW }}>
-                    Campaign
+                  <th
+                    onClick={() => toggleSort('name')}
+                    title={sort?.key === 'name' ? `Sorted by Campaign — click to ${sort.dir === 'asc' ? 'reverse' : 'reset'}` : 'Sort by Campaign'}
+                    style={{
+                      ...thStyle('left'), position: 'relative', width: campW, minWidth: campW, maxWidth: campW,
+                      cursor: 'pointer', userSelect: 'none',
+                      color: sort?.key === 'name' ? 'var(--ac)' : 'var(--t3)', transition: 'color 0.15s',
+                    }}
+                  >
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      Campaign
+                      {sort?.key === 'name' && (
+                        sort.dir === 'asc'
+                          ? <ArrowUp size={11} strokeWidth={3} />
+                          : <ArrowDown size={11} strokeWidth={3} />
+                      )}
+                    </span>
                     {/* Handle drag batas kolom Campaign | Status */}
                     <div
                       onMouseDown={startColDrag}
@@ -687,16 +830,16 @@ export default function CampaignsPage() {
                   </th>
                   <th style={thStyle('center')}>Status</th>
                   {isAdmin && <th style={thStyle('center')}>Actions</th>}
-                  <th style={thStyle()}>Daily Budget</th>
-                  <th style={thStyle()}>Result</th>
-                  <th style={thStyle()}>Reach</th>
-                  <th style={thStyle()}>Impressions</th>
-                  <th style={thStyle()}>Traffic</th>
-                  <th style={thStyle()}>Leads</th>
-                  <th style={thStyle()}>CPM</th>
-                  <th style={thStyle()}>CPC</th>
-                  <th style={thStyle()}>CPL</th>
-                  <th style={thStyle()}>Total Spend</th>
+                  <SortTh colKey="budget" />
+                  <SortTh colKey="result" />
+                  <SortTh colKey="reach" />
+                  <SortTh colKey="impressions" />
+                  <SortTh colKey="traffic" />
+                  <SortTh colKey="leads" />
+                  <SortTh colKey="cpm" />
+                  <SortTh colKey="cpc" />
+                  <SortTh colKey="cpl" />
+                  <SortTh colKey="spend" />
                 </tr>
               </thead>
               <tbody>

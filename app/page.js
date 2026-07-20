@@ -6,10 +6,11 @@ import {
   Calendar, ChevronDown, ChevronLeft, ChevronRight, RefreshCw,
   DollarSign, Users, Eye, LayoutGrid, User,
   ScanLine, MousePointerClick, UserPlus, Target,
-  MessageSquare, Trash2,
+  MessageSquare, Trash2, GitCompareArrows,
 } from 'lucide-react';
 import CountUp from './components/CountUp';
 import AreaChart from './components/AreaChart';
+import CompareModal from './components/CompareModal';
 import ExportMenu from './components/ExportMenu';
 import { useAuth } from './components/AuthContext';
 import { useDashboardFilter, DATE_PRESETS_DASHBOARD } from './components/DateFilterContext';
@@ -49,6 +50,31 @@ function getActionValue(actions, types) {
     if (a) return parseInt(a.value) || 0;
   }
   return 0;
+}
+
+/* Preset → rentang tanggal nyata (dipakai untuk mengisi Periode A di Compare).
+   Sama persis dengan perhitungan preset di server (app/api/meta/route.js). */
+function ymdLocal(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function presetToRange(preset) {
+  const now = new Date();
+  const today = ymdLocal(now);
+  const add = n => { const d = new Date(now); d.setDate(d.getDate() + n); return ymdLocal(d); };
+  switch (preset) {
+    case 'today':      return { since: today,   until: today };
+    case 'yesterday':  return { since: add(-1), until: add(-1) };
+    case 'last_3d':    return { since: add(-3),  until: add(-1) };
+    case 'last_7d':    return { since: add(-7),  until: add(-1) };
+    case 'last_14d':   return { since: add(-14), until: add(-1) };
+    case 'last_30d':   return { since: add(-30), until: add(-1) };
+    case 'this_month': return { since: ymdLocal(new Date(now.getFullYear(), now.getMonth(), 1)), until: today };
+    case 'last_month': return {
+      since: ymdLocal(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+      until: ymdLocal(new Date(now.getFullYear(), now.getMonth(), 0)),
+    };
+    default:           return { since: add(-30), until: add(-1) };
+  }
 }
 
 function getCampaignType(name) {
@@ -278,6 +304,7 @@ export default function DashboardPage() {
   const { dateOpt, customSince, setCustomSince, customUntil, setCustomUntil, isCustom, selectPreset, applyCustom } = useDashboardFilter();
   const [hoverSeg, setHoverSeg]         = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showCompare, setShowCompare]   = useState(false);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
   const [summary, setSummary]           = useState(null);
@@ -754,6 +781,22 @@ export default function DashboardPage() {
             )}
           </div>
 
+          {/* Compare — duduk di antara filter tanggal dan Export */}
+          {!isMobile && (
+            <button onClick={() => setShowCompare(true)} title="Compare two periods" style={{
+              display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px',
+              background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px',
+              fontSize: '13px', color: 'var(--t1)', cursor: 'pointer', fontFamily: 'inherit',
+              transition: 'border-color 0.15s',
+            }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--br-strong)'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = BORDER}
+            >
+              <GitCompareArrows size={14} color="var(--t2)" />
+              Compare
+            </button>
+          )}
+
           {!isMobile && isAdmin && (
             <ExportMenu
               summary={summary}
@@ -1031,6 +1074,20 @@ export default function DashboardPage() {
           </div>
         </>)}
       </div>
+
+      {/* ══ COMPARE PERIODS ══ */}
+      {showCompare && (() => {
+        const r = isCustom && customSince && customUntil
+          ? { since: customSince, until: customUntil }
+          : presetToRange(dateOpt.value);
+        return (
+          <CompareModal
+            initialSince={r.since}
+            initialUntil={r.until}
+            onClose={() => setShowCompare(false)}
+          />
+        );
+      })()}
     </div>
   );
 }

@@ -92,8 +92,12 @@ export default function PlatformSelector({ selected, onSelect }) {
       </button>
 
       {open && (
+        /* Lapisan POSISI (rata tengah thd tombol) dipisah dari lapisan ANIMASI —
+           wdScaleIn pakai transform, kalau digabung translateX(-50%) popup meleset. */
         <div style={{
-          position: 'absolute', top: '46px', left: 0, zIndex: 50,
+          position: 'absolute', top: '46px', left: '50%', transform: 'translateX(-50%)', zIndex: 50,
+        }}>
+        <div style={{
           minWidth: '200px', padding: '6px',
           background: 'var(--cd)', border: '1px solid var(--br)',
           borderRadius: '14px', boxShadow: 'var(--pop-shadow)',
@@ -124,6 +128,7 @@ export default function PlatformSelector({ selected, onSelect }) {
               </div>
             );
           })}
+        </div>
         </div>
       )}
     </div>

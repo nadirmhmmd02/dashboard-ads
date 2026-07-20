@@ -56,6 +56,23 @@ function fmtRp(v) {
 // Clean display: data kosong dari form → "-"
 function dash(v) { return v && String(v).trim() ? v : '-'; }
 
+/* ─── Sensor kontak untuk role viewer (user) ───
+   Viewer boleh melihat volume & kualitas lead, tapi bukan data kontak yang bisa
+   dipakai menghubungi calon mitra di luar jalur sales. */
+function maskPhone(v) {
+  if (!v) return v;
+  const s = String(v).trim();
+  if (s.length <= 6) return 'x'.repeat(s.length);
+  return s.slice(0, s.length - 6) + 'xxxxxx';
+}
+function maskEmail(v) {
+  if (!v) return v;
+  const s = String(v).trim();
+  const at = s.indexOf('@');
+  if (at <= 0) return s.slice(0, 2) + 'xxxxxx';
+  return s.slice(0, Math.min(2, at)) + 'xxxxxx' + s.slice(at);
+}
+
 function KategoriBadge({ value }) {
   if (!value) return <span style={{ ...TYPE.tableCell }}>-</span>;
   return (
@@ -71,6 +88,8 @@ export default function LeadsListPage() {
   const { role, isAdmin } = useAuth();
   const isMobile = useIsMobile();
   const canEdit = role === 'admin' || role === 'marketing';
+  // Viewer (role user): nomor & email disensor, tombol copy nomor disembunyikan
+  const maskContacts = role === 'user';
 
   const [tab, setTab] = useState('list');            // 'inbox' (Black Box) | 'list'
   const [rows, setRows] = useState(null);
@@ -238,10 +257,11 @@ export default function LeadsListPage() {
     let list = rows || [];
     if (q.trim()) {
       const s = q.trim().toLowerCase();
+      // Viewer tidak bisa mencari lewat nomor/email — kalau bisa, sensornya jadi percuma
       list = list.filter(r =>
         (r.name || '').toLowerCase().includes(s) ||
-        (r.phone || '').includes(s) ||
-        (r.email || '').toLowerCase().includes(s));
+        (!maskContacts && (r.phone || '').includes(s)) ||
+        (!maskContacts && (r.email || '').toLowerCase().includes(s)));
     }
     if (fKategori !== 'Semua') list = list.filter(r => r.kategori_promo === fKategori);
     if (tab === 'list' && fStatus !== 'Semua') list = list.filter(r => r.status === fStatus);
@@ -249,7 +269,7 @@ export default function LeadsListPage() {
       list = fSales === 'none' ? list.filter(r => !r.sales) : list.filter(r => r.sales === fSales);
     }
     return list;
-  }, [rows, q, fKategori, fStatus, fSales, tab]);
+  }, [rows, q, fKategori, fStatus, fSales, tab, maskContacts]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -257,6 +277,15 @@ export default function LeadsListPage() {
 
   const allPageSelected = pageRows.length > 0 && pageRows.every(r => selected.has(r.id));
   const allSelected = selected.size === filtered.length && filtered.length > 0;
+
+  /* Status follow-up baris terpilih → menentukan tombol bulk mana yang ditampilkan:
+     semua belum di-mark → hanya "Mark", semua sudah → hanya "Unmark", campuran → dua-duanya. */
+  const selectedFu = useMemo(() => {
+    const list = (rows || []).filter(r => selected.has(r.id));
+    const marked = list.filter(r => r.followed_up).length;
+    const unmarked = list.length - marked;
+    return { marked, unmarked, hasMarked: marked > 0, hasUnmarked: unmarked > 0, mixed: marked > 0 && unmarked > 0 };
+  }, [rows, selected]);
   function toggleAllPage() {
     setSelected(prev => {
       const next = new Set(prev);
@@ -563,8 +592,10 @@ export default function LeadsListPage() {
                     {col('phone') && (
                       <td style={{ ...tdStyle(), whiteSpace: 'nowrap' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          {dash(r.phone)}
-                          {r.phone && (
+                          <span style={maskContacts && r.phone ? { letterSpacing: '0.3px', color: 'var(--t2)' } : undefined}>
+                            {dash(maskContacts ? maskPhone(r.phone) : r.phone)}
+                          </span>
+                          {r.phone && !maskContacts && (
                             <button onClick={() => copyPhone(r)} title="Copy number" style={{
                               display: 'inline-flex', background: 'none', border: 'none', cursor: 'pointer',
                               color: 'var(--t3)', padding: '2px', borderRadius: '5px',
@@ -576,7 +607,12 @@ export default function LeadsListPage() {
                         </span>
                       </td>
                     )}
-                    {col('email') && <td style={{ ...tdStyle(), maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.email || ''}>{dash(r.email)}</td>}
+                    {col('email') && (
+                      <td
+                        style={{ ...tdStyle(), maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        title={(maskContacts ? maskEmail(r.email) : r.email) || ''}
+                      >{dash(maskContacts ? maskEmail(r.email) : r.email)}</td>
+                    )}
                     {col('city') && <td style={{ ...tdStyle(), whiteSpace: 'nowrap' }}>{dash(r.domicile)}</td>}
                     {col('category') && <td style={tdStyle()}><KategoriBadge value={r.kategori_promo} /></td>}
                     {col('campaign') && (
@@ -755,9 +791,18 @@ export default function LeadsListPage() {
           ) : (
             <>
               <button onClick={bulkCopy} style={btn(true)}><Copy size={13} /> Copy name + number</button>
-              <button onClick={() => bulkPatch({ followed_up: true }, n => `${n} lead${n === 1 ? '' : 's'} marked as followed up`)} style={btn(false)}>
-                <Check size={13} /> Mark followed-up
-              </button>
+              {/* Tombol follow-up context-aware: yang muncul hanya aksi yang masuk akal
+                  untuk baris terpilih. Campuran → dua-duanya muncul. */}
+              {selectedFu.hasUnmarked && (
+                <button onClick={() => bulkPatch({ followed_up: true }, n => `${n} lead${n === 1 ? '' : 's'} marked as followed up`)} style={btn(false)}>
+                  <Check size={13} /> Mark followed-up{selectedFu.mixed ? ` (${selectedFu.unmarked})` : ''}
+                </button>
+              )}
+              {selectedFu.hasMarked && (
+                <button onClick={() => bulkPatch({ followed_up: false }, n => `${n} lead${n === 1 ? '' : 's'} follow-up unmarked`)} style={btn(false)}>
+                  <X size={13} /> Unmark followed-up{selectedFu.mixed ? ` (${selectedFu.marked})` : ''}
+                </button>
+              )}
               <Dropdown
                 label="Set status"
                 direction="up"

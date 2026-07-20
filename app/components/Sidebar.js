@@ -11,6 +11,7 @@ import {
   Users,
   ChevronsLeft,
   LogOut,
+  NotebookPen,
 } from 'lucide-react';
 import Logo from './Logo';
 import { useAuth } from './AuthContext';
@@ -244,6 +245,53 @@ export default function Sidebar() {
         </div>
         ))}
       </nav>
+
+      {/* ── Notes (admin) — halaman /notes, tepat di atas blok user + logout ── */}
+      {role === 'admin' && (() => {
+        const active = isActive('/notes');
+        const isHover = hovered === '/notes' && !active;
+        return (
+          <div style={{ padding: collapsed ? '0 8px 6px' : '0 10px 6px' }}>
+            <Link
+              href="/notes"
+              onMouseEnter={() => setHovered('/notes')}
+              onMouseLeave={() => setHovered(null)}
+              title="Notes"
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center',
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                gap: collapsed ? '0' : '10px',
+                padding: collapsed ? '11px 0' : '9px 10px',
+                borderRadius: '9px', position: 'relative',
+                background: active ? ACTIVE_BG : isHover ? ACTIVE_HV : 'transparent',
+                color: active ? ACTIVE_FG : isHover ? 'var(--nav-hover-tx)' : 'var(--nav-tx)',
+                fontSize: '13px', fontWeight: active ? '600' : '400',
+                whiteSpace: 'nowrap', overflow: 'hidden',
+                transition: `background 0.18s ${EASE}, color 0.18s`,
+              }}
+            >
+              {active && !collapsed && (
+                <span style={{
+                  position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
+                  width: '3px', height: '60%', borderRadius: '0 2px 2px 0', background: ACTIVE_FG,
+                }} />
+              )}
+              <NotebookPen
+                size={18}
+                color={active ? ACTIVE_FG : isHover ? 'var(--nav-hover-tx)' : 'var(--nav-icon)'}
+                style={{ flexShrink: 0, minWidth: 18, transition: 'color 0.18s' }}
+              />
+              <span style={{
+                opacity: textVisible ? 1 : 0,
+                width: collapsed ? 0 : 'auto',
+                overflow: 'hidden',
+                transition: 'opacity 0.2s',
+                letterSpacing: '-0.1px',
+              }}>Notes</span>
+            </Link>
+          </div>
+        );
+      })()}
 
       {/* ── User + logout ── */}
       {user && (
