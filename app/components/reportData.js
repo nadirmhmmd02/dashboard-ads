@@ -99,9 +99,9 @@ export function buildReportData(json) {
   const prevTraffic     = getActionValue(prev.actions, ['link_click']);
   const prevLeads       = getActionValue(prev.actions, ['lead', 'onsite_conversion.lead_grouped']);
 
-  const activeCount = campaigns.filter(c => c.status === 'ACTIVE').length;
-
   const campsWithData = campaigns.filter(c => parseFloat(c.insights?.data?.[0]?.spend || 0) > 0);
+  // "Active campaigns" = campaign yang PUNYA delivery (spend > 0) di periode, ikut filter
+  const activeCount = campsWithData.length;
   const trafficCamps  = campsWithData.filter(c => getCampaignType(c.name) === 'TRAFFIC');
   const convCamps     = campsWithData.filter(c => getCampaignType(c.name) === 'CONVERSION');
   const awareCamps    = campsWithData.filter(c => getCampaignType(c.name) === 'AWARENESS');
