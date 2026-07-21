@@ -158,10 +158,11 @@ function DailyMultiCard({ chartData = {}, dates = [], summary = {} }) {
     return { ...s, d: smoothPath(pts) };
   });
 
-  // Label sumbu-X: ~8 tanggal merata
+  // Label sumbu-X: tampilkan SEMUA tanggal (lengkap). Baru dijarangkan kalau
+  // rentangnya sangat panjang (mis. kuartal) supaya angkanya tidak tumpang tindih.
   const ticks = [];
   if (dates.length) {
-    const step = Math.max(1, Math.round(dates.length / 8));
+    const step = dates.length <= 46 ? 1 : Math.ceil(dates.length / 46);
     for (let i = 0; i < dates.length; i += step) ticks.push({ x: n > 1 ? (i / (n - 1)) * 100 : 50, label: dates[i] });
   }
 
@@ -199,7 +200,7 @@ function DailyMultiCard({ chartData = {}, dates = [], summary = {} }) {
       {ticks.length > 0 && (
         <div style={{ position: 'relative', height: '16px', marginTop: '8px', flexShrink: 0 }}>
           {ticks.map((t, i) => (
-            <span key={i} style={{ position: 'absolute', left: t.x + '%', transform: 'translateX(-50%)', fontSize: '11px', color: MUTE }}>{t.label}</span>
+            <span key={i} style={{ position: 'absolute', left: t.x + '%', transform: 'translateX(-50%)', fontSize: '9.5px', color: MUTE }}>{t.label}</span>
           ))}
         </div>
       )}
