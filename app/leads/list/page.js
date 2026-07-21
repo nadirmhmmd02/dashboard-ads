@@ -292,7 +292,7 @@ export default function LeadsListPage() {
   const windowLabel = useMemo(() => {
     const start = new Date(dateCutoff);
     const end = new Date();
-    const f = (d) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    const f = (d) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
     return `${f(start)} – ${f(end)}`;
   }, [dateCutoff]);
 
