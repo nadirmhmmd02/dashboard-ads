@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Download, ChevronDown, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
+import {
+  Download, ChevronDown, FileText, Image as ImageIcon, Loader2,
+  ScanLine, MousePointerClick, UserPlus, Target,
+} from 'lucide-react';
 import Logo from './Logo';
 
 /* ─── Report palette — SELALU dark (artefak laporan, tidak ikut tema) ─── */
@@ -15,6 +18,7 @@ const GREEN  = '#2FB673';   // emerald — ikut palet redesain 2026
 const BLUE   = '#3B82F6';
 const PURPLE = '#8B5CF6';
 const ORANGE = '#F59E0B';
+const RED    = '#EF4444';
 
 /* ─── UI palette (tombol + dropdown di header) — ikut tema dashboard ─── */
 const UI_CARD   = 'var(--cd)';
@@ -25,18 +29,10 @@ const UI_SUB    = 'var(--t2)';
 const UI_MUTE   = 'var(--t3)';
 const UI_HOVER  = 'var(--hover)';
 
-/* ─── Format helpers ─── */
-function fmtSpend(n) {
-  if (n >= 1_000_000) return 'Rp ' + (n / 1_000_000).toFixed(1).replace('.0','') + 'M';
-  if (n >= 1_000)     return 'Rp ' + (n / 1_000).toFixed(0) + 'K';
-  return 'Rp ' + Math.round(n || 0);
-}
-function fmtBigNum(n) {
-  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1).replace('.0','') + 'B';
-  if (n >= 1_000_000)     return (n / 1_000_000).toFixed(1).replace('.0','') + 'M';
-  if (n >= 1_000)         return (n / 1_000).toFixed(1).replace('.0','') + 'K';
-  return Math.round(n || 0).toLocaleString('id-ID');
-}
+/* ─── Format helpers — ANGKA PENUH biar sama dgn dashboard (Rp 1.440.076) ─── */
+function fmtSpendFull(n) { return 'Rp ' + Math.round(n || 0).toLocaleString('id-ID'); }
+function fmtNumFull(n)   { return Math.round(n || 0).toLocaleString('id-ID'); }
+
 function smoothPath(pts) {
   if (pts.length < 2) return '';
   let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
@@ -49,61 +45,170 @@ function smoothPath(pts) {
   return d;
 }
 
-const METRIC_META = [
-  { key: 'spend',     name: 'Daily Spend',     color: GREEN,  money: true },
-  { key: 'awareness', name: 'Daily Awareness', color: PURPLE, money: false },
-  { key: 'traffic',   name: 'Daily Traffic',   color: ORANGE, money: false },
-  { key: 'leads',     name: 'Daily Leads',     color: BLUE,   money: false },
-];
-
-function Pct({ pct }) {
-  if (pct === null || pct === undefined) return null;
-  const up = pct >= 0, c = up ? GREEN : '#EF4444';
-  return <span style={{ fontSize: '13px', fontWeight: 600, color: c }}>{up ? '▲' : '▼'} {Math.abs(pct).toFixed(1)}%</span>;
+/* series harian ratio (untuk sparkline 4C), sejajar dgn perhitungan dashboard */
+function ratio(a = [], b = [], mul = 1) {
+  return a.map((v, i) => (v != null && b[i] > 0) ? (v / b[i]) * mul : null);
 }
 
-/* ─── Mini area chart (satu metrik) untuk laporan ─── */
-function MiniChart({ arr = [], color, name, money }) {
+/* ─── Badge perbandingan % vs periode sebelumnya ───
+   Panah = arah nyata; warna = baik/buruk. Untuk biaya (CPM/CPC/CPL) turun = baik (hijau),
+   untuk hasil (CTR + 5 KPI volume) naik = baik. */
+function Pct({ pct, goodDir = 'up', size = 13 }) {
+  if (pct === null || pct === undefined) return null;
+  const up = pct >= 0;
+  const good = goodDir === 'up' ? up : !up;
+  return (
+    <span style={{ fontSize: size + 'px', fontWeight: 600, color: good ? GREEN : RED }}>
+      {up ? '▲' : '▼'} {Math.abs(pct).toFixed(1)}%
+    </span>
+  );
+}
+
+/* ─── Sparkline mini (area + garis) untuk kartu KPI & 4C ─── */
+function Spark({ arr = [], color = GREEN, h = 34 }) {
   const valid = [];
   arr.forEach((v, i) => { if (v != null) valid.push({ v, i }); });
-  const n     = arr.length || 1;
-  const max   = Math.max.apply(null, valid.length ? valid.map(p => p.v) : [1]) || 1;
-  const total = valid.reduce((s, p) => s + p.v, 0);
-  const pts   = valid.map(p => ({ x: n > 1 ? (p.i / (n - 1)) * 100 : 50, y: 90 - (p.v / max) * 78 }));
-  const line  = smoothPath(pts);
-  const area  = pts.length >= 2 ? `${line} L ${pts[pts.length - 1].x.toFixed(1)} 100 L ${pts[0].x.toFixed(1)} 100 Z` : '';
-  const gid   = 'g-' + name.replace(/\s/g, '');
+  if (valid.length < 2) return <div style={{ height: h }} />;
+  const n    = arr.length || 1;
+  const max  = Math.max.apply(null, valid.map(p => p.v));
+  const min  = Math.min.apply(null, valid.map(p => p.v));
+  const rng  = (max - min) || 1;
+  const pts  = valid.map(p => ({ x: n > 1 ? (p.i / (n - 1)) * 100 : 50, y: 96 - ((p.v - min) / rng) * 84 }));
+  const line = smoothPath(pts);
+  const area = `${line} L ${pts[pts.length - 1].x.toFixed(1)} 100 L ${pts[0].x.toFixed(1)} 100 Z`;
+  const gid  = 'sp-' + color.replace('#', '') + '-' + Math.round(pts[0].y);
+  return (
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: '100%', height: h + 'px', display: 'block', overflow: 'visible' }}>
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.26" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${gid})`} />
+      <path d={line} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/* ─── Donut Spend Breakdown (pakai dash/offset yang sudah dihitung di dashboard) ─── */
+function DonutCard({ donut }) {
+  const segs  = donut?.segs || [];
+  const total = donut?.total || { value: '—', label: 'Total Spend' };
+  return (
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '14px', padding: '18px 20px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div style={{ fontSize: '15px', fontWeight: 600, flexShrink: 0 }}>Spend Breakdown</div>
+      {segs.length === 0 ? (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: SUB, fontSize: '12px' }}>No data</div>
+      ) : (
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px' }}>
+          <div style={{ position: 'relative', width: '150px', height: '150px', flexShrink: 0 }}>
+            <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
+              <circle cx="50" cy="50" r="38" fill="none" stroke={BORDER} strokeWidth="16" />
+              {segs.map((seg, i) => (
+                <circle key={i} cx="50" cy="50" r="38" fill="none"
+                  stroke={seg.color} strokeWidth="16"
+                  strokeDasharray={`${seg.dash} 239`} strokeDashoffset={seg.offset}
+                  transform="rotate(-90 50 50)" strokeLinecap="butt" />
+              ))}
+            </svg>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ fontSize: '17px', fontWeight: 700, letterSpacing: '-0.4px' }}>{total.value}</div>
+              <div style={{ fontSize: '10px', color: SUB, marginTop: '2px' }}>{total.label}</div>
+            </div>
+          </div>
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '7px' }}>
+            {segs.map((seg, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ width: '9px', height: '9px', borderRadius: '3px', background: seg.color, flexShrink: 0 }} />
+                  <span style={{ fontSize: '12.5px', color: SUB }}>{seg.label}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '12.5px', fontWeight: 600 }}>{seg.value}</span>
+                  <span style={{ fontSize: '11px', color: MUTE }}>{seg.pct}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Kartu chart harian GABUNGAN — semua metrik dalam satu card, tiap warna satu metrik.
+   Tiap garis dinormalisasi ke skala-nya sendiri (skala metrik beda jauh) supaya semua
+   tren terlihat; nilai total nyata ada di legenda. ─── */
+function DailyMultiCard({ chartData = {}, dates = [], summary = {} }) {
+  const series = [
+    { key: 'spend',     name: 'Spend',      color: GREEN,  total: fmtSpendFull(summary.totalSpend) },
+    { key: 'awareness', name: 'Awareness',  color: PURPLE, total: fmtNumFull(summary.totalImpressions) },
+    { key: 'traffic',   name: 'Traffic',    color: ORANGE, total: fmtNumFull(summary.totalTraffic) },
+    { key: 'leads',     name: 'Leads',      color: BLUE,   total: fmtNumFull(summary.totalLeads) },
+  ];
+  const n = Math.max(1, ...series.map(s => (chartData[s.key] || []).length));
+
+  const lines = series.map(s => {
+    const arr = chartData[s.key] || [];
+    const valid = [];
+    arr.forEach((v, i) => { if (v != null) valid.push({ v, i }); });
+    const max = valid.length ? Math.max.apply(null, valid.map(p => p.v)) : 1;
+    const pts = valid.map(p => ({ x: n > 1 ? (p.i / (n - 1)) * 100 : 50, y: 94 - (p.v / (max || 1)) * 86 }));
+    return { ...s, d: smoothPath(pts) };
+  });
+
+  // Label sumbu-X: ~8 tanggal merata
+  const ticks = [];
+  if (dates.length) {
+    const step = Math.max(1, Math.round(dates.length / 8));
+    for (let i = 0; i < dates.length; i += step) ticks.push({ x: n > 1 ? (i / (n - 1)) * 100 : 50, label: dates[i] });
+  }
 
   return (
-    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '14px', padding: '16px 16px 12px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: color }} />
-        <span style={{ fontSize: '13px', color: SUB, fontWeight: 500 }}>{name}</span>
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '14px', padding: '18px 20px 14px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <span style={{ fontSize: '15px', fontWeight: 600 }}>Daily Performance</span>
+        <span style={{ fontSize: '11px', color: MUTE }}>each line scaled to its own range</span>
       </div>
-      <div style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '-0.5px', margin: '8px 0 10px' }}>
-        {money ? fmtSpend(total) : fmtBigNum(total)}
-      </div>
-      <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible' }}>
-          <defs>
-            <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity="0.28" />
-              <stop offset="100%" stopColor={color} stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          {area && <path d={area} fill={`url(#${gid})`} />}
-          {line && <path d={line} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />}
-        </svg>
-        {pts.length <= 7 && pts.map((p, i) => (
-          <div key={i} style={{ position: 'absolute', left: p.x + '%', top: p.y + '%', width: '7px', height: '7px', borderRadius: '50%', background: color, border: `2px solid ${CARD}`, transform: 'translate(-50%,-50%)' }} />
+
+      {/* legenda */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px', margin: '12px 0 6px', flexShrink: 0 }}>
+        {lines.map(s => (
+          <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ width: '11px', height: '3px', borderRadius: '2px', background: s.color, flexShrink: 0 }} />
+            <span style={{ fontSize: '12.5px', color: SUB }}>{s.name}</span>
+            <span style={{ fontSize: '12.5px', fontWeight: 700 }}>{s.total}</span>
+          </div>
         ))}
       </div>
+
+      {/* chart */}
+      <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible' }}>
+          {[8, 30, 52, 74].map(y => (
+            <line key={y} x1="0" y1={y} x2="100" y2={y} stroke={BORDER} strokeWidth="1" vectorEffect="non-scaling-stroke" opacity="0.5" />
+          ))}
+          {lines.map(s => s.d && (
+            <path key={s.key} d={s.d} fill="none" stroke={s.color} strokeWidth="2.2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
+          ))}
+        </svg>
+      </div>
+
+      {/* sumbu tanggal */}
+      {ticks.length > 0 && (
+        <div style={{ position: 'relative', height: '14px', marginTop: '6px', flexShrink: 0 }}>
+          {ticks.map((t, i) => (
+            <span key={i} style={{ position: 'absolute', left: t.x + '%', transform: 'translateX(-50%)', fontSize: '10px', color: MUTE }}>{t.label}</span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 // compact: tombol icon-only (dipakai toolbar mobile biar chip muat satu baris)
-export default function ExportMenu({ summary, chartData = {}, rangeLabel = '', activeCount = 0, compact = false }) {
+export default function ExportMenu({ summary, chartData = {}, chartDates = [], donut = {}, rangeLabel = '', activeCount = 0, compact = false }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const reportRef = useRef(null);
@@ -144,21 +249,21 @@ export default function ExportMenu({ summary, chartData = {}, rangeLabel = '', a
   }
 
   const kpis = summary ? [
-    { label: 'Total Spend',  value: fmtSpend(summary.totalSpend),        pct: summary.pctSpend,       color: GREEN },
-    { label: 'Reach',        value: fmtBigNum(summary.totalReach),       pct: summary.pctReach,       color: BLUE },
-    { label: 'Impressions',  value: fmtBigNum(summary.totalImpressions), pct: summary.pctImpressions, color: PURPLE },
-    { label: 'Traffic',      value: fmtBigNum(summary.totalTraffic),     pct: summary.pctTraffic,     color: ORANGE },
-    { label: 'Leads',        value: fmtBigNum(summary.totalLeads),       pct: summary.pctLeads,       color: GREEN },
+    { label: 'Total Spend',  value: fmtSpendFull(summary.totalSpend),   pct: summary.pctSpend,       color: GREEN,  spark: chartData.spend },
+    { label: 'Reach',        value: fmtNumFull(summary.totalReach),     pct: summary.pctReach,       color: BLUE,   spark: chartData.awareness },
+    { label: 'Impressions',  value: fmtNumFull(summary.totalImpressions), pct: summary.pctImpressions, color: PURPLE, spark: chartData.awareness },
+    { label: 'Traffic',      value: fmtNumFull(summary.totalTraffic),   pct: summary.pctTraffic,     color: ORANGE, spark: chartData.traffic },
+    { label: 'Leads',        value: fmtNumFull(summary.totalLeads),     pct: summary.pctLeads,       color: GREEN,  spark: chartData.leads },
   ] : [];
 
+  // 4C — value penuh + sparkline + badge % (biaya turun = hijau, CTR naik = hijau)
+  const _s = chartData.spend || [], _i = chartData.awareness || [], _t = chartData.traffic || [], _l = chartData.leads || [];
   const secondary = summary ? [
-    { label: 'CPM', value: summary.calcCPM ? fmtSpend(summary.calcCPM) : '—', sub: 'cost per 1K impressions' },
-    { label: 'CPC', value: summary.calcCPC ? fmtSpend(summary.calcCPC) : '—', sub: 'cost per click' },
-    { label: 'CPL', value: summary.calcCPL ? fmtSpend(summary.calcCPL) : '—', sub: 'cost per lead' },
-    { label: 'CTR', value: summary.calcCTR ? summary.calcCTR.toFixed(2) + '%' : '—', sub: 'click through rate' },
+    { label: 'CPM', value: summary.calcCPM ? fmtSpendFull(summary.calcCPM) : '—', sub: 'cost per 1K impressions', icon: ScanLine,          pct: summary.pctCPM, goodDir: 'down', spark: ratio(_s, _i, 1000) },
+    { label: 'CPC', value: summary.calcCPC ? fmtSpendFull(summary.calcCPC) : '—', sub: 'cost per click',          icon: MousePointerClick, pct: summary.pctCPC, goodDir: 'down', spark: ratio(_s, _t) },
+    { label: 'CPL', value: summary.calcCPL ? fmtSpendFull(summary.calcCPL) : '—', sub: 'cost per lead',           icon: UserPlus,          pct: summary.pctCPL, goodDir: 'down', spark: ratio(_s, _l) },
+    { label: 'CTR', value: summary.calcCTR ? summary.calcCTR.toFixed(2) + '%' : '—', sub: 'click through rate',   icon: Target,            pct: summary.pctCTR, goodDir: 'up',   spark: ratio(_t, _i, 100) },
   ] : [];
-
-  const sectionLabel = { fontSize: '12px', fontWeight: 600, letterSpacing: '1.4px', color: MUTE, textTransform: 'uppercase' };
 
   return (
     <div style={{ position: 'relative' }} data-export>
@@ -219,65 +324,82 @@ export default function ExportMenu({ summary, chartData = {}, rangeLabel = '', a
         </div>
       )}
 
-      {/* ══════════ LAPORAN TERSEMBUNYI 16:9 (1280×720) ══════════ */}
+      {/* ══════════ LAPORAN TERSEMBUNYI 16:9 (1280×720) — mirror dashboard ══════════ */}
       <div ref={reportRef} style={{
         position: 'fixed', left: '-10000px', top: 0, width: '1280px', height: '720px',
-        background: BG, color: TXT, padding: '40px 48px', overflow: 'hidden',
+        background: BG, color: TXT, padding: '34px 44px', overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
         fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif",
       }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '20px', borderBottom: `1px solid ${BORDER}`, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '16px', borderBottom: `1px solid ${BORDER}`, flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Logo size={26} color="#0A0F06" />
+            <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Logo size={25} color="#0A0F06" />
             </div>
-            <div style={{ fontSize: '30px', fontWeight: 700, letterSpacing: '-0.6px' }}>Performance Marketing Report</div>
+            <div style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.6px' }}>Performance Marketing Report</div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ display: 'inline-block', padding: '7px 16px', borderRadius: '9px', background: 'rgba(139,227,77,0.12)', color: GREEN, fontSize: '15px', fontWeight: 600 }}>
+            <div style={{ display: 'inline-block', padding: '6px 15px', borderRadius: '9px', background: 'rgba(47,182,115,0.14)', color: GREEN, fontSize: '14px', fontWeight: 600 }}>
               {rangeLabel || '—'}
             </div>
-            <div style={{ fontSize: '12px', color: MUTE, marginTop: '8px' }}>Meta Ads · {activeCount} active campaigns</div>
+            <div style={{ fontSize: '12px', color: MUTE, marginTop: '7px' }}>Meta Ads · {activeCount} active campaigns</div>
           </div>
         </div>
 
-        {/* Overview KPI */}
-        <div style={{ ...sectionLabel, margin: '22px 0 12px', flexShrink: 0 }}>Overview</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '14px', flexShrink: 0 }}>
+        {/* ROW 1 — 5 KPI */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginTop: '16px', height: '138px', flexShrink: 0 }}>
           {kpis.map((k, i) => (
-            <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '14px', padding: '15px 16px' }}>
+            <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '14px', padding: '14px 16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: k.color }} />
+                <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: k.color, flexShrink: 0 }} />
                 <span style={{ fontSize: '13px', color: SUB }}>{k.label}</span>
               </div>
-              <div style={{ fontSize: '25px', fontWeight: 700, letterSpacing: '-0.6px', margin: '10px 0 7px' }}>{k.value}</div>
-              <Pct pct={k.pct} />
+              <div style={{ fontSize: '23px', fontWeight: 700, letterSpacing: '-0.6px', margin: '7px 0 5px' }}>{k.value}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                <Pct pct={k.pct} />
+                <span style={{ fontSize: '11px', color: MUTE }}>vs prev period</span>
+              </div>
+              <div style={{ flex: 1, minHeight: 0, marginTop: '6px', display: 'flex', alignItems: 'flex-end' }}>
+                <Spark arr={k.spark} color={k.color} h={30} />
+              </div>
             </div>
           ))}
         </div>
 
-        {/* Efficiency strip */}
-        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '14px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', marginTop: '14px', flexShrink: 0, overflow: 'hidden' }}>
-          {secondary.map((m, i) => (
-            <div key={i} style={{ padding: '13px 20px', borderRight: i < 3 ? `1px solid ${BORDER}` : 'none' }}>
-              <div style={{ fontSize: '12px', color: SUB }}>{m.label}</div>
-              <div style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '-0.5px', margin: '3px 0 2px' }}>{m.value}</div>
-              <div style={{ fontSize: '11px', color: MUTE }}>{m.sub}</div>
-            </div>
-          ))}
+        {/* ROW 2 — 4C (CPM/CPC/CPL/CTR) + sparkline + badge % */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginTop: '12px', height: '96px', flexShrink: 0 }}>
+          {secondary.map((m, i) => {
+            const Ic = m.icon;
+            return (
+              <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '14px', padding: '0 18px', display: 'flex', alignItems: 'center', gap: '13px', overflow: 'hidden' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0, background: '#181B1F', border: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ic size={17} color={SUB} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '12px', color: SUB }}>{m.label}</div>
+                  <div style={{ fontSize: '19px', fontWeight: 700, letterSpacing: '-0.4px', margin: '2px 0 2px' }}>{m.value}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                    <Pct pct={m.pct} goodDir={m.goodDir} size={11} />
+                    <span style={{ fontSize: '10px', color: MUTE, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.sub}</span>
+                  </div>
+                </div>
+                <div style={{ width: '66px', flexShrink: 0 }}>
+                  <Spark arr={m.spark} color={GREEN} h={30} />
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Daily performance — 4 grafik */}
-        <div style={{ ...sectionLabel, margin: '22px 0 12px', flexShrink: 0 }}>Daily Performance</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', flex: 1, minHeight: 0 }}>
-          {METRIC_META.map(m => (
-            <MiniChart key={m.key} arr={chartData[m.key] || []} color={m.color} name={m.name} money={m.money} />
-          ))}
+        {/* ROW 3 — Spend Breakdown (donut) + Daily Performance (multi-line, gantikan Top Campaigns) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2.8fr 7.2fr', gap: '12px', flex: 1, minHeight: 0, marginTop: '12px' }}>
+          <DonutCard donut={donut} />
+          <DailyMultiCard chartData={chartData} dates={chartDates} summary={summary || {}} />
         </div>
 
         {/* Footer */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '18px', paddingTop: '14px', borderTop: `1px solid ${BORDER}`, fontSize: '11px', color: MUTE, flexShrink: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', paddingTop: '12px', borderTop: `1px solid ${BORDER}`, fontSize: '11px', color: MUTE, flexShrink: 0 }}>
           <span>WILL OF D · Performance Marketing Dashboard</span>
           <span>Data source: Meta Ads · dashboard-ads-babarafi.vercel.app</span>
         </div>

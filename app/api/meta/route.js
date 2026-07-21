@@ -112,21 +112,27 @@ export async function GET(request) {
         chartRange = { since: first, until: last };
       }
 
-      const [summaryRes, dailyRes, campaignsRes, prevRes] = await Promise.all([
+      // Field insights periode pembanding untuk campaigns (per-campaign, biar CPM/CPC/CPL/CTR
+      // periode lalu bisa dihitung dengan rumus per-tipe yang sama — dipakai badge % di laporan export)
+      const prevField = `time_range({'since':'${prevRange.since}','until':'${prevRange.until}'})`;
+
+      const [summaryRes, dailyRes, campaignsRes, prevRes, prevCampaignsRes] = await Promise.all([
         fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/insights?fields=spend,impressions,reach,clicks,cpm,cpc,ctr,actions&${dateParam}&access_token=${ACCESS_TOKEN}`),
         fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/insights?fields=spend,impressions,reach,clicks,actions&${dateParam}&time_increment=1&access_token=${ACCESS_TOKEN}&limit=90`),
         fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/campaigns?fields=id,name,objective,status,insights.${dateField}{spend,impressions,reach,clicks,ctr,actions}&access_token=${ACCESS_TOKEN}&limit=50`),
         fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/insights?fields=spend,impressions,reach,clicks,actions&${prevParam}&access_token=${ACCESS_TOKEN}`),
+        fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/campaigns?fields=id,name,objective,insights.${prevField}{spend,impressions,clicks,actions}&access_token=${ACCESS_TOKEN}&limit=50`),
       ]);
-      const [summaryData, dailyData, campaignsData, prevData] = await Promise.all([
-        summaryRes.json(), dailyRes.json(), campaignsRes.json(), prevRes.json(),
+      const [summaryData, dailyData, campaignsData, prevData, prevCampaignsData] = await Promise.all([
+        summaryRes.json(), dailyRes.json(), campaignsRes.json(), prevRes.json(), prevCampaignsRes.json(),
       ]);
 
       return NextResponse.json({
-        summary:     summaryData.data?.[0] || {},
-        prevSummary: prevData.data?.[0] || {},
-        daily:       dailyData.data || [],
-        campaigns:   campaignsData.data || [],
+        summary:       summaryData.data?.[0] || {},
+        prevSummary:   prevData.data?.[0] || {},
+        daily:         dailyData.data || [],
+        campaigns:     campaignsData.data || [],
+        prevCampaigns: prevCampaignsData.data || [],
         chartRange,
       });
     }

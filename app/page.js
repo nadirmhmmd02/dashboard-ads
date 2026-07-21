@@ -404,6 +404,8 @@ export default function DashboardPage() {
 
       setActiveCampaignCount(campaigns.filter(c => c.status === 'ACTIVE').length);
 
+      const prevCampaigns  = json.prevCampaigns || [];
+
       const campsWithData  = campaigns.filter(c => parseFloat(c.insights?.data?.[0]?.spend || 0) > 0);
       const trafficCamps   = campsWithData.filter(c => getCampaignType(c.name) === 'TRAFFIC');
       const convCamps      = campsWithData.filter(c => getCampaignType(c.name) === 'CONVERSION');
@@ -417,19 +419,43 @@ export default function DashboardPage() {
       const convClicks      = convCamps.reduce((s,c) => s + parseFloat(c.insights?.data?.[0]?.clicks||0), 0);
       const awareSpend      = awareCamps.reduce((s,c) => s + parseFloat(c.insights?.data?.[0]?.spend||0), 0);
 
+      // 4C periode ini (rumus final per tipe — JANGAN diubah)
+      const calcCPM = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : null;
+      const calcCPC = trafficClicks > 0    ? trafficSpend / trafficClicks            : null;
+      const calcCPL = convLeads > 0        ? convSpend / convLeads                   : null;
+      const calcCTR = convImpressions > 0  ? (convClicks / convImpressions) * 100    : null;
+
+      // 4C periode pembanding — dihitung dari prevCampaigns dgn rumus per-tipe yang SAMA,
+      // supaya badge % di laporan export apple-to-apple. (Dipakai export saja untuk sekarang.)
+      const prevCampsWithData = prevCampaigns.filter(c => parseFloat(c.insights?.data?.[0]?.spend || 0) > 0);
+      const prevTrafficCamps  = prevCampsWithData.filter(c => getCampaignType(c.name) === 'TRAFFIC');
+      const prevConvCamps     = prevCampsWithData.filter(c => getCampaignType(c.name) === 'CONVERSION');
+      const prevTrafficSpend  = prevTrafficCamps.reduce((s,c) => s + parseFloat(c.insights?.data?.[0]?.spend||0), 0);
+      const prevTrafficClicks = prevTrafficCamps.reduce((s,c) => s + getActionValue(c.insights?.data?.[0]?.actions, ['link_click']), 0);
+      const prevConvSpend     = prevConvCamps.reduce((s,c) => s + parseFloat(c.insights?.data?.[0]?.spend||0), 0);
+      const prevConvLeads     = prevConvCamps.reduce((s,c) => s + getActionValue(c.insights?.data?.[0]?.actions, ['lead','onsite_conversion.lead_grouped']), 0);
+      const prevConvImpr      = prevConvCamps.reduce((s,c) => s + parseFloat(c.insights?.data?.[0]?.impressions||0), 0);
+      const prevConvClicks    = prevConvCamps.reduce((s,c) => s + parseFloat(c.insights?.data?.[0]?.clicks||0), 0);
+      const prevCPM = prevImpressions > 0   ? (prevSpend / prevImpressions) * 1000  : null;
+      const prevCPC = prevTrafficClicks > 0 ? prevTrafficSpend / prevTrafficClicks  : null;
+      const prevCPL = prevConvLeads > 0     ? prevConvSpend / prevConvLeads         : null;
+      const prevCTR = prevConvImpr > 0      ? (prevConvClicks / prevConvImpr) * 100 : null;
+
       setSummary({
         totalSpend, totalReach, totalImpressions,
         totalTraffic: trafficClicks,
         totalLeads:   convLeads || curLeadsAcc,
-        calcCPM: totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : null,
-        calcCPC: trafficClicks > 0    ? trafficSpend / trafficClicks            : null,
-        calcCPL: convLeads > 0        ? convSpend / convLeads                   : null,
-        calcCTR: convImpressions > 0  ? (convClicks / convImpressions) * 100    : null,
+        calcCPM, calcCPC, calcCPL, calcCTR,
         pctSpend:       pctChange(totalSpend, prevSpend),
         pctReach:       pctChange(totalReach, prevReach),
         pctImpressions: pctChange(totalImpressions, prevImpressions),
         pctTraffic:     pctChange(curTraffic, prevTraffic),
         pctLeads:       pctChange(curLeadsAcc, prevLeads),
+        // % 4C vs periode sebelumnya (null kalau salah satu sisi tak ada data)
+        pctCPM: calcCPM != null ? pctChange(calcCPM, prevCPM) : null,
+        pctCPC: calcCPC != null ? pctChange(calcCPC, prevCPC) : null,
+        pctCPL: calcCPL != null ? pctChange(calcCPL, prevCPL) : null,
+        pctCTR: calcCTR != null ? pctChange(calcCTR, prevCTR) : null,
       });
 
       const built = buildChartData(daily, chartRange);
@@ -801,6 +827,8 @@ export default function DashboardPage() {
             <ExportMenu
               summary={summary}
               chartData={chartData}
+              chartDates={chartDates}
+              donut={{ segs: donutSegs, total: donutTotal }}
               rangeLabel={filterLabel()}
               activeCount={activeCampaignCount}
             />
@@ -818,6 +846,8 @@ export default function DashboardPage() {
                 <ExportMenu
                   summary={summary}
                   chartData={chartData}
+                  chartDates={chartDates}
+                  donut={{ segs: donutSegs, total: donutTotal }}
                   rangeLabel={filterLabel()}
                   activeCount={activeCampaignCount}
                   compact
