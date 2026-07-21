@@ -562,7 +562,7 @@ export default function LeadsDashboardPage() {
                 Sisa tinggi layar dibagi proporsional ke semua baris (flex-grow kecil
                 per baris) supaya dashboard menyentuh dasar layar tanpa ada baris yang
                 menggelembung sendirian. */}
-            <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '1fr 1fr', flex: '0.6 0 auto' }}>
+            <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '1fr 1fr', flex: '0.6 0 auto', order: 1 }}>
               {/* New Leads + sparkline harian */}
               <div style={{ ...card, padding: '15px 18px', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, position: 'relative', overflow: 'hidden', minHeight: '118px', animation: 'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 0ms backwards' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -604,7 +604,7 @@ export default function LeadsDashboardPage() {
             <div style={{
               background: FOREST, border: `1px solid ${FOREST}`, borderRadius: '18px', boxShadow: 'var(--shadow)',
               padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px',
-              flex: '1.2 0 auto', minWidth: 0,
+              flex: '1.2 0 auto', minWidth: 0, order: 2,
               animation: 'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 120ms backwards',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -648,8 +648,8 @@ export default function LeadsDashboardPage() {
               </div>
             </div>
 
-            {/* ── 3 · LEADS BY SALES + BY CATEGORY (konten mulai dari atas) ── */}
-            <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '7fr 5fr', flex: '1 0 auto' }}>
+            {/* ── LEADS BY SALES + BY CATEGORY (setengah–setengah; turun ke bawah money row saat ada Deal) ── */}
+            <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '1fr 1fr', flex: '1 0 auto', order: 4 }}>
               {/* Leads by Sales — baris per sales (gaya G1) */}
               <div style={{ ...card, padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, animation: 'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 200ms backwards' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
@@ -730,8 +730,10 @@ export default function LeadsDashboardPage() {
               </div>
             </div>
 
-            {/* ── 4 · MONEY ROW (dormant sampai ada Deal) ── */}
-            <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '5fr 7fr', flex: '0.6 0 auto' }}>
+            {/* ── MONEY ROW (dormant sampai ada Deal) ──
+                Saat ADA Deal, baris ini naik ke tepat bawah panel status (order 3),
+                baris Sales/Category turun ke bawahnya (order 4). Ukuran card tetap. */}
+            <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '1fr 1fr', flex: '0.6 0 auto', order: hasDeal ? 3 : 5 }}>
               {/* Total Closing */}
               <div style={{
                 ...(dormant ? dormCard : card), padding: '14px 18px', minWidth: 0, minHeight: '116px',
@@ -788,7 +790,7 @@ export default function LeadsDashboardPage() {
                     cohort attribution — closings counted in the lead&apos;s period
                   </span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0,1fr))', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0,1fr))', gap: '10px' }}>
                   {[
                     { label: 'Conversion Spend', val: loading || !d ? '—' : fmtRp(d.spend) },
                     { label: 'Cost per Deal',    val: loading || !d ? '—' : (d.deals ? fmtRp(d.cpd) : '—') },
@@ -799,7 +801,7 @@ export default function LeadsDashboardPage() {
                     <div key={r.label} style={{ minWidth: 0 }}>
                       <div style={{ ...TYPE.caption, fontWeight: 700, color: 'var(--t3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label}</div>
                       <div style={{
-                        ...TYPE.tableCellStrong, fontSize: '14px', marginTop: '3px', whiteSpace: 'nowrap',
+                        ...TYPE.tableCellStrong, fontSize: '13px', marginTop: '3px', whiteSpace: 'nowrap',
                         color: dormant || loading || !d ? 'var(--t3)' : (r.color && d.deals ? r.color : 'var(--t1)'),
                       }}>{r.val}</div>
                     </div>

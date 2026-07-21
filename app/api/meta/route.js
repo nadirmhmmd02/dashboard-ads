@@ -157,15 +157,24 @@ export async function GET(request) {
     }
 
     // mode=campaigns (default)
-    const [campaignsRes, insightsRes] = await Promise.all([
+    // Sekalian tarik status akun iklan (account_status/disable_reason) supaya halaman
+    // Campaigns bisa memunculkan peringatan kalau iklan mati di Meta (mis. tagihan
+    // belum dibayar / akun ditinjau). Kegagalan fetch akun TIDAK boleh mematikan tabel.
+    const [campaignsRes, insightsRes, accountRes] = await Promise.all([
       fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/campaigns?fields=id,name,objective,status,daily_budget,lifetime_budget,insights.${dateField}{spend,impressions,reach,clicks,cpm,cpc,ctr,actions}&access_token=${ACCESS_TOKEN}&limit=50`),
       fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/insights?fields=spend,impressions,reach,clicks,cpm,cpc,ctr,actions&${dateParam}&access_token=${ACCESS_TOKEN}`),
+      fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}?fields=account_status,disable_reason,name&access_token=${ACCESS_TOKEN}`),
     ]);
-    const [campaignsData, insightsData] = await Promise.all([campaignsRes.json(), insightsRes.json()]);
+    const [campaignsData, insightsData, accountData] = await Promise.all([campaignsRes.json(), insightsRes.json(), accountRes.json()]);
 
     return NextResponse.json({
       campaigns: campaignsData.data || [],
       insights:  insightsData.data || [],
+      account: accountData && !accountData.error ? {
+        status:        accountData.account_status,
+        disableReason: accountData.disable_reason,
+        name:          accountData.name,
+      } : null,
     });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

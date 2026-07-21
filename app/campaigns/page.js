@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, Calculator, Check, ChevronDown, ChevronLeft, ChevronRight, Pause, Pencil, Play, RefreshCw, X } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Calendar, Calculator, Check, ChevronDown, ChevronLeft, ChevronRight, CreditCard, Pause, Pencil, Play, RefreshCw, X } from 'lucide-react';
 import { useCampaignsFilter, DATE_PRESETS_CAMPAIGNS } from '../components/DateFilterContext';
 import { useAuth } from '../components/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
@@ -159,6 +159,53 @@ function applySort(list, sort) {
   });
 }
 
+/* ─── STATUS AKUN IKLAN META ───
+   Kalau iklan mati di Meta (tagihan belum dibayar, akun ditinjau, dsb) angka di
+   dashboard/campaigns bisa tetap "kelihatan normal" padahal iklan sudah berhenti
+   tayang. account_status dari Graph API memberi sinyal itu. Kita terjemahkan ke
+   peringatan berbahasa manusia. Referensi nilai account_status Meta:
+   1=aktif · 2=dinonaktifkan · 3=tagihan belum lunas · 7=ditinjau risiko ·
+   8=menunggu penyelesaian · 9=masa tenggang · 100=proses tutup · 101=ditutup.
+   disable_reason (saat status 2): 3=masalah pembayaran/risiko. */
+const ACCOUNT_DISABLE_REASON = {
+  1: 'it broke Meta advertising policies',
+  2: 'it is under intellectual-property review',
+  3: 'a payment or account-risk problem',
+  5: 'it is under review by Meta',
+  7: 'it was permanently closed by Meta',
+};
+function accountAlert(account) {
+  if (!account || account.status == null || account.status === 1 || account.status === 201) return null;
+  const s = account.status;
+  const base = { icon: 'card', level: 'error' };
+  switch (s) {
+    case 3: // UNSETTLED — kasus paling umum: tagihan belum dibayar, iklan berhenti tayang
+      return { ...base, title: 'Ads stopped — unpaid balance',
+        body: 'There is an unpaid balance on your Meta Ads account, so every ad has stopped running even though the campaigns below may still say "Active". Settle the payment in Meta Ads Manager → Billing to get your ads running again.' };
+    case 8:
+      return { ...base, level: 'warn', icon: 'card', title: 'Waiting for payment to settle',
+        body: 'Your account payment is being processed by Meta. Ads may pause until the payment clears.' };
+    case 9:
+      return { ...base, level: 'warn', icon: 'card', title: 'Account is in a payment grace period',
+        body: 'Your ads are still running for now, but there is a balance that needs to be paid soon in Meta Ads Manager → Billing before the grace period ends.' };
+    case 2:
+      return { ...base, title: 'Ad account disabled by Meta',
+        body: `Your ad account is disabled${account.disableReason && ACCOUNT_DISABLE_REASON[account.disableReason] ? ` because of ${ACCOUNT_DISABLE_REASON[account.disableReason]}` : ''}. All ads have stopped running. Check Account Quality / Ads Manager for the recovery steps.` };
+    case 7:
+      return { ...base, level: 'warn', icon: 'review', title: 'Account under review by Meta',
+        body: 'Meta is reviewing your ad account. Ads may pause until the review is finished.' };
+    case 100:
+      return { ...base, icon: 'review', title: 'Ad account is being closed',
+        body: 'Your ad account is being processed for closure, so ads will not run. Contact Meta support if this is unexpected.' };
+    case 101:
+      return { ...base, icon: 'review', title: 'Ad account is closed',
+        body: 'This ad account has been closed, so no ads are running.' };
+    default:
+      return { ...base, level: 'warn', icon: 'review', title: 'Ad account has an issue on Meta',
+        body: 'Your ad account status is not normal, so ads may stop running. Check Meta Ads Manager for the details.' };
+  }
+}
+
 export default function CampaignsPage() {
   const { dateOpt, customSince, setCustomSince, customUntil, setCustomUntil, isCustom, selectPreset, applyCustom } = useCampaignsFilter();
   const { isAdmin } = useAuth();
@@ -170,6 +217,7 @@ export default function CampaignsPage() {
   useEffect(() => {
     setTopbarSlot(isMobile ? document.getElementById('wd-topbar-actions') : null);
   }, [isMobile]);
+
   const [data, setData]                   = useState(null);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState(null);
@@ -696,6 +744,9 @@ export default function CampaignsPage() {
     ].filter(Boolean);
   }
 
+  // Peringatan status akun iklan Meta (mis. tagihan belum dibayar / akun ditinjau)
+  const acctAlert = accountAlert(data?.account);
+
   // Tombol refresh — header (desktop) atau top bar via portal (mobile)
   const refreshBtn = (
     <button onClick={refresh} title="Refresh" style={{
@@ -771,6 +822,52 @@ export default function CampaignsPage() {
           {isMobile && topbarSlot && createPortal(refreshBtn, topbarSlot)}
         </div>
       </div>
+
+      {/* ── Peringatan status akun iklan Meta (iklan mati karena tagihan/dinonaktifkan/ditinjau) ── */}
+      {acctAlert && (() => {
+        const isErr = acctAlert.level === 'error';
+        const accent = isErr ? '#EF4444' : '#F59E0B';
+        const AlertIcon = acctAlert.icon === 'card' ? CreditCard : AlertTriangle;
+        return (
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: '14px',
+            padding: isMobile ? '14px 16px' : '16px 20px',
+            marginBottom: isMobile ? '16px' : '10px',
+            background: isErr ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.09)',
+            border: `1px solid ${isErr ? 'rgba(239,68,68,0.32)' : 'rgba(245,158,11,0.34)'}`,
+            borderRadius: isMobile ? '12px' : '18px',
+            animation: 'wdFadeUp 0.35s cubic-bezier(0.4,0,0.2,1)',
+          }}>
+            <span style={{
+              width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: isErr ? 'rgba(239,68,68,0.14)' : 'rgba(245,158,11,0.16)',
+            }}>
+              <AlertIcon size={19} color={accent} />
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '9px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: isMobile ? '13.5px' : '14px', fontWeight: 700, color: 'var(--t1)' }}>{acctAlert.title}</span>
+                <span style={{
+                  padding: '2px 8px', borderRadius: '999px', fontSize: '10px', fontWeight: 700,
+                  letterSpacing: '0.3px', textTransform: 'uppercase',
+                  background: accent, color: '#fff',
+                }}>{isErr ? 'Ads down' : 'Needs attention'}</span>
+              </div>
+              <div style={{ fontSize: '12.5px', color: 'var(--t2)', lineHeight: 1.55, marginTop: '5px' }}>
+                {acctAlert.body}
+              </div>
+              <a href="https://adsmanager.facebook.com/" target="_blank" rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '10px',
+                  fontSize: '12px', fontWeight: 600, color: accent, textDecoration: 'none',
+                }}>
+                Open Meta Ads Manager <ChevronRight size={13} />
+              </a>
+            </div>
+          </div>
+        );
+      })()}
 
       {loading && (
         <div style={{ textAlign: 'center', padding: '60px', color: 'var(--t3)', fontSize: '14px' }}>

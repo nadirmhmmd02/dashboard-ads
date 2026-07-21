@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Inbox, Users, RefreshCw, Download, Upload, Search, Copy, Check, X,
-  Pencil, CheckCircle2, CircleAlert, SlidersHorizontal, UserRound, Plus,
+  Pencil, CheckCircle2, CircleAlert, SlidersHorizontal, UserRound, Plus, CalendarDays,
 } from 'lucide-react';
 import { useAuth } from '../../components/AuthContext';
 import { supabase, authFetch } from '../../supabase';
@@ -106,6 +106,9 @@ export default function LeadsListPage() {
   const [fSales, setFSales] = useState('Semua');
   const [selected, setSelected] = useState(() => new Set());
   const [page, setPage] = useState(1);
+  // Default All Leads hanya menampilkan 3 tanggal terakhir (hari ini + 2 hari sebelumnya).
+  // Sisanya disembunyikan tapi bisa dibuka lewat toggle (pola "show subtotal" di Campaigns).
+  const [showAllDates, setShowAllDates] = useState(false);
 
   // Kolom tersembunyi (persist di localStorage)
   const [hiddenCols, setHiddenCols] = useState(() => new Set());
@@ -271,12 +274,34 @@ export default function LeadsListPage() {
     return list;
   }, [rows, q, fKategori, fStatus, fSales, tab, maskContacts]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  /* ── Jendela 3 tanggal terakhir (hanya All Leads) ──
+     Batas = jam 00:00 pada (hari ini − 2 hari), jadi hari ini + 2 hari sebelumnya
+     = 3 tanggal kalender. Black Box tetap tampil penuh (antrian verifikasi). */
+  const dateCutoff = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - 2);
+    return d.getTime();
+  }, []);
+  const dateWindowActive = tab === 'list' && !showAllDates;
+  const visible = useMemo(() => {
+    if (!dateWindowActive) return filtered;
+    return filtered.filter(r => r.created_at && new Date(r.created_at).getTime() >= dateCutoff);
+  }, [filtered, dateWindowActive, dateCutoff]);
+  const hiddenByDate = filtered.length - visible.length;
+  const windowLabel = useMemo(() => {
+    const start = new Date(dateCutoff);
+    const end = new Date();
+    const f = (d) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    return `${f(start)} – ${f(end)}`;
+  }, [dateCutoff]);
+
+  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const pageRows = visible.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   useEffect(() => { if (page > totalPages) setPage(1); }, [totalPages, page]);
 
   const allPageSelected = pageRows.length > 0 && pageRows.every(r => selected.has(r.id));
-  const allSelected = selected.size === filtered.length && filtered.length > 0;
+  const allSelected = selected.size === visible.length && visible.length > 0;
 
   /* Status follow-up baris terpilih → menentukan tombol bulk mana yang ditampilkan:
      semua belum di-mark → hanya "Mark", semua sudah → hanya "Unmark", campuran → dua-duanya. */
@@ -351,7 +376,8 @@ export default function LeadsListPage() {
         <div>
           <h1 style={{ ...TYPE.h1, ...(isMobile ? { fontSize: '20px' } : null) }}>Leads List</h1>
           <p style={{ ...TYPE.small, marginTop: '3px' }}>
-            Leads Hub · {rows === null ? '…' : `${filtered.length} leads`}
+            Leads Hub · {rows === null ? '…' : `${visible.length} leads`}
+            {dateWindowActive && hiddenByDate > 0 ? ` · ${hiddenByDate} older hidden` : ''}
             {isAdmin && inboxCount > 0 && tab !== 'inbox' ? ` · ${inboxCount} in Black Box` : ''}
           </p>
         </div>
@@ -497,6 +523,40 @@ export default function LeadsListPage() {
         )}
       </div>
 
+      {/* ══ TOGGLE JENDELA 3 TANGGAL TERAKHIR (All Leads) ══
+          Pola "show subtotal" Campaigns: default sembunyikan lead lama, bisa dibuka. */}
+      {tab === 'list' && !loading && !error && rows && (hiddenByDate > 0 || showAllDates) && (
+        <div style={{ padding: isMobile ? '10px 16px 0' : '8px 16px 0', flexShrink: 0 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+            padding: '8px 14px', borderRadius: '12px',
+            background: 'var(--sf)', border: '1px dashed var(--br)',
+          }}>
+            <CalendarDays size={14} color="var(--t3)" style={{ flexShrink: 0 }} />
+            <span style={{ ...TYPE.small }}>
+              {showAllDates
+                ? 'Showing all dates'
+                : <>Showing the last 3 days · <span style={{ fontWeight: 600, color: 'var(--t1)' }}>{windowLabel}</span></>}
+            </span>
+            {!showAllDates && hiddenByDate > 0 && (
+              <span style={{ ...TYPE.caption, padding: '2px 9px', borderRadius: '999px', background: 'var(--hover)', color: 'var(--t2)', fontWeight: 600 }}>
+                {hiddenByDate} older lead{hiddenByDate === 1 ? '' : 's'} hidden
+              </span>
+            )}
+            <button
+              onClick={() => { setShowAllDates(v => !v); setPage(1); }}
+              style={{
+                marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '6px 12px', borderRadius: '9px', border: '1px solid var(--br)',
+                background: 'var(--cd)', color: 'var(--ac)', fontSize: '12px', fontWeight: 600,
+                cursor: 'pointer', whiteSpace: 'nowrap',
+              }}>
+              {showAllDates ? 'Show recent 3 days only' : 'Show all dates'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ══ TABEL ══ */}
       <div style={{ flex: 1, minHeight: 0, padding: isMobile ? '12px 16px 16px' : '10px 16px 16px', display: 'flex', flexDirection: 'column' }}>
         <div style={{ ...card, flex: 1, minHeight: 0, overflow: 'auto' }}>
@@ -515,16 +575,20 @@ export default function LeadsListPage() {
                 }} />
               ))}
             </div>
-          ) : filtered.length === 0 ? (
+          ) : visible.length === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '56px 20px', textAlign: 'center' }}>
-              {tab === 'inbox' ? <CheckCircle2 size={36} color="var(--cal-accent)" /> : <Users size={36} color="var(--t3)" />}
+              {tab === 'inbox' ? <CheckCircle2 size={36} color="var(--cal-accent)" /> : (dateWindowActive && hiddenByDate > 0 ? <CalendarDays size={36} color="var(--t3)" /> : <Users size={36} color="var(--t3)" />)}
               <div style={{ ...TYPE.h3 }}>
-                {tab === 'inbox' ? 'Black Box clear — every lead has been verified' : (rows?.length ? 'No leads match your filters' : 'No leads yet')}
+                {tab === 'inbox'
+                  ? 'Black Box clear — every lead has been verified'
+                  : (dateWindowActive && hiddenByDate > 0 ? 'No leads in the last 3 days' : (rows?.length ? 'No leads match your filters' : 'No leads yet'))}
               </div>
               <div style={{ ...TYPE.small, maxWidth: '380px' }}>
                 {tab === 'inbox'
                   ? 'New leads from Meta instant forms will appear here after a Sync. Approve them to move them into All Leads.'
-                  : (rows?.length ? 'Try a different keyword or reset the filters.' : (isAdmin ? 'Click "Add Leads" → Sync Meta Leads to pull leads from your instant forms, then approve them from Black Box.' : 'Leads verified by the admin will show up here.'))}
+                  : (dateWindowActive && hiddenByDate > 0
+                      ? `${hiddenByDate} older lead${hiddenByDate === 1 ? '' : 's'} are hidden by the 3-day filter. Use "Show all dates" above to see everything.`
+                      : (rows?.length ? 'Try a different keyword or reset the filters.' : (isAdmin ? 'Click "Add Leads" → Sync Meta Leads to pull leads from your instant forms, then approve them from Black Box.' : 'Leads verified by the admin will show up here.')))}
               </div>
             </div>
           ) : (
