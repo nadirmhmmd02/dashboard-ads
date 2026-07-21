@@ -831,6 +831,8 @@ export default function DashboardPage() {
               donut={{ segs: donutSegs, total: donutTotal }}
               rangeLabel={filterLabel()}
               activeCount={activeCampaignCount}
+              since={isCustom ? customSince : ''}
+              until={isCustom ? customUntil : ''}
             />
           )}
 
@@ -850,6 +852,8 @@ export default function DashboardPage() {
                   donut={{ segs: donutSegs, total: donutTotal }}
                   rangeLabel={filterLabel()}
                   activeCount={activeCampaignCount}
+                  since={isCustom ? customSince : ''}
+                  until={isCustom ? customUntil : ''}
                   compact
                 />
               )}

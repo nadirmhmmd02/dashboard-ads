@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, forwardRef } from 'react';
 import {
   Download, ChevronDown, FileText, Image as ImageIcon, Loader2,
   ScanLine, MousePointerClick, UserPlus, Target,
 } from 'lucide-react';
 import Logo from './Logo';
+import { authFetch } from '../supabase';
+import { buildReportData, monthChunks, isWholeMonths, rangeLabelOf, monthToken } from './reportData';
 
 /* ─── Report palette — SELALU dark (artefak laporan, tidak ikut tema) ─── */
 const BG     = '#090A0C';
@@ -45,14 +47,7 @@ function smoothPath(pts) {
   return d;
 }
 
-/* series harian ratio (untuk sparkline 4C), sejajar dgn perhitungan dashboard */
-function ratio(a = [], b = [], mul = 1) {
-  return a.map((v, i) => (v != null && b[i] > 0) ? (v / b[i]) * mul : null);
-}
-
-/* ─── Badge perbandingan % vs periode sebelumnya ───
-   Panah = arah nyata; warna = baik/buruk. Untuk biaya (CPM/CPC/CPL) turun = baik (hijau),
-   untuk hasil (CTR + 5 KPI volume) naik = baik. */
+/* ─── Badge % vs periode sebelumnya (panah = arah nyata; warna = baik/buruk) ─── */
 function Pct({ pct, goodDir = 'up', size = 14 }) {
   if (pct === null || pct === undefined) return null;
   const up = pct >= 0;
@@ -64,7 +59,7 @@ function Pct({ pct, goodDir = 'up', size = 14 }) {
   );
 }
 
-/* ─── Sparkline mini (area + garis) untuk kartu KPI ─── */
+/* ─── Sparkline mini untuk kartu KPI ─── */
 function Spark({ arr = [], color = GREEN, h = 34 }) {
   const valid = [];
   arr.forEach((v, i) => { if (v != null) valid.push({ v, i }); });
@@ -91,7 +86,7 @@ function Spark({ arr = [], color = GREEN, h = 34 }) {
   );
 }
 
-/* ─── Donut Spend Breakdown (pakai dash/offset yang sudah dihitung di dashboard) ─── */
+/* ─── Donut Spend Breakdown ─── */
 function DonutCard({ donut }) {
   const segs  = donut?.segs || [];
   const total = donut?.total || { value: '—', label: 'Total Spend' };
@@ -137,15 +132,15 @@ function DonutCard({ donut }) {
   );
 }
 
-/* ─── Kartu chart harian GABUNGAN — semua metrik dalam satu card, tiap warna satu metrik.
-   Tiap garis dinormalisasi ke skala-nya sendiri (skala metrik beda jauh) supaya semua
-   tren terlihat; nilai total nyata ada di legenda. ─── */
+/* ─── Kartu chart harian gabungan (semua metrik, tiap warna satu metrik) ───
+   Sumbu-X: tampil LENGKAP kalau ≤ ~1 bulan; kalau lebih panjang (mis. 2 bulan
+   jadi 1 gambar) ditipiskan proporsional jadi ~15 label biar tidak berdesakan. */
 function DailyMultiCard({ chartData = {}, dates = [], summary = {} }) {
   const series = [
-    { key: 'spend',     name: 'Spend',      color: GREEN,  total: fmtSpendFull(summary.totalSpend) },
-    { key: 'awareness', name: 'Awareness',  color: PURPLE, total: fmtNumFull(summary.totalImpressions) },
-    { key: 'traffic',   name: 'Traffic',    color: ORANGE, total: fmtNumFull(summary.totalTraffic) },
-    { key: 'leads',     name: 'Leads',      color: BLUE,   total: fmtNumFull(summary.totalLeads) },
+    { key: 'spend',     name: 'Spend',     color: GREEN,  total: fmtSpendFull(summary.totalSpend) },
+    { key: 'awareness', name: 'Awareness', color: PURPLE, total: fmtNumFull(summary.totalImpressions) },
+    { key: 'traffic',   name: 'Traffic',   color: ORANGE, total: fmtNumFull(summary.totalTraffic) },
+    { key: 'leads',     name: 'Leads',     color: BLUE,   total: fmtNumFull(summary.totalLeads) },
   ];
   const n = Math.max(1, ...series.map(s => (chartData[s.key] || []).length));
 
@@ -158,13 +153,12 @@ function DailyMultiCard({ chartData = {}, dates = [], summary = {} }) {
     return { ...s, d: smoothPath(pts) };
   });
 
-  // Label sumbu-X: tampilkan SEMUA tanggal (lengkap). Baru dijarangkan kalau
-  // rentangnya sangat panjang (mis. kuartal) supaya angkanya tidak tumpang tindih.
   const ticks = [];
   if (dates.length) {
-    const step = dates.length <= 46 ? 1 : Math.ceil(dates.length / 46);
+    const step = dates.length <= 33 ? 1 : Math.ceil(dates.length / 15);
     for (let i = 0; i < dates.length; i += step) ticks.push({ x: n > 1 ? (i / (n - 1)) * 100 : 50, label: dates[i] });
   }
+  const denseTicks = ticks.length > 20;
 
   return (
     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '20px 22px 16px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -200,7 +194,7 @@ function DailyMultiCard({ chartData = {}, dates = [], summary = {} }) {
       {ticks.length > 0 && (
         <div style={{ position: 'relative', height: '16px', marginTop: '8px', flexShrink: 0 }}>
           {ticks.map((t, i) => (
-            <span key={i} style={{ position: 'absolute', left: t.x + '%', transform: 'translateX(-50%)', fontSize: '9.5px', color: MUTE }}>{t.label}</span>
+            <span key={i} style={{ position: 'absolute', left: t.x + '%', transform: 'translateX(-50%)', fontSize: denseTicks ? '9.5px' : '11px', color: MUTE }}>{t.label}</span>
           ))}
         </div>
       )}
@@ -208,11 +202,107 @@ function DailyMultiCard({ chartData = {}, dates = [], summary = {} }) {
   );
 }
 
+/* ─── ReportBody — kartu laporan 1280×720 (dipakai untuk 1 gambar & pisah per bulan) ─── */
+const ReportBody = forwardRef(function ReportBody({ summary, chartData = {}, chartDates = [], donut = {}, rangeLabel = '', activeCount = 0 }, ref) {
+  const kpis = summary ? [
+    { label: 'Total Spend',  value: fmtSpendFull(summary.totalSpend),     pct: summary.pctSpend,       color: GREEN,  spark: chartData.spend },
+    { label: 'Reach',        value: fmtNumFull(summary.totalReach),       pct: summary.pctReach,       color: BLUE,   spark: chartData.awareness },
+    { label: 'Impressions',  value: fmtNumFull(summary.totalImpressions), pct: summary.pctImpressions, color: PURPLE, spark: chartData.awareness },
+    { label: 'Traffic',      value: fmtNumFull(summary.totalTraffic),     pct: summary.pctTraffic,     color: ORANGE, spark: chartData.traffic },
+    { label: 'Leads',        value: fmtNumFull(summary.totalLeads),       pct: summary.pctLeads,       color: GREEN,  spark: chartData.leads },
+  ] : [];
+  const secondary = summary ? [
+    { label: 'CPM', value: summary.calcCPM ? fmtSpendFull(summary.calcCPM) : '—', sub: 'cost per 1K impressions', icon: ScanLine,          pct: summary.pctCPM, goodDir: 'down' },
+    { label: 'CPC', value: summary.calcCPC ? fmtSpendFull(summary.calcCPC) : '—', sub: 'cost per click',          icon: MousePointerClick, pct: summary.pctCPC, goodDir: 'down' },
+    { label: 'CPL', value: summary.calcCPL ? fmtSpendFull(summary.calcCPL) : '—', sub: 'cost per lead',           icon: UserPlus,          pct: summary.pctCPL, goodDir: 'down' },
+    { label: 'CTR', value: summary.calcCTR ? summary.calcCTR.toFixed(2) + '%' : '—', sub: 'click through rate',   icon: Target,            pct: summary.pctCTR, goodDir: 'up' },
+  ] : [];
+
+  return (
+    <div ref={ref} style={{
+      position: 'fixed', left: '-10000px', top: 0, width: '1280px', height: '720px',
+      background: BG, color: TXT, padding: '36px 46px', overflow: 'hidden',
+      display: 'flex', flexDirection: 'column', fontFamily: 'inherit',
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '18px', borderBottom: `1px solid ${BORDER}`, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <div style={{ width: '46px', height: '46px', borderRadius: '13px', background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Logo size={27} color="#0A0F06" />
+          </div>
+          <div style={{ fontSize: '31px', fontWeight: 800, letterSpacing: '-0.6px' }}>Performance Marketing Report</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ display: 'inline-block', padding: '7px 16px', borderRadius: '10px', background: 'rgba(47,182,115,0.14)', color: GREEN, fontSize: '15px', fontWeight: 700 }}>
+            {rangeLabel || '—'}
+          </div>
+          <div style={{ fontSize: '13px', color: MUTE, marginTop: '8px' }}>Meta Ads · {activeCount} active campaigns</div>
+        </div>
+      </div>
+
+      {/* ROW 1 — 5 KPI */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '14px', marginTop: '18px', height: '160px', flexShrink: 0 }}>
+        {kpis.map((k, i) => (
+          <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '16px 18px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: k.color, flexShrink: 0 }} />
+              <span style={{ fontSize: '14px', color: SUB }}>{k.label}</span>
+            </div>
+            <div style={{ fontSize: '25px', fontWeight: 800, letterSpacing: '-0.6px', margin: '9px 0 6px' }}>{k.value}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Pct pct={k.pct} />
+              <span style={{ fontSize: '12px', color: MUTE }}>vs prev period</span>
+            </div>
+            <div style={{ flex: 1, minHeight: 0, marginTop: '8px', display: 'flex', alignItems: 'flex-end' }}>
+              <Spark arr={k.spark} color={k.color} h={34} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ROW 2 — 4C */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginTop: '14px', height: '96px', flexShrink: 0 }}>
+        {secondary.map((m, i) => {
+          const Ic = m.icon;
+          return (
+            <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '14px', overflow: 'hidden' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '50%', flexShrink: 0, background: '#181B1F', border: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Ic size={19} color={SUB} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                  <span style={{ fontSize: '14px', color: SUB }}>{m.label}</span>
+                  <Pct pct={m.pct} goodDir={m.goodDir} size={13} />
+                </div>
+                <div style={{ fontSize: '25px', fontWeight: 800, letterSpacing: '-0.6px', margin: '3px 0 2px', whiteSpace: 'nowrap' }}>{m.value}</div>
+                <div style={{ fontSize: '12px', color: MUTE, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.sub}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ROW 3 — donut + daily performance */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2.8fr 7.2fr', gap: '14px', flex: 1, minHeight: 0, marginTop: '14px' }}>
+        <DonutCard donut={donut} />
+        <DailyMultiCard chartData={chartData} dates={chartDates} summary={summary || {}} />
+      </div>
+    </div>
+  );
+});
+
 // compact: tombol icon-only (dipakai toolbar mobile biar chip muat satu baris)
-export default function ExportMenu({ summary, chartData = {}, chartDates = [], donut = {}, rangeLabel = '', activeCount = 0, compact = false }) {
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
+export default function ExportMenu({ summary, chartData = {}, chartDates = [], donut = {}, rangeLabel = '', activeCount = 0, since = '', until = '', compact = false }) {
+  const [open, setOpen]   = useState(false);
+  const [busy, setBusy]   = useState(false);
+  const [splitMode, setSplitMode] = useState('combined');   // 'combined' | 'perMonth'
+  const [split, setSplit] = useState(null);                 // { format, reports:[...] } saat menangkap gambar per bulan
   const reportRef = useRef(null);
+  const splitRefs = useRef([]);
+
+  // Opsi "pisah per bulan" hanya kalau filter = beberapa bulan penuh (≥2)
+  const months   = isWholeMonths(since, until) ? monthChunks(since, until) : [];
+  const canSplit = months.length >= 2;
 
   useEffect(() => {
     if (!open) return;
@@ -221,26 +311,25 @@ export default function ExportMenu({ summary, chartData = {}, chartDates = [], d
     return () => document.removeEventListener('mousedown', h);
   }, [open]);
 
-  async function runExport(type) {
-    setOpen(false);
+  const stamp = () => new Date().toISOString().slice(0, 10);
+
+  // Export 1 gambar (rentang aktif apa adanya) — snapshot report tunggal
+  async function runSingle(type) {
     if (!reportRef.current || busy) return;
     setBusy(true);
     try {
       const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(reportRef.current, { scale: 2, backgroundColor: BG, useCORS: true, logging: false });
-      const stamp = new Date().toISOString().slice(0, 10);
       const wCss = canvas.width / 2, hCss = canvas.height / 2;
-
       if (type === 'jpg') {
-        const url = canvas.toDataURL('image/jpeg', 0.95);
         const a = document.createElement('a');
-        a.href = url; a.download = `BabaRafiAdHub-report-${stamp}.jpg`;
+        a.href = canvas.toDataURL('image/jpeg', 0.95); a.download = `BabaRafiAdHub-report-${stamp()}.jpg`;
         document.body.appendChild(a); a.click(); a.remove();
       } else {
         const { jsPDF } = await import('jspdf');
         const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [wCss, hCss] });
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, wCss, hCss);
-        pdf.save(`BabaRafiAdHub-report-${stamp}.pdf`);
+        pdf.save(`BabaRafiAdHub-report-${stamp()}.pdf`);
       }
     } catch (err) {
       console.error('Export failed:', err);
@@ -249,21 +338,77 @@ export default function ExportMenu({ summary, chartData = {}, chartDates = [], d
     setBusy(false);
   }
 
-  const kpis = summary ? [
-    { label: 'Total Spend',  value: fmtSpendFull(summary.totalSpend),     pct: summary.pctSpend,       color: GREEN,  spark: chartData.spend },
-    { label: 'Reach',        value: fmtNumFull(summary.totalReach),       pct: summary.pctReach,       color: BLUE,   spark: chartData.awareness },
-    { label: 'Impressions',  value: fmtNumFull(summary.totalImpressions), pct: summary.pctImpressions, color: PURPLE, spark: chartData.awareness },
-    { label: 'Traffic',      value: fmtNumFull(summary.totalTraffic),     pct: summary.pctTraffic,     color: ORANGE, spark: chartData.traffic },
-    { label: 'Leads',        value: fmtNumFull(summary.totalLeads),       pct: summary.pctLeads,       color: GREEN,  spark: chartData.leads },
-  ] : [];
+  // Export pisah per bulan: fetch tiap bulan → build → render N ReportBody → capture (di useEffect)
+  async function runSplit(type) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const reports = await Promise.all(months.map(async (mo) => {
+        const res  = await authFetch(`/api/meta?mode=dashboard&since=${mo.since}&until=${mo.until}`);
+        const json = await res.json();
+        if (json.error) throw new Error(json.error);
+        return { ...buildReportData(json), rangeLabel: rangeLabelOf(mo.since, mo.until), token: monthToken(mo) };
+      }));
+      splitRefs.current = [];
+      setSplit({ format: type, reports });   // trigger render + capture di useEffect
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('Export gagal: ' + err.message);
+      setBusy(false);
+    }
+  }
 
-  // 4C — value penuh + badge % (biaya turun = hijau, CTR naik = hijau)
-  const secondary = summary ? [
-    { label: 'CPM', value: summary.calcCPM ? fmtSpendFull(summary.calcCPM) : '—', sub: 'cost per 1K impressions', icon: ScanLine,          pct: summary.pctCPM, goodDir: 'down' },
-    { label: 'CPC', value: summary.calcCPC ? fmtSpendFull(summary.calcCPC) : '—', sub: 'cost per click',          icon: MousePointerClick, pct: summary.pctCPC, goodDir: 'down' },
-    { label: 'CPL', value: summary.calcCPL ? fmtSpendFull(summary.calcCPL) : '—', sub: 'cost per lead',           icon: UserPlus,          pct: summary.pctCPL, goodDir: 'down' },
-    { label: 'CTR', value: summary.calcCTR ? summary.calcCTR.toFixed(2) + '%' : '—', sub: 'click through rate',   icon: Target,            pct: summary.pctCTR, goodDir: 'up' },
-  ] : [];
+  // Tangkap gambar per bulan setelah N ReportBody ter-render
+  useEffect(() => {
+    if (!split) return;
+    let cancelled = false;
+    (async () => {
+      // tunggu 2 frame + sedikit jeda supaya layout & font matang
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      await new Promise(r => setTimeout(r, 80));
+      if (cancelled) return;
+      try {
+        const html2canvas = (await import('html2canvas')).default;
+        const canvases = [];
+        for (let i = 0; i < split.reports.length; i++) {
+          const el = splitRefs.current[i];
+          if (el) canvases.push(await html2canvas(el, { scale: 2, backgroundColor: BG, useCORS: true, logging: false }));
+        }
+        if (split.format === 'jpg') {
+          // JPG: tiap bulan jadi file terpisah, kedownload otomatis satu per satu (bukan zip)
+          for (let i = 0; i < canvases.length; i++) {
+            const a = document.createElement('a');
+            a.href = canvases[i].toDataURL('image/jpeg', 0.95);
+            a.download = `BabaRafiAdHub-report-${split.reports[i].token}-${stamp()}.jpg`;
+            document.body.appendChild(a); a.click(); a.remove();
+            await new Promise(r => setTimeout(r, 400));   // jeda antar unduhan biar tidak diblok browser
+          }
+        } else {
+          // PDF: satu file, N lembar berurutan
+          const { jsPDF } = await import('jspdf');
+          let pdf;
+          canvases.forEach((c, i) => {
+            const w = c.width / 2, h = c.height / 2;
+            if (i === 0) pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [w, h] });
+            else pdf.addPage([w, h], 'landscape');
+            pdf.addImage(c.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, w, h);
+          });
+          if (pdf) pdf.save(`BabaRafiAdHub-report-${split.reports.length}bulan-${stamp()}.pdf`);
+        }
+      } catch (err) {
+        console.error('Export failed:', err);
+        alert('Export gagal: ' + err.message);
+      }
+      if (!cancelled) { setSplit(null); setBusy(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [split]);
+
+  function handleFormat(type) {
+    setOpen(false);
+    if (canSplit && splitMode === 'perMonth') runSplit(type);
+    else runSingle(type);
+  }
 
   return (
     <div style={{ position: 'relative' }} data-export>
@@ -290,25 +435,45 @@ export default function ExportMenu({ summary, chartData = {}, chartDates = [], d
         {!compact && !busy && <ChevronDown size={13} color={UI_SUB} />}
       </button>
 
-      {/* ── Dropdown format ── */}
+      {/* ── Dropdown format (+ pilihan pisah per bulan kalau filter beberapa bulan) ── */}
       {open && !busy && (
-        /* Lapisan POSISI (rata tengah thd tombol) dipisah dari lapisan ANIMASI —
-           wdScaleIn pakai transform, kalau digabung translateX(-50%) popup meleset. */
+        <div style={{ position: 'absolute', top: '46px', left: '50%', transform: 'translateX(-50%)', zIndex: 50 }}>
         <div style={{
-          position: 'absolute', top: '46px', left: '50%', transform: 'translateX(-50%)', zIndex: 50,
-        }}>
-        <div style={{
-          background: UI_CARD, border: `1px solid ${UI_BORDER}`, borderRadius: '12px', minWidth: '190px',
+          background: UI_CARD, border: `1px solid ${UI_BORDER}`, borderRadius: '12px', minWidth: canSplit ? '244px' : '190px',
           boxShadow: 'var(--pop-shadow)', animation: 'wdScaleIn 0.15s cubic-bezier(0.4,0,0.2,1)', overflow: 'hidden', padding: '6px',
         }}>
-          <div style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '1.4px', color: UI_MUTE, textTransform: 'uppercase', padding: '6px 10px 8px' }}>Export as</div>
+          {canSplit && (
+            <>
+              <div style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '0.8px', color: UI_MUTE, textTransform: 'uppercase', padding: '6px 10px 6px' }}>
+                {months.length} bulan — jadikan
+              </div>
+              <div style={{ display: 'flex', gap: '6px', padding: '0 8px 8px' }}>
+                {[
+                  { v: 'combined', label: '1 gambar' },
+                  { v: 'perMonth', label: `Per bulan (${months.length})` },
+                ].map(opt => {
+                  const on = splitMode === opt.v;
+                  return (
+                    <button key={opt.v} onClick={() => setSplitMode(opt.v)} style={{
+                      flex: 1, padding: '8px 6px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, fontFamily: 'inherit',
+                      border: `1px solid ${on ? 'var(--cal-accent)' : UI_BORDER}`,
+                      background: on ? 'var(--cal-accent-soft, var(--hover))' : 'transparent',
+                      color: on ? 'var(--ac)' : UI_SUB, transition: 'all 0.12s',
+                    }}>{opt.label}</button>
+                  );
+                })}
+              </div>
+              <div style={{ height: '1px', background: UI_BORDER, margin: '0 8px 6px' }} />
+            </>
+          )}
+          <div style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '1.4px', color: UI_MUTE, textTransform: 'uppercase', padding: '2px 10px 8px' }}>Export as</div>
           {[
-            { type: 'pdf', label: 'PDF Document', icon: FileText, hint: '.pdf' },
-            { type: 'jpg', label: 'JPG Image',    icon: ImageIcon, hint: '.jpg' },
+            { type: 'pdf', label: 'PDF Document', icon: FileText, hint: canSplit && splitMode === 'perMonth' ? `${months.length} lembar` : '.pdf' },
+            { type: 'jpg', label: 'JPG Image',    icon: ImageIcon, hint: canSplit && splitMode === 'perMonth' ? `${months.length} file` : '.jpg' },
           ].map(o => {
             const Ic = o.icon;
             return (
-              <div key={o.type} onClick={() => runExport(o.type)} style={{
+              <div key={o.type} onClick={() => handleFormat(o.type)} style={{
                 display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', color: UI_SUB,
               }}
                 onMouseEnter={e => { e.currentTarget.style.background = UI_HOVER; e.currentTarget.style.color = UI_TXT; }}
@@ -324,78 +489,15 @@ export default function ExportMenu({ summary, chartData = {}, chartDates = [], d
         </div>
       )}
 
-      {/* ══════════ LAPORAN TERSEMBUNYI 16:9 (1280×720) — mirror dashboard ══════════
-          Font mengikuti web (inherit Plus Jakarta Sans dari <body>). */}
-      <div ref={reportRef} style={{
-        position: 'fixed', left: '-10000px', top: 0, width: '1280px', height: '720px',
-        background: BG, color: TXT, padding: '36px 46px', overflow: 'hidden',
-        display: 'flex', flexDirection: 'column',
-        fontFamily: 'inherit',
-      }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '18px', borderBottom: `1px solid ${BORDER}`, flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <div style={{ width: '46px', height: '46px', borderRadius: '13px', background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Logo size={27} color="#0A0F06" />
-            </div>
-            <div style={{ fontSize: '31px', fontWeight: 800, letterSpacing: '-0.6px' }}>Performance Marketing Report</div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ display: 'inline-block', padding: '7px 16px', borderRadius: '10px', background: 'rgba(47,182,115,0.14)', color: GREEN, fontSize: '15px', fontWeight: 700 }}>
-              {rangeLabel || '—'}
-            </div>
-            <div style={{ fontSize: '13px', color: MUTE, marginTop: '8px' }}>Meta Ads · {activeCount} active campaigns</div>
-          </div>
-        </div>
+      {/* Report tunggal (tersembunyi) — sumber export 1 gambar */}
+      <ReportBody ref={reportRef} summary={summary} chartData={chartData} chartDates={chartDates} donut={donut} rangeLabel={rangeLabel} activeCount={activeCount} />
 
-        {/* ROW 1 — 5 KPI */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '14px', marginTop: '18px', height: '160px', flexShrink: 0 }}>
-          {kpis.map((k, i) => (
-            <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '16px 18px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: k.color, flexShrink: 0 }} />
-                <span style={{ fontSize: '14px', color: SUB }}>{k.label}</span>
-              </div>
-              <div style={{ fontSize: '25px', fontWeight: 800, letterSpacing: '-0.6px', margin: '9px 0 6px' }}>{k.value}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Pct pct={k.pct} />
-                <span style={{ fontSize: '12px', color: MUTE }}>vs prev period</span>
-              </div>
-              <div style={{ flex: 1, minHeight: 0, marginTop: '8px', display: 'flex', alignItems: 'flex-end' }}>
-                <Spark arr={k.spark} color={k.color} h={34} />
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ROW 2 — 4C (CPM/CPC/CPL/CTR): satu blok rapi — icon + label/value/sub + badge % */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginTop: '14px', height: '96px', flexShrink: 0 }}>
-          {secondary.map((m, i) => {
-            const Ic = m.icon;
-            return (
-              <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '14px', overflow: 'hidden' }}>
-                <div style={{ width: '42px', height: '42px', borderRadius: '50%', flexShrink: 0, background: '#181B1F', border: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Ic size={19} color={SUB} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                    <span style={{ fontSize: '14px', color: SUB }}>{m.label}</span>
-                    <Pct pct={m.pct} goodDir={m.goodDir} size={13} />
-                  </div>
-                  <div style={{ fontSize: '25px', fontWeight: 800, letterSpacing: '-0.6px', margin: '3px 0 2px', whiteSpace: 'nowrap' }}>{m.value}</div>
-                  <div style={{ fontSize: '12px', color: MUTE, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.sub}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* ROW 3 — Spend Breakdown (donut) + Daily Performance (multi-line, gantikan Top Campaigns) */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2.8fr 7.2fr', gap: '14px', flex: 1, minHeight: 0, marginTop: '14px' }}>
-          <DonutCard donut={donut} />
-          <DailyMultiCard chartData={chartData} dates={chartDates} summary={summary || {}} />
-        </div>
-      </div>
+      {/* Report per bulan (tersembunyi, hanya saat proses pisah) — sumber capture */}
+      {split && split.reports.map((r, i) => (
+        <ReportBody key={i} ref={el => { splitRefs.current[i] = el; }}
+          summary={r.summary} chartData={r.chartData} chartDates={r.chartDates}
+          donut={r.donut} rangeLabel={r.rangeLabel} activeCount={r.activeCount} />
+      ))}
     </div>
   );
 }
