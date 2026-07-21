@@ -53,18 +53,18 @@ function ratio(a = [], b = [], mul = 1) {
 /* ─── Badge perbandingan % vs periode sebelumnya ───
    Panah = arah nyata; warna = baik/buruk. Untuk biaya (CPM/CPC/CPL) turun = baik (hijau),
    untuk hasil (CTR + 5 KPI volume) naik = baik. */
-function Pct({ pct, goodDir = 'up', size = 13 }) {
+function Pct({ pct, goodDir = 'up', size = 14 }) {
   if (pct === null || pct === undefined) return null;
   const up = pct >= 0;
   const good = goodDir === 'up' ? up : !up;
   return (
-    <span style={{ fontSize: size + 'px', fontWeight: 600, color: good ? GREEN : RED }}>
+    <span style={{ fontSize: size + 'px', fontWeight: 700, color: good ? GREEN : RED, whiteSpace: 'nowrap' }}>
       {up ? '▲' : '▼'} {Math.abs(pct).toFixed(1)}%
     </span>
   );
 }
 
-/* ─── Sparkline mini (area + garis) untuk kartu KPI & 4C ─── */
+/* ─── Sparkline mini (area + garis) untuk kartu KPI ─── */
 function Spark({ arr = [], color = GREEN, h = 34 }) {
   const valid = [];
   arr.forEach((v, i) => { if (v != null) valid.push({ v, i }); });
@@ -96,37 +96,37 @@ function DonutCard({ donut }) {
   const segs  = donut?.segs || [];
   const total = donut?.total || { value: '—', label: 'Total Spend' };
   return (
-    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '14px', padding: '18px 20px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <div style={{ fontSize: '15px', fontWeight: 600, flexShrink: 0 }}>Spend Breakdown</div>
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '20px 22px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div style={{ fontSize: '17px', fontWeight: 700, flexShrink: 0 }}>Spend Breakdown</div>
       {segs.length === 0 ? (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: SUB, fontSize: '12px' }}>No data</div>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: SUB, fontSize: '13px' }}>No data</div>
       ) : (
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px' }}>
-          <div style={{ position: 'relative', width: '150px', height: '150px', flexShrink: 0 }}>
+          <div style={{ position: 'relative', width: '130px', height: '130px', flexShrink: 0 }}>
             <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
-              <circle cx="50" cy="50" r="38" fill="none" stroke={BORDER} strokeWidth="16" />
+              <circle cx="50" cy="50" r="38" fill="none" stroke={BORDER} strokeWidth="15" />
               {segs.map((seg, i) => (
                 <circle key={i} cx="50" cy="50" r="38" fill="none"
-                  stroke={seg.color} strokeWidth="16"
+                  stroke={seg.color} strokeWidth="15"
                   strokeDasharray={`${seg.dash} 239`} strokeDashoffset={seg.offset}
                   transform="rotate(-90 50 50)" strokeLinecap="butt" />
               ))}
             </svg>
             <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ fontSize: '17px', fontWeight: 700, letterSpacing: '-0.4px' }}>{total.value}</div>
-              <div style={{ fontSize: '10px', color: SUB, marginTop: '2px' }}>{total.label}</div>
+              <div style={{ fontSize: '18px', fontWeight: 800, letterSpacing: '-0.4px' }}>{total.value}</div>
+              <div style={{ fontSize: '11px', color: SUB, marginTop: '2px' }}>{total.label}</div>
             </div>
           </div>
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '7px' }}>
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '9px' }}>
             {segs.map((seg, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ width: '9px', height: '9px', borderRadius: '3px', background: seg.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: '12.5px', color: SUB }}>{seg.label}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: seg.color, flexShrink: 0 }} />
+                  <span style={{ fontSize: '14px', color: SUB }}>{seg.label}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '12.5px', fontWeight: 600 }}>{seg.value}</span>
-                  <span style={{ fontSize: '11px', color: MUTE }}>{seg.pct}%</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 700 }}>{seg.value}</span>
+                  <span style={{ fontSize: '12px', color: MUTE, width: '30px', textAlign: 'right' }}>{seg.pct}%</span>
                 </div>
               </div>
             ))}
@@ -166,19 +166,19 @@ function DailyMultiCard({ chartData = {}, dates = [], summary = {} }) {
   }
 
   return (
-    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '14px', padding: '18px 20px 14px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '20px 22px 16px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-        <span style={{ fontSize: '15px', fontWeight: 600 }}>Daily Performance</span>
-        <span style={{ fontSize: '11px', color: MUTE }}>each line scaled to its own range</span>
+        <span style={{ fontSize: '17px', fontWeight: 700 }}>Daily Performance</span>
+        <span style={{ fontSize: '12px', color: MUTE }}>each line scaled to its own range</span>
       </div>
 
       {/* legenda */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px', margin: '12px 0 6px', flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', margin: '14px 0 10px', flexShrink: 0 }}>
         {lines.map(s => (
-          <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ width: '11px', height: '3px', borderRadius: '2px', background: s.color, flexShrink: 0 }} />
-            <span style={{ fontSize: '12.5px', color: SUB }}>{s.name}</span>
-            <span style={{ fontSize: '12.5px', fontWeight: 700 }}>{s.total}</span>
+          <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+            <span style={{ width: '13px', height: '3px', borderRadius: '2px', background: s.color, flexShrink: 0 }} />
+            <span style={{ fontSize: '13px', color: SUB }}>{s.name}</span>
+            <span style={{ fontSize: '13px', fontWeight: 700 }}>{s.total}</span>
           </div>
         ))}
       </div>
@@ -190,16 +190,16 @@ function DailyMultiCard({ chartData = {}, dates = [], summary = {} }) {
             <line key={y} x1="0" y1={y} x2="100" y2={y} stroke={BORDER} strokeWidth="1" vectorEffect="non-scaling-stroke" opacity="0.5" />
           ))}
           {lines.map(s => s.d && (
-            <path key={s.key} d={s.d} fill="none" stroke={s.color} strokeWidth="2.2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
+            <path key={s.key} d={s.d} fill="none" stroke={s.color} strokeWidth="2.4" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
           ))}
         </svg>
       </div>
 
       {/* sumbu tanggal */}
       {ticks.length > 0 && (
-        <div style={{ position: 'relative', height: '14px', marginTop: '6px', flexShrink: 0 }}>
+        <div style={{ position: 'relative', height: '16px', marginTop: '8px', flexShrink: 0 }}>
           {ticks.map((t, i) => (
-            <span key={i} style={{ position: 'absolute', left: t.x + '%', transform: 'translateX(-50%)', fontSize: '10px', color: MUTE }}>{t.label}</span>
+            <span key={i} style={{ position: 'absolute', left: t.x + '%', transform: 'translateX(-50%)', fontSize: '11px', color: MUTE }}>{t.label}</span>
           ))}
         </div>
       )}
@@ -233,13 +233,13 @@ export default function ExportMenu({ summary, chartData = {}, chartDates = [], d
       if (type === 'jpg') {
         const url = canvas.toDataURL('image/jpeg', 0.95);
         const a = document.createElement('a');
-        a.href = url; a.download = `WILLOFD-report-${stamp}.jpg`;
+        a.href = url; a.download = `BabaRafiAdHub-report-${stamp}.jpg`;
         document.body.appendChild(a); a.click(); a.remove();
       } else {
         const { jsPDF } = await import('jspdf');
         const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [wCss, hCss] });
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, wCss, hCss);
-        pdf.save(`WILLOFD-report-${stamp}.pdf`);
+        pdf.save(`BabaRafiAdHub-report-${stamp}.pdf`);
       }
     } catch (err) {
       console.error('Export failed:', err);
@@ -249,20 +249,19 @@ export default function ExportMenu({ summary, chartData = {}, chartDates = [], d
   }
 
   const kpis = summary ? [
-    { label: 'Total Spend',  value: fmtSpendFull(summary.totalSpend),   pct: summary.pctSpend,       color: GREEN,  spark: chartData.spend },
-    { label: 'Reach',        value: fmtNumFull(summary.totalReach),     pct: summary.pctReach,       color: BLUE,   spark: chartData.awareness },
+    { label: 'Total Spend',  value: fmtSpendFull(summary.totalSpend),     pct: summary.pctSpend,       color: GREEN,  spark: chartData.spend },
+    { label: 'Reach',        value: fmtNumFull(summary.totalReach),       pct: summary.pctReach,       color: BLUE,   spark: chartData.awareness },
     { label: 'Impressions',  value: fmtNumFull(summary.totalImpressions), pct: summary.pctImpressions, color: PURPLE, spark: chartData.awareness },
-    { label: 'Traffic',      value: fmtNumFull(summary.totalTraffic),   pct: summary.pctTraffic,     color: ORANGE, spark: chartData.traffic },
-    { label: 'Leads',        value: fmtNumFull(summary.totalLeads),     pct: summary.pctLeads,       color: GREEN,  spark: chartData.leads },
+    { label: 'Traffic',      value: fmtNumFull(summary.totalTraffic),     pct: summary.pctTraffic,     color: ORANGE, spark: chartData.traffic },
+    { label: 'Leads',        value: fmtNumFull(summary.totalLeads),       pct: summary.pctLeads,       color: GREEN,  spark: chartData.leads },
   ] : [];
 
-  // 4C — value penuh + sparkline + badge % (biaya turun = hijau, CTR naik = hijau)
-  const _s = chartData.spend || [], _i = chartData.awareness || [], _t = chartData.traffic || [], _l = chartData.leads || [];
+  // 4C — value penuh + badge % (biaya turun = hijau, CTR naik = hijau)
   const secondary = summary ? [
-    { label: 'CPM', value: summary.calcCPM ? fmtSpendFull(summary.calcCPM) : '—', sub: 'cost per 1K impressions', icon: ScanLine,          pct: summary.pctCPM, goodDir: 'down', spark: ratio(_s, _i, 1000) },
-    { label: 'CPC', value: summary.calcCPC ? fmtSpendFull(summary.calcCPC) : '—', sub: 'cost per click',          icon: MousePointerClick, pct: summary.pctCPC, goodDir: 'down', spark: ratio(_s, _t) },
-    { label: 'CPL', value: summary.calcCPL ? fmtSpendFull(summary.calcCPL) : '—', sub: 'cost per lead',           icon: UserPlus,          pct: summary.pctCPL, goodDir: 'down', spark: ratio(_s, _l) },
-    { label: 'CTR', value: summary.calcCTR ? summary.calcCTR.toFixed(2) + '%' : '—', sub: 'click through rate',   icon: Target,            pct: summary.pctCTR, goodDir: 'up',   spark: ratio(_t, _i, 100) },
+    { label: 'CPM', value: summary.calcCPM ? fmtSpendFull(summary.calcCPM) : '—', sub: 'cost per 1K impressions', icon: ScanLine,          pct: summary.pctCPM, goodDir: 'down' },
+    { label: 'CPC', value: summary.calcCPC ? fmtSpendFull(summary.calcCPC) : '—', sub: 'cost per click',          icon: MousePointerClick, pct: summary.pctCPC, goodDir: 'down' },
+    { label: 'CPL', value: summary.calcCPL ? fmtSpendFull(summary.calcCPL) : '—', sub: 'cost per lead',           icon: UserPlus,          pct: summary.pctCPL, goodDir: 'down' },
+    { label: 'CTR', value: summary.calcCTR ? summary.calcCTR.toFixed(2) + '%' : '—', sub: 'click through rate',   icon: Target,            pct: summary.pctCTR, goodDir: 'up' },
   ] : [];
 
   return (
@@ -324,68 +323,66 @@ export default function ExportMenu({ summary, chartData = {}, chartDates = [], d
         </div>
       )}
 
-      {/* ══════════ LAPORAN TERSEMBUNYI 16:9 (1280×720) — mirror dashboard ══════════ */}
+      {/* ══════════ LAPORAN TERSEMBUNYI 16:9 (1280×720) — mirror dashboard ══════════
+          Font mengikuti web (inherit Plus Jakarta Sans dari <body>). */}
       <div ref={reportRef} style={{
         position: 'fixed', left: '-10000px', top: 0, width: '1280px', height: '720px',
-        background: BG, color: TXT, padding: '34px 44px', overflow: 'hidden',
+        background: BG, color: TXT, padding: '36px 46px', overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif",
+        fontFamily: 'inherit',
       }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '16px', borderBottom: `1px solid ${BORDER}`, flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Logo size={25} color="#0A0F06" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '18px', borderBottom: `1px solid ${BORDER}`, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <div style={{ width: '46px', height: '46px', borderRadius: '13px', background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Logo size={27} color="#0A0F06" />
             </div>
-            <div style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.6px' }}>Performance Marketing Report</div>
+            <div style={{ fontSize: '31px', fontWeight: 800, letterSpacing: '-0.6px' }}>Performance Marketing Report</div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ display: 'inline-block', padding: '6px 15px', borderRadius: '9px', background: 'rgba(47,182,115,0.14)', color: GREEN, fontSize: '14px', fontWeight: 600 }}>
+            <div style={{ display: 'inline-block', padding: '7px 16px', borderRadius: '10px', background: 'rgba(47,182,115,0.14)', color: GREEN, fontSize: '15px', fontWeight: 700 }}>
               {rangeLabel || '—'}
             </div>
-            <div style={{ fontSize: '12px', color: MUTE, marginTop: '7px' }}>Meta Ads · {activeCount} active campaigns</div>
+            <div style={{ fontSize: '13px', color: MUTE, marginTop: '8px' }}>Meta Ads · {activeCount} active campaigns</div>
           </div>
         </div>
 
         {/* ROW 1 — 5 KPI */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginTop: '16px', height: '138px', flexShrink: 0 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '14px', marginTop: '18px', height: '160px', flexShrink: 0 }}>
           {kpis.map((k, i) => (
-            <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '14px', padding: '14px 16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: k.color, flexShrink: 0 }} />
-                <span style={{ fontSize: '13px', color: SUB }}>{k.label}</span>
+            <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '16px 18px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: k.color, flexShrink: 0 }} />
+                <span style={{ fontSize: '14px', color: SUB }}>{k.label}</span>
               </div>
-              <div style={{ fontSize: '23px', fontWeight: 700, letterSpacing: '-0.6px', margin: '7px 0 5px' }}>{k.value}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+              <div style={{ fontSize: '25px', fontWeight: 800, letterSpacing: '-0.6px', margin: '9px 0 6px' }}>{k.value}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Pct pct={k.pct} />
-                <span style={{ fontSize: '11px', color: MUTE }}>vs prev period</span>
+                <span style={{ fontSize: '12px', color: MUTE }}>vs prev period</span>
               </div>
-              <div style={{ flex: 1, minHeight: 0, marginTop: '6px', display: 'flex', alignItems: 'flex-end' }}>
-                <Spark arr={k.spark} color={k.color} h={30} />
+              <div style={{ flex: 1, minHeight: 0, marginTop: '8px', display: 'flex', alignItems: 'flex-end' }}>
+                <Spark arr={k.spark} color={k.color} h={34} />
               </div>
             </div>
           ))}
         </div>
 
-        {/* ROW 2 — 4C (CPM/CPC/CPL/CTR) + sparkline + badge % */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginTop: '12px', height: '96px', flexShrink: 0 }}>
+        {/* ROW 2 — 4C (CPM/CPC/CPL/CTR): satu blok rapi — icon + label/value/sub + badge % */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginTop: '14px', height: '96px', flexShrink: 0 }}>
           {secondary.map((m, i) => {
             const Ic = m.icon;
             return (
-              <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '14px', padding: '0 18px', display: 'flex', alignItems: 'center', gap: '13px', overflow: 'hidden' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0, background: '#181B1F', border: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Ic size={17} color={SUB} />
+              <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '14px', overflow: 'hidden' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '50%', flexShrink: 0, background: '#181B1F', border: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ic size={19} color={SUB} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '12px', color: SUB }}>{m.label}</div>
-                  <div style={{ fontSize: '19px', fontWeight: 700, letterSpacing: '-0.4px', margin: '2px 0 2px' }}>{m.value}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                    <Pct pct={m.pct} goodDir={m.goodDir} size={11} />
-                    <span style={{ fontSize: '10px', color: MUTE, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.sub}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                    <span style={{ fontSize: '14px', color: SUB }}>{m.label}</span>
+                    <Pct pct={m.pct} goodDir={m.goodDir} size={13} />
                   </div>
-                </div>
-                <div style={{ width: '66px', flexShrink: 0 }}>
-                  <Spark arr={m.spark} color={GREEN} h={30} />
+                  <div style={{ fontSize: '25px', fontWeight: 800, letterSpacing: '-0.6px', margin: '3px 0 2px', whiteSpace: 'nowrap' }}>{m.value}</div>
+                  <div style={{ fontSize: '12px', color: MUTE, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.sub}</div>
                 </div>
               </div>
             );
@@ -393,15 +390,9 @@ export default function ExportMenu({ summary, chartData = {}, chartDates = [], d
         </div>
 
         {/* ROW 3 — Spend Breakdown (donut) + Daily Performance (multi-line, gantikan Top Campaigns) */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2.8fr 7.2fr', gap: '12px', flex: 1, minHeight: 0, marginTop: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '2.8fr 7.2fr', gap: '14px', flex: 1, minHeight: 0, marginTop: '14px' }}>
           <DonutCard donut={donut} />
           <DailyMultiCard chartData={chartData} dates={chartDates} summary={summary || {}} />
-        </div>
-
-        {/* Footer */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', paddingTop: '12px', borderTop: `1px solid ${BORDER}`, fontSize: '11px', color: MUTE, flexShrink: 0 }}>
-          <span>WILL OF D · Performance Marketing Dashboard</span>
-          <span>Data source: Meta Ads · dashboard-ads-babarafi.vercel.app</span>
         </div>
       </div>
     </div>
