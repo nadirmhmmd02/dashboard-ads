@@ -46,9 +46,9 @@
   /* hero card (kartu gelap di antara kartu putih — pola referensi) */
   --hero-bg: #14382A;
   --hero-tx: #F2F7EF;
-  --hero-sub: rgba(242,247,239,0.62);
+  --hero-sub: rgba(255,255,255,0.62);
   --hero-br: #14382A;
-  --hero-divider: rgba(242,247,239,0.14);
+  --hero-divider: rgba(255,255,255,0.14);
   --hero-shadow: 0 8px 24px rgba(20,56,42,0.28);
 
   /* sidebar */
@@ -101,26 +101,26 @@
 /* ===== DARK MODE — Redesain 2026: dark forest premium =====
    Kanvas gelap kehijauan, lime #C8F169 jadi bintang aksen. */
 html[data-theme="dark"] {
-  --pg: #0C110E;
-  --cd: #131A15;
-  --sf: #10150F;
-  --s2: #1A221C;
-  --nav: #0E130F;
-  --br: #242E27;
-  --br-strong: rgba(242,247,239,0.16);
-  --bs: rgba(242,247,239,0.16);
-  --divider: rgba(242,247,239,0.05);
-  --hover: rgba(242,247,239,0.04);
-  --grid: rgba(242,247,239,0.035);
-  --track: rgba(242,247,239,0.05);
+  --pg: #0A0A0B;
+  --cd: #17181B;
+  --sf: #121316;
+  --s2: #1D1F23;
+  --nav: #0B0B0C;
+  --br: #2A2B30;
+  --br-strong: rgba(255,255,255,0.16);
+  --bs: rgba(255,255,255,0.16);
+  --divider: rgba(255,255,255,0.05);
+  --hover: rgba(255,255,255,0.04);
+  --grid: rgba(255,255,255,0.035);
+  --track: rgba(255,255,255,0.05);
   --shadow: 0 1px 3px rgba(0,0,0,0.4);
-  --card-shadow: 0 1px 4px rgba(0,0,0,0.7), 0 0 0 1px rgba(242,247,239,0.04);
+  --card-shadow: 0 1px 4px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
   --pop-shadow: 0 20px 60px rgba(0,0,0,0.7);
 
-  --t1: #F4F7F3;
-  --t2: #9EABA2;
-  --t3: #61706A;
-  --t4: rgba(242,247,239,0.22);
+  --t1: #F4F5F7;
+  --t2: #9BA0A8;
+  --t3: #6A6E76;
+  --t4: rgba(255,255,255,0.22);
 
   --ac: #C8F169;
   --pos: #4ADE80;
@@ -133,28 +133,28 @@ html[data-theme="dark"] {
 
   --pr-bg: rgba(200,241,105,0.12);
   --pr-tx: #C8F169;
-  --pd-bg: rgba(242,247,239,0.04);
-  --pd-tx: #6B7770;
+  --pd-bg: rgba(255,255,255,0.04);
+  --pd-tx: #6E7278;
 
   /* hero card — forest sedikit lebih terang dari kanvas, tetap menonjol */
   --hero-bg: #17402E;
   --hero-tx: #F2F7EF;
-  --hero-sub: rgba(242,247,239,0.62);
+  --hero-sub: rgba(255,255,255,0.62);
   --hero-br: #1E4F39;
-  --hero-divider: rgba(242,247,239,0.14);
+  --hero-divider: rgba(255,255,255,0.14);
   --hero-shadow: 0 8px 24px rgba(0,0,0,0.45);
 
   /* sidebar */
-  --menu-label: rgba(242,247,239,0.24);
-  --nav-tx: rgba(242,247,239,0.4);
-  --nav-icon: rgba(242,247,239,0.36);
-  --nav-hover-tx: rgba(242,247,239,0.72);
-  --logo-text: #E8EDE6;
-  --data-bg: rgba(242,247,239,0.03);
-  --data-br: rgba(242,247,239,0.06);
-  --data-label: rgba(242,247,239,0.36);
-  --data-time: rgba(242,247,239,0.6);
-  --collapse-tx: rgba(242,247,239,0.32);
+  --menu-label: rgba(255,255,255,0.24);
+  --nav-tx: rgba(255,255,255,0.4);
+  --nav-icon: rgba(255,255,255,0.36);
+  --nav-hover-tx: rgba(255,255,255,0.72);
+  --logo-text: #EAEBEE;
+  --data-bg: rgba(255,255,255,0.03);
+  --data-br: rgba(255,255,255,0.06);
+  --data-label: rgba(255,255,255,0.36);
+  --data-time: rgba(255,255,255,0.6);
+  --collapse-tx: rgba(255,255,255,0.32);
   /* sidebar accent — lime (sama keluarga dengan light, redesain 2026) */
   --nav-accent-fg: #C8F169;
   --nav-accent-soft: rgba(200,241,105,0.11);
@@ -165,8 +165,8 @@ html[data-theme="dark"] {
   --nav-drag: rgba(200,241,105,0.5);
 
   /* tooltip + misc */
-  --tooltip-bg: #0B0F0C;
-  --tooltip-br: #242E27;
+  --tooltip-bg: #141518;
+  --tooltip-br: #2A2B30;
   --tooltip-tx: #FFFFFF;
   --icon-muted: #3B463F;
 
@@ -187,8 +187,8 @@ html[data-theme="dark"] {
   --cal-range: rgba(200,241,105,0.13);
 
   /* glassmorphism halus (header floating + banner insight) */
-  --glass-bg: rgba(19,26,21,0.66);
-  --glass-br: rgba(242,247,239,0.08);
+  --glass-bg: rgba(18,19,22,0.66);
+  --glass-br: rgba(255,255,255,0.08);
 }
 
 /* Saat ganti tema: matikan semua transition sekejap supaya var() ter-resolve
