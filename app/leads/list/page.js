@@ -4,12 +4,15 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Inbox, Users, RefreshCw, Download, Upload, Search, Copy, Check, X,
   Pencil, CheckCircle2, CircleAlert, SlidersHorizontal, UserRound, Plus, CalendarDays,
+  Calendar, ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '../../components/AuthContext';
 import { supabase, authFetch } from '../../supabase';
 import useIsMobile from '../../components/useIsMobile';
 import ThemeToggle from '../../components/ThemeToggle';
 import Dropdown from '../../components/Dropdown';
+import DateFilterPopup from '../../components/DateFilterPopup';
+import { DATE_PRESETS_DASHBOARD } from '../../components/DateFilterContext';
 import { STATUSES, STATUS_COLOR, SALES, SALES_COLOR, CATEGORIES, kategoriLabel } from '../../components/leadsConfig';
 import { TYPE } from '../../components/typography';
 
@@ -25,7 +28,7 @@ import { TYPE } from '../../components/typography';
    wajib nominal. Urutan selalu terbaru di atas.
    ───────────────────────────────────────────────────────────── */
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 100;
 const COLS_KEY = 'wd-leads-cols-hidden';
 
 // Kolom tabel All Leads yang bisa disembunyikan lewat tombol Columns
@@ -55,6 +58,31 @@ function fmtRp(v) {
 }
 // Clean display: data kosong dari form → "-"
 function dash(v) { return v && String(v).trim() ? v : '-'; }
+
+/* Opsi "off" filter tanggal → toggle 3-hari kembali aktif */
+const DF_ALL = { label: 'All dates', value: 'all' };
+
+/* preset → {since, until} (client; SAMA PERSIS logika dashboard Leads Hub) */
+function ymd(d) { return d.toISOString().slice(0, 10); }
+function presetToRange(preset) {
+  const now = new Date();
+  const today = ymd(now);
+  const add = (n) => { const d = new Date(now); d.setDate(d.getDate() + n); return ymd(d); };
+  switch (preset) {
+    case 'today':     return { since: today, until: today };
+    case 'yesterday': return { since: add(-1), until: add(-1) };
+    case 'last_7d':   return { since: add(-7),  until: add(-1) };
+    case 'last_14d':  return { since: add(-14), until: add(-1) };
+    case 'last_30d':  return { since: add(-30), until: add(-1) };
+    case 'this_month': return { since: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`, until: today };
+    case 'last_month': {
+      const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const last  = new Date(now.getFullYear(), now.getMonth(), 0);
+      return { since: ymd(first), until: ymd(last) };
+    }
+    default: return null;
+  }
+}
 
 /* ─── Sensor kontak untuk role viewer (user) ───
    Viewer boleh melihat volume & kualitas lead, tapi bukan data kontak yang bisa
@@ -106,9 +134,25 @@ export default function LeadsListPage() {
   const [fSales, setFSales] = useState('Semua');
   const [selected, setSelected] = useState(() => new Set());
   const [page, setPage] = useState(1);
-  // Default All Leads hanya menampilkan 3 tanggal terakhir (hari ini + 2 hari sebelumnya).
-  // Sisanya disembunyikan tapi bisa dibuka lewat toggle (pola "show subtotal" di Campaigns).
-  const [showAllDates, setShowAllDates] = useState(false);
+
+  // ── Filter tanggal (state lokal; default "All dates" = OFF → toggle 3-hari tetap jalan).
+  //    Saat filter dipakai, toggle 3-hari otomatis hilang. Tampilan & logika = dashboard Leads.
+  const [dfOpt, setDfOpt]           = useState(DF_ALL);
+  const [dfIsCustom, setDfIsCustom] = useState(false);
+  const [dfSince, setDfSince]       = useState('');
+  const [dfUntil, setDfUntil]       = useState('');
+  const [showDate, setShowDate]     = useState(false);
+  const _initCal = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+  const [calY, setCalY] = useState(_initCal.getFullYear());
+  const [calM, setCalM] = useState(_initCal.getMonth());
+  const [localSince, setLocalSince] = useState('');
+  const [localUntil, setLocalUntil] = useState('');
+  useEffect(() => {
+    if (!showDate) return;
+    const h = e => { if (!e.target.closest('[data-datefilter]')) setShowDate(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [showDate]);
 
   // Kolom tersembunyi (persist di localStorage)
   const [hiddenCols, setHiddenCols] = useState(() => new Set());
@@ -274,27 +318,62 @@ export default function LeadsListPage() {
     return list;
   }, [rows, q, fKategori, fStatus, fSales, tab, maskContacts]);
 
-  /* ── Jendela 3 tanggal terakhir (hanya All Leads) ──
-     Batas = jam 00:00 pada (hari ini − 2 hari), jadi hari ini + 2 hari sebelumnya
-     = 3 tanggal kalender. Black Box tetap tampil penuh (antrian verifikasi). */
-  const dateCutoff = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() - 2);
-    return d.getTime();
-  }, []);
-  const dateWindowActive = tab === 'list' && !showAllDates;
+  // Rentang filter tanggal aktif (null = off). Custom pakai rentang, preset dihitung presetToRange.
+  const dfActive = dfIsCustom || dfOpt.value !== 'all';
+  const dfRange  = !dfActive ? null
+    : (dfIsCustom && dfSince && dfUntil ? { since: dfSince, until: dfUntil } : presetToRange(dfOpt.value));
+  const dfSinceActive = dfRange?.since || '';
+  const dfUntilActive = dfRange?.until || '';
+  const dateFilterOn  = !!(dfSinceActive && dfUntilActive);
+
+  // Filter tanggal aktif → tampilkan leads di rentang itu; kalau off → semua leads.
+  // Volume banyak ditangani paginasi (PAGE_SIZE per halaman, tombol Prev/Next di bawah).
   const visible = useMemo(() => {
-    if (!dateWindowActive) return filtered;
-    return filtered.filter(r => r.created_at && new Date(r.created_at).getTime() >= dateCutoff);
-  }, [filtered, dateWindowActive, dateCutoff]);
-  const hiddenByDate = filtered.length - visible.length;
-  const windowLabel = useMemo(() => {
-    const start = new Date(dateCutoff);
-    const end = new Date();
-    const f = (d) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-    return `${f(start)} – ${f(end)}`;
-  }, [dateCutoff]);
+    if (dfSinceActive && dfUntilActive) {
+      const start = new Date(dfSinceActive + 'T00:00:00').getTime();
+      const end   = new Date(dfUntilActive + 'T23:59:59.999').getTime();
+      return filtered.filter(r => {
+        if (!r.created_at) return false;
+        const t = new Date(r.created_at).getTime();
+        return t >= start && t <= end;
+      });
+    }
+    return filtered;
+  }, [filtered, dfSinceActive, dfUntilActive]);
+
+  /* ── Handler filter tanggal (mirror dashboard Leads Hub) ── */
+  function dateLabel() {
+    if (!dfActive) return 'All dates';
+    if (dfIsCustom && dfSince && dfUntil) {
+      const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
+      return `${fmt(dfSince)} – ${fmt(dfUntil)}`;
+    }
+    return dfOpt.label;
+  }
+  function openDateFilter() {
+    const next = !showDate;
+    if (next) {
+      setLocalSince(dfIsCustom ? dfSince : ''); setLocalUntil(dfIsCustom ? dfUntil : '');
+      if (dfIsCustom && dfSince) { const p = dfSince.split('-'); setCalY(+p[0]); setCalM(+p[1] - 1); }
+    }
+    setShowDate(next);
+  }
+  function shiftCalDate(delta) { const dt = new Date(calY, calM + delta, 1); setCalY(dt.getFullYear()); setCalM(dt.getMonth()); }
+  function pickDayDate(ds) {
+    if (!localSince || (localSince && localUntil)) { setLocalSince(ds); setLocalUntil(''); }
+    else if (ds < localSince) { setLocalUntil(localSince); setLocalSince(ds); }
+    else setLocalUntil(ds);
+  }
+  function pickRangeDate(s, u) { setLocalSince(s); setLocalUntil(u); const p = s.split('-'); setCalY(+p[0]); setCalM(+p[1] - 1); }
+  function applyDateCustom() {
+    if (!localSince || !localUntil) return;
+    setDfIsCustom(true); setDfSince(localSince); setDfUntil(localUntil);
+    setShowDate(false); setPage(1);
+  }
+  function selectDatePreset(opt) {
+    setDfOpt(opt); setDfIsCustom(false); setDfSince(''); setDfUntil('');
+    setShowDate(false); setPage(1);
+  }
 
   const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
   const pageRows = visible.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -377,7 +456,7 @@ export default function LeadsListPage() {
           <h1 style={{ ...TYPE.h1, ...(isMobile ? { fontSize: '20px' } : null) }}>Leads List</h1>
           <p style={{ ...TYPE.small, marginTop: '3px' }}>
             Leads Hub · {rows === null ? '…' : `${visible.length} leads`}
-            {dateWindowActive && hiddenByDate > 0 ? ` · ${hiddenByDate} older hidden` : ''}
+            {dateFilterOn ? ` · ${dateLabel()}` : ''}
             {isAdmin && inboxCount > 0 && tab !== 'inbox' ? ` · ${inboxCount} in Black Box` : ''}
           </p>
         </div>
@@ -397,6 +476,38 @@ export default function LeadsListPage() {
               onSelect={(v) => { if (v === 'sync') handleSync(); else setShowImport(true); }}
             />
           )}
+
+          {/* Filter tanggal (di tengah antara Add Leads & Refresh) — popup sama persis dashboard Leads */}
+          <div style={{ position: 'relative' }} data-datefilter>
+            <button onClick={openDateFilter} title="Filter by date" style={{
+              display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 12px',
+              borderRadius: '10px', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
+              border: `1px solid ${dfActive ? 'var(--cal-accent)' : 'var(--br)'}`,
+              background: 'var(--cd)', color: 'var(--t1)', fontSize: '12px', fontWeight: 600,
+            }}>
+              <Calendar size={14} color="var(--t2)" />
+              {dateLabel()}
+              <ChevronDown size={13} color="var(--t2)" />
+            </button>
+            {showDate && (
+              <DateFilterPopup
+                presets={[DF_ALL, ...DATE_PRESETS_DASHBOARD]}
+                dateOpt={dfOpt}
+                isCustom={dfIsCustom}
+                customSince={localSince}
+                customUntil={localUntil}
+                calY={calY} calM={calM}
+                isMobile={isMobile}
+                onSelectPreset={selectDatePreset}
+                onPickDay={pickDayDate}
+                onPickRange={pickRangeDate}
+                onShiftCal={shiftCalDate}
+                onApply={applyDateCustom}
+                onClose={() => setShowDate(false)}
+              />
+            )}
+          </div>
+
           <button onClick={() => { fetchRows(); fetchInboxCount(); }} title="Refresh" style={{ ...btn(false), padding: '8px 10px' }}>
             <RefreshCw size={14} style={syncing ? { animation: 'wdSpin 1s linear infinite' } : null} />
           </button>
@@ -523,40 +634,6 @@ export default function LeadsListPage() {
         )}
       </div>
 
-      {/* ══ TOGGLE JENDELA 3 TANGGAL TERAKHIR (All Leads) ══
-          Pola "show subtotal" Campaigns: default sembunyikan lead lama, bisa dibuka. */}
-      {tab === 'list' && !loading && !error && rows && (hiddenByDate > 0 || showAllDates) && (
-        <div style={{ padding: isMobile ? '10px 16px 0' : '8px 16px 0', flexShrink: 0 }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
-            padding: '8px 14px', borderRadius: '12px',
-            background: 'var(--sf)', border: '1px dashed var(--br)',
-          }}>
-            <CalendarDays size={14} color="var(--t3)" style={{ flexShrink: 0 }} />
-            <span style={{ ...TYPE.small }}>
-              {showAllDates
-                ? 'Showing all dates'
-                : <>Showing the last 3 days · <span style={{ fontWeight: 600, color: 'var(--t1)' }}>{windowLabel}</span></>}
-            </span>
-            {!showAllDates && hiddenByDate > 0 && (
-              <span style={{ ...TYPE.caption, padding: '2px 9px', borderRadius: '999px', background: 'var(--hover)', color: 'var(--t2)', fontWeight: 600 }}>
-                {hiddenByDate} older lead{hiddenByDate === 1 ? '' : 's'} hidden
-              </span>
-            )}
-            <button
-              onClick={() => { setShowAllDates(v => !v); setPage(1); }}
-              style={{
-                marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '6px',
-                padding: '6px 12px', borderRadius: '9px', border: '1px solid var(--br)',
-                background: 'var(--cd)', color: 'var(--ac)', fontSize: '12px', fontWeight: 600,
-                cursor: 'pointer', whiteSpace: 'nowrap',
-              }}>
-              {showAllDates ? 'Show recent 3 days only' : 'Show all dates'}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* ══ TABEL ══ */}
       <div style={{ flex: 1, minHeight: 0, padding: isMobile ? '12px 16px 16px' : '10px 16px 16px', display: 'flex', flexDirection: 'column' }}>
         <div style={{ ...card, flex: 1, minHeight: 0, overflow: 'auto' }}>
@@ -577,17 +654,17 @@ export default function LeadsListPage() {
             </div>
           ) : visible.length === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '56px 20px', textAlign: 'center' }}>
-              {tab === 'inbox' ? <CheckCircle2 size={36} color="var(--cal-accent)" /> : (dateWindowActive && hiddenByDate > 0 ? <CalendarDays size={36} color="var(--t3)" /> : <Users size={36} color="var(--t3)" />)}
+              {tab === 'inbox' ? <CheckCircle2 size={36} color="var(--cal-accent)" /> : (dateFilterOn ? <CalendarDays size={36} color="var(--t3)" /> : <Users size={36} color="var(--t3)" />)}
               <div style={{ ...TYPE.h3 }}>
                 {tab === 'inbox'
                   ? 'Black Box clear — every lead has been verified'
-                  : (dateWindowActive && hiddenByDate > 0 ? 'No leads in the last 3 days' : (rows?.length ? 'No leads match your filters' : 'No leads yet'))}
+                  : (dateFilterOn ? 'No leads in this period' : (rows?.length ? 'No leads match your filters' : 'No leads yet'))}
               </div>
               <div style={{ ...TYPE.small, maxWidth: '380px' }}>
                 {tab === 'inbox'
                   ? 'New leads from Meta instant forms will appear here after a Sync. Approve them to move them into All Leads.'
-                  : (dateWindowActive && hiddenByDate > 0
-                      ? `${hiddenByDate} older lead${hiddenByDate === 1 ? '' : 's'} are hidden by the 3-day filter. Use "Show all dates" above to see everything.`
+                  : (dateFilterOn
+                      ? `No leads came in during ${dateLabel()}. Pick a different period, or choose "All dates" to reset.`
                       : (rows?.length ? 'Try a different keyword or reset the filters.' : (isAdmin ? 'Click "Add Leads" → Sync Meta Leads to pull leads from your instant forms, then approve them from Black Box.' : 'Leads verified by the admin will show up here.')))}
               </div>
             </div>
