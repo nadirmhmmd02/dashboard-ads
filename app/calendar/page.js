@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../supabase';
 import { useAuth } from '../components/AuthContext';
 import useIsMobile from '../components/useIsMobile';
@@ -194,12 +195,13 @@ export default function CalendarPage() {
           <button onClick={prevMonth} style={{
             width:'32px', height:'32px', borderRadius:'8px',
             border:'1px solid var(--br)', background:'var(--cd)',
-            cursor:'pointer', color:'var(--t1)', fontSize:'16px',
+            cursor:'pointer', color:'var(--t1)',
+            display:'flex', alignItems:'center', justifyContent:'center', padding:0,
             transition:'background 0.15s, border-color 0.15s',
           }}
           onMouseEnter={e => e.currentTarget.style.borderColor='var(--ac)'}
           onMouseLeave={e => e.currentTarget.style.borderColor='var(--br)'}
-          >‹</button>
+          ><ChevronLeft size={16} /></button>
 
           <span style={{ fontSize:'16px', fontWeight:'500', color:'var(--t1)', minWidth:'160px', textAlign:'center' }}>
             {MONTHS[month]} {year}
@@ -208,12 +210,13 @@ export default function CalendarPage() {
           <button onClick={nextMonth} style={{
             width:'32px', height:'32px', borderRadius:'8px',
             border:'1px solid var(--br)', background:'var(--cd)',
-            cursor:'pointer', color:'var(--t1)', fontSize:'16px',
+            cursor:'pointer', color:'var(--t1)',
+            display:'flex', alignItems:'center', justifyContent:'center', padding:0,
             transition:'background 0.15s, border-color 0.15s',
           }}
           onMouseEnter={e => e.currentTarget.style.borderColor='var(--ac)'}
           onMouseLeave={e => e.currentTarget.style.borderColor='var(--br)'}
-          >›</button>
+          ><ChevronRight size={16} /></button>
 
           {/* Legend */}
           <div style={{ display:'flex', gap:'12px', marginLeft:'12px' }}>
