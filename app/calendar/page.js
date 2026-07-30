@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import { useAuth } from '../components/AuthContext';
 import useIsMobile from '../components/useIsMobile';
@@ -13,8 +13,11 @@ const OBJ_STYLE = {
 };
 
 function daysInMonth(y,m){ return new Date(y,m+1,0).getDate() }
-function isActive(c,y,m,d){ if(!c.mulai||!c.selesai)return false; const s=new Date(c.mulai),e=new Date(c.selesai),cur=new Date(y,m,d); return cur>=s&&cur<=e }
-function hasActivity(c,y,m){ if(!c.mulai||!c.selesai)return false; const s=new Date(c.mulai),e=new Date(c.selesai),ms=new Date(y,m,1),me=new Date(y,m+1,0); return s<=me&&e>=ms }
+// "YYYY-MM-DD" WAJIB di-parse sebagai tanggal LOKAL. new Date("2026-07-15") dibaca UTC —
+// di WIB (UTC+7) itu berarti jam 07:00, sehingga perbandingan tengah-malam lokal meleset 1 hari.
+function parseLocal(v){ if(!v)return null; const [y,m,d]=String(v).slice(0,10).split('-').map(Number); return new Date(y,m-1,d) }
+function isActive(c,y,m,d){ if(!c.mulai||!c.selesai)return false; const s=parseLocal(c.mulai),e=parseLocal(c.selesai),cur=new Date(y,m,d); return cur>=s&&cur<=e }
+function hasActivity(c,y,m){ if(!c.mulai||!c.selesai)return false; const s=parseLocal(c.mulai),e=parseLocal(c.selesai),ms=new Date(y,m,1),me=new Date(y,m+1,0); return s<=me&&e>=ms }
 function budgetForMonth(c,y,m){ const days=daysInMonth(y,m); let t=0; for(let d=1;d<=days;d++){ if(isActive(c,y,m,d))t++ } return t*(c.bh||0) }
 function fmtRp(v){ if(!v)return'—'; if(v>=1000000)return'Rp '+(v/1000000).toFixed(1).replace('.0','')+' jt'; return'Rp '+(v/1000).toFixed(0)+'rb' }
 
@@ -34,6 +37,55 @@ export default function CalendarPage() {
   const [editId, setEditId]             = useState(null);
   const [tableKey, setTableKey]         = useState(0);
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Lebar kolom Campaign — drag di batas Campaign|Objective (pola sama dgn halaman Campaigns),
+  // double-click handle = auto-fit ke nama campaign terpanjang (seperti Excel). Desktop only.
+  const CAMP_MIN = 120, CAMP_MAX = 620, CAMP_DEFAULT = 220;
+  const [campW, setCampW]       = useState(CAMP_DEFAULT);
+  const [colDrag, setColDrag]   = useState(false);
+  const [colHover, setColHover] = useState(false);
+  const colDragX = useRef(0);
+  const colDragW = useRef(CAMP_DEFAULT);
+
+  useEffect(() => {
+    const saved = parseInt(localStorage.getItem('wd-cal-camp-w'), 10);
+    if (saved >= CAMP_MIN && saved <= CAMP_MAX) setCampW(saved);
+  }, []);
+
+  function saveCampW(w) {
+    setCampW(w);
+    try { localStorage.setItem('wd-cal-camp-w', String(w)); } catch {}
+  }
+
+  function startColDrag(e) {
+    e.preventDefault();
+    colDragX.current = e.clientX;
+    colDragW.current = campW;
+    setColDrag(true);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    const clamp = (x) => Math.max(CAMP_MIN, Math.min(CAMP_MAX, colDragW.current + (x - colDragX.current)));
+    const move = (ev) => setCampW(clamp(ev.clientX));
+    const up = (ev) => {
+      saveCampW(clamp(ev.clientX));
+      setColDrag(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  }
+
+  function autoFitCampW() {
+    const ctx = document.createElement('canvas').getContext('2d');
+    ctx.font = `500 12px ${getComputedStyle(document.body).fontFamily}`;
+    let max = 0;
+    sorted.forEach(c => { max = Math.max(max, ctx.measureText(c.name || '').width); });
+    // + padding sel kiri-kanan (8px × 2) + buffer kecil biar tidak kepotong ellipsis
+    saveCampW(Math.max(CAMP_MIN, Math.min(CAMP_MAX, Math.ceil(max) + 16 + 6)));
+  }
 
   const today = { y: now.getFullYear(), m: now.getMonth(), d: now.getDate() };
   const days  = daysInMonth(year, month);
@@ -84,7 +136,7 @@ export default function CalendarPage() {
 
   const reminders = campaigns.filter(c => {
     if (!c.mulai) return false;
-    const s = new Date(c.mulai), now2 = new Date(today.y, today.m, today.d);
+    const s = parseLocal(c.mulai), now2 = new Date(today.y, today.m, today.d);
     const diff = (s - now2) / 86400000;
     return diff >= 0 && diff <= 3;
   });
@@ -221,7 +273,8 @@ export default function CalendarPage() {
                 (seperti tabel Campaigns), bukan kolom tergencet. Desktop tak berubah. */}
             <table style={{ borderCollapse:'collapse', width:'100%', tableLayout:'fixed', minWidth: isMobile ? '920px' : undefined }}>
               <colgroup>
-                <col style={{ width:'16%' }}/>
+                {/* Desktop: lebar px dari state (resizable). Mobile: tetap % lama. */}
+                <col style={{ width: isMobile ? '16%' : campW + 'px' }}/>
                 <col style={{ width:'8%' }}/>
                 <col style={{ width:'8%' }}/>
                 <col style={{ width:'6%' }}/>
@@ -236,7 +289,31 @@ export default function CalendarPage() {
               </colgroup>
               <thead>
                 <tr>
-                  <th style={{ ...thBase, textAlign:'left', position:'sticky', left:0, background:'var(--sf)', zIndex:2 }}>Campaign</th>
+                  <th style={{ ...thBase, textAlign:'left', position:'sticky', left:0, background:'var(--sf)', zIndex:2 }}>
+                    Campaign
+                    {/* Handle resize batas Campaign|Objective — drag = atur lebar, double-click = auto-fit */}
+                    {!isMobile && (
+                      <div
+                        onMouseDown={startColDrag}
+                        onDoubleClick={autoFitCampW}
+                        onMouseEnter={() => setColHover(true)}
+                        onMouseLeave={() => setColHover(false)}
+                        title="Geser untuk atur lebar · double-click untuk auto-fit"
+                        style={{
+                          position:'absolute', top:0, bottom:0, right:'-4px', width:'9px',
+                          cursor:'col-resize', zIndex:3,
+                          display:'flex', alignItems:'stretch', justifyContent:'center',
+                        }}>
+                        <div style={{
+                          width:'2px',
+                          background: colDrag || colHover ? 'var(--cal-accent)' : 'var(--br-strong)',
+                          opacity: colDrag || colHover ? 1 : 0.55,
+                          borderRadius:'2px',
+                          transition:'background 0.15s, opacity 0.15s',
+                        }} />
+                      </div>
+                    )}
+                  </th>
                   <th style={{ ...thBase, textAlign:'left' }}>Objective</th>
                   <th style={{ ...thBase, textAlign:'left' }}>Ad Content</th>
                   <th style={{ ...thBase, textAlign:'right' }}>Bgt/Day</th>
@@ -283,8 +360,8 @@ export default function CalendarPage() {
                       </td>
                       <td style={{ padding:'6px', fontSize:'11px', color:'var(--t2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'0' }}>{c.konten || '—'}</td>
                       <td style={{ padding:'6px', fontSize:'11px', color:'var(--t2)', textAlign:'right', whiteSpace:'nowrap' }}>{c.bh ? fmtRp(c.bh) : '—'}</td>
-                      <td style={{ padding:'6px', fontSize:'11px', color:'var(--t2)', textAlign:'right', whiteSpace:'nowrap' }}>{c.mulai ? new Date(c.mulai).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '—'}</td>
-                      <td style={{ padding:'6px', fontSize:'11px', color:'var(--t2)', textAlign:'right', whiteSpace:'nowrap' }}>{c.selesai ? new Date(c.selesai).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '—'}</td>
+                      <td style={{ padding:'6px', fontSize:'11px', color:'var(--t2)', textAlign:'right', whiteSpace:'nowrap' }}>{c.mulai ? parseLocal(c.mulai).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '—'}</td>
+                      <td style={{ padding:'6px', fontSize:'11px', color:'var(--t2)', textAlign:'right', whiteSpace:'nowrap' }}>{c.selesai ? parseLocal(c.selesai).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '—'}</td>
                       <td style={{ padding:'6px', fontSize:'11px', fontWeight:'500', color:'var(--t1)', textAlign:'right', whiteSpace:'nowrap' }}>{fmtRp(bt)}</td>
                       <td style={{ padding:'6px' }}>
                         <span style={{

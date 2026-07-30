@@ -136,17 +136,20 @@ export default function Sidebar() {
         height: '100vh',
       }}
     >
-      {/* ── Logo ── */}
+      {/* ── Logo ──
+          Anti patah-patah: layout TIDAK lompat saat collapse. justifyContent tetap flex-start,
+          padding tetap 18px (logo 28px otomatis center di lebar 64px), teks menyusut via
+          max-width (animatable) + opacity — bukan width auto→0 yang nge-snap. */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: collapsed ? 'center' : 'flex-start',
-        gap: collapsed ? '0' : '10px',
-        padding: collapsed ? '20px 0' : '20px 18px',
+        justifyContent: 'flex-start',
+        gap: collapsed ? '0px' : '10px',
+        padding: '20px 18px',
         borderBottom: '1px solid var(--divider)',
         overflow: 'hidden',
         whiteSpace: 'nowrap',
-        transition: `gap 0.28s ${EASE}, padding 0.28s ${EASE}`,
+        transition: `gap 0.28s ${EASE}`,
       }}>
         <div className="wd-logo" style={{
           width: '28px', height: '28px',
@@ -161,9 +164,9 @@ export default function Sidebar() {
           fontSize: '13px', fontWeight: '700',
           letterSpacing: '0.8px', color: 'var(--logo-text)',
           opacity: textVisible ? 1 : 0,
-          width: collapsed ? 0 : 'auto',
+          maxWidth: collapsed ? '0px' : '180px',
           overflow: 'hidden',
-          transition: 'opacity 0.2s',
+          transition: `opacity 0.22s ease, max-width 0.28s ${EASE}`,
           textTransform: 'uppercase',
         }}>
           {brand}
@@ -175,18 +178,22 @@ export default function Sidebar() {
         {navSectionsFor(role).map((section, si) => (
         <div key={section.label} style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: si > 0 ? '14px' : 0 }}>
 
-        {/* Section label (expanded) / divider (collapsed, antar section) */}
-        {!collapsed ? (
-          <div style={{
-            fontSize: '9px', fontWeight: '700', letterSpacing: '1.4px',
-            color: 'var(--menu-label)', textTransform: 'uppercase',
-            padding: '6px 10px 8px',
-          }}>
-            {section.label}
-          </div>
-        ) : si > 0 ? (
-          <div style={{ height: '1px', background: 'var(--divider)', margin: '0 12px 10px' }} />
-        ) : null}
+        {/* Section label (expanded) / divider (collapsed, antar section).
+            Tinggi slot KONSTAN di dua state supaya item nav tidak lompat vertikal saat collapse. */}
+        <div style={{ height: '24px', display: 'flex', alignItems: 'center', padding: '0 10px', overflow: 'hidden' }}>
+          {!collapsed ? (
+            <span style={{
+              fontSize: '9px', fontWeight: '700', letterSpacing: '1.4px',
+              color: 'var(--menu-label)', textTransform: 'uppercase',
+              opacity: textVisible ? 1 : 0, transition: 'opacity 0.22s ease',
+              whiteSpace: 'nowrap',
+            }}>
+              {section.label}
+            </span>
+          ) : si > 0 ? (
+            <div style={{ height: '1px', background: 'var(--divider)', flex: 1, margin: '0 2px' }} />
+          ) : null}
+        </div>
 
         {section.items.map((item) => {
           const active  = isActive(item.href);
@@ -202,9 +209,10 @@ export default function Sidebar() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: collapsed ? 'center' : 'flex-start',
-                gap: collapsed ? '0' : '10px',
-                padding: collapsed ? '11px 0' : '9px 10px',
+                justifyContent: 'flex-start',
+                gap: collapsed ? '0px' : '10px',
+                // Collapsed: paddingLeft 15px → icon 18px persis center di lebar 64px (8+15+9=32)
+                padding: collapsed ? '11px 0 11px 15px' : '9px 10px',
                 borderRadius: '9px',
                 background: active ? ACTIVE_BG : isHover ? ACTIVE_HV : 'transparent',
                 color: active ? ACTIVE_FG : isHover ? 'var(--nav-hover-tx)' : 'var(--nav-tx)',
@@ -213,7 +221,7 @@ export default function Sidebar() {
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
-                transition: `background 0.18s ${EASE}, color 0.18s`,
+                transition: `background 0.18s ${EASE}, color 0.18s, padding 0.28s ${EASE}, gap 0.28s ${EASE}`,
                 position: 'relative',
               }}
             >
@@ -232,9 +240,9 @@ export default function Sidebar() {
               />
               <span style={{
                 opacity: textVisible ? 1 : 0,
-                width: collapsed ? 0 : 'auto',
+                maxWidth: collapsed ? '0px' : '200px',
                 overflow: 'hidden',
-                transition: 'opacity 0.2s',
+                transition: `opacity 0.22s ease, max-width 0.28s ${EASE}`,
                 letterSpacing: '-0.1px',
               }}>
                 {item.label}
@@ -251,7 +259,7 @@ export default function Sidebar() {
         const active = isActive('/notes');
         const isHover = hovered === '/notes' && !active;
         return (
-          <div style={{ padding: collapsed ? '0 8px 6px' : '0 10px 6px' }}>
+          <div style={{ padding: '0 8px 6px' }}>
             <Link
               href="/notes"
               onMouseEnter={() => setHovered('/notes')}
@@ -259,15 +267,15 @@ export default function Sidebar() {
               title="Notes"
               style={{
                 width: '100%', display: 'flex', alignItems: 'center',
-                justifyContent: collapsed ? 'center' : 'flex-start',
-                gap: collapsed ? '0' : '10px',
-                padding: collapsed ? '11px 0' : '9px 10px',
+                justifyContent: 'flex-start',
+                gap: collapsed ? '0px' : '10px',
+                padding: collapsed ? '11px 0 11px 15px' : '9px 10px',
                 borderRadius: '9px', position: 'relative',
                 background: active ? ACTIVE_BG : isHover ? ACTIVE_HV : 'transparent',
                 color: active ? ACTIVE_FG : isHover ? 'var(--nav-hover-tx)' : 'var(--nav-tx)',
                 fontSize: '13px', fontWeight: active ? '600' : '400',
                 whiteSpace: 'nowrap', overflow: 'hidden',
-                transition: `background 0.18s ${EASE}, color 0.18s`,
+                transition: `background 0.18s ${EASE}, color 0.18s, padding 0.28s ${EASE}, gap 0.28s ${EASE}`,
               }}
             >
               {active && !collapsed && (
@@ -283,9 +291,9 @@ export default function Sidebar() {
               />
               <span style={{
                 opacity: textVisible ? 1 : 0,
-                width: collapsed ? 0 : 'auto',
+                maxWidth: collapsed ? '0px' : '200px',
                 overflow: 'hidden',
-                transition: 'opacity 0.2s',
+                transition: `opacity 0.22s ease, max-width 0.28s ${EASE}`,
                 letterSpacing: '-0.1px',
               }}>Notes</span>
             </Link>
@@ -295,12 +303,13 @@ export default function Sidebar() {
 
       {/* ── User + logout ── */}
       {user && (
-        <div style={{ padding: collapsed ? '0 0 8px' : '0 10px 8px' }}>
+        <div style={{ padding: '0 8px 8px' }}>
           {!collapsed ? (
             <div style={{
               display: 'flex', alignItems: 'center', gap: '10px',
               padding: '8px 10px', borderRadius: '10px',
               background: 'var(--data-bg)', border: '1px solid var(--data-br)',
+              animation: 'wdFadeIn 0.3s ease',
             }}>
               <div style={{
                 width: '30px', height: '30px', borderRadius: '9px', flexShrink: 0,
@@ -326,6 +335,7 @@ export default function Sidebar() {
               width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: '11px 0', borderRadius: '9px', background: 'transparent', border: 'none',
               color: 'var(--nav-tx)', cursor: 'pointer', transition: 'color 0.15s, background 0.15s',
+              animation: 'wdFadeIn 0.3s ease',
             }}
               onMouseEnter={e => { e.currentTarget.style.color = '#EF4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.10)'; }}
               onMouseLeave={e => { e.currentTarget.style.color = 'var(--nav-tx)'; e.currentTarget.style.background = 'transparent'; }}
@@ -341,10 +351,10 @@ export default function Sidebar() {
           style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: collapsed ? 'center' : 'flex-start',
-            gap: collapsed ? '0' : '10px',
+            justifyContent: 'flex-start',
+            gap: collapsed ? '0px' : '10px',
             width: '100%',
-            padding: collapsed ? '11px 0' : '9px 10px',
+            padding: collapsed ? '11px 0 11px 15px' : '9px 10px',
             borderRadius: '9px',
             background: 'transparent',
             border: 'none',
@@ -353,7 +363,7 @@ export default function Sidebar() {
             cursor: 'pointer',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
-            transition: `gap 0.28s ${EASE}, color 0.18s`,
+            transition: `gap 0.28s ${EASE}, padding 0.28s ${EASE}, color 0.18s`,
           }}
           onMouseEnter={e => e.currentTarget.style.color = 'var(--data-time)'}
           onMouseLeave={e => e.currentTarget.style.color = 'var(--collapse-tx)'}
@@ -368,9 +378,9 @@ export default function Sidebar() {
           />
           <span style={{
             opacity: textVisible ? 1 : 0,
-            width: collapsed ? 0 : 'auto',
+            maxWidth: collapsed ? '0px' : '200px',
             overflow: 'hidden',
-            transition: 'opacity 0.2s',
+            transition: `opacity 0.22s ease, max-width 0.28s ${EASE}`,
           }}>
             Collapse
           </span>
