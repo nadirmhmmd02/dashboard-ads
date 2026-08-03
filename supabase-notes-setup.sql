@@ -14,9 +14,13 @@ create table if not exists public.notes (
   title       text not null default 'Untitled note',
   content     text not null default '',          -- HTML hasil editor
   pinned      boolean not null default false,
+  sort_order  integer,                           -- urutan manual hasil geser (kecil = atas)
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
+
+-- Jaga-jaga kalau tabel sudah dibuat dari versi lama file ini
+alter table public.notes add column if not exists sort_order integer;
 
 -- Urutan tampil: pinned dulu, lalu yang terakhir diubah
 create index if not exists notes_user_idx on public.notes (user_id, pinned desc, updated_at desc);
@@ -30,13 +34,19 @@ create policy "notes owner full access" on public.notes
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
--- updated_at ikut terisi otomatis tiap kali baris diubah
+-- updated_at ikut terisi otomatis tiap kali baris diubah.
+-- Pengecualian: kalau yang berubah CUMA sort_order (geser urutan),
+-- updated_at dibiarkan — supaya label "Edited X min ago" tidak berubah.
 create or replace function public.touch_notes_updated_at()
 returns trigger
 language plpgsql
 as $$
 begin
-  new.updated_at = now();
+  if new.title = old.title and new.content = old.content and new.pinned = old.pinned then
+    new.updated_at = old.updated_at;
+  else
+    new.updated_at = now();
+  end if;
   return new;
 end;
 $$;

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   X, Plus, Search, Pin, Trash2, Copy, Check, ChevronLeft,
   Bold, Italic, Strikethrough, List, ListOrdered,
-  Highlighter, SquareCheck, Type, CircleAlert, RefreshCw,
+  Highlighter, SquareCheck, Type, CircleAlert, RefreshCw, GripVertical,
 } from 'lucide-react';
 import { useAuth, homeFor } from '../components/AuthContext';
 import { supabase } from '../supabase';
@@ -48,6 +48,21 @@ function plainText(html) {
   return (el.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
+/* Urutan tampil: pinned dulu; di dalam grup pakai sort_order hasil geser manual.
+   Catatan tanpa sort_order (baru dibuat / belum pernah digeser) tampil paling atas,
+   diurutkan updated_at terbaru — sama seperti perilaku lama. */
+function sortNotes(list) {
+  return [...list].sort((a, b) => {
+    const pin = (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0);
+    if (pin !== 0) return pin;
+    const ao = a.sort_order, bo = b.sort_order;
+    if (ao != null && bo != null && ao !== bo) return ao - bo;
+    if (ao != null && bo == null) return 1;
+    if (ao == null && bo != null) return -1;
+    return new Date(b.updated_at) - new Date(a.updated_at);
+  });
+}
+
 function relativeTime(iso) {
   if (!iso) return '';
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -71,6 +86,12 @@ export default function NotesPage() {
   const [showHl, setShowHl] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [mobileView, setMobileView] = useState('list'); // mobile: 'list' | 'editor'
+
+  // Geser urutan catatan (drag handle di daftar). canReorder = false kalau kolom
+  // sort_order belum ada di DB (supabase-notes-update-1.sql belum dijalankan).
+  const [canReorder, setCanReorder] = useState(true);
+  const [dragId, setDragId] = useState(null);
+  const dragIdRef = useRef(null);
 
   const editorRef = useRef(null);
   const titleRef = useRef(null);
@@ -128,11 +149,21 @@ export default function NotesPage() {
   );
 
   const load = useCallback(async () => {
-    const { data, error: err } = await supabase
+    // Coba ambil dengan kolom sort_order; kalau kolomnya belum ada (SQL update
+    // belum dijalankan), fallback ke query lama supaya Notes tetap jalan.
+    let { data, error: err } = await supabase
       .from('notes')
-      .select('id,title,content,pinned,updated_at')
-      .order('pinned', { ascending: false })
+      .select('id,title,content,pinned,updated_at,sort_order')
       .order('updated_at', { ascending: false });
+    let hasOrderCol = true;
+    if (err && (err.code === '42703' || /sort_order/i.test(err.message || ''))) {
+      hasOrderCol = false;
+      ({ data, error: err } = await supabase
+        .from('notes')
+        .select('id,title,content,pinned,updated_at')
+        .order('pinned', { ascending: false })
+        .order('updated_at', { ascending: false }));
+    }
     if (err) {
       const missingTable = err.code === 'PGRST205' || err.code === '42P01'
         || /could not find the table|does not exist/i.test(err.message || '');
@@ -142,8 +173,10 @@ export default function NotesPage() {
       setNotes([]);
       return;
     }
-    setNotes(data || []);
-    setActiveId(prev => prev || data?.[0]?.id || null);
+    setCanReorder(hasOrderCol);
+    const sorted = sortNotes(data || []);
+    setNotes(sorted);
+    setActiveId(prev => prev || sorted[0]?.id || null);
   }, []);
 
   useEffect(() => { if (role === 'admin') load(); }, [role, load]);
@@ -178,7 +211,7 @@ export default function NotesPage() {
     const { data, error: err } = await supabase
       .from('notes')
       .insert({ title: 'Untitled note', content: '' })
-      .select('id,title,content,pinned,updated_at')
+      .select(canReorder ? 'id,title,content,pinned,updated_at,sort_order' : 'id,title,content,pinned,updated_at')
       .single();
     if (err) { setError(err.message); return; }
     setNotes(prev => [data, ...(prev || [])]);
@@ -202,6 +235,38 @@ export default function NotesPage() {
     setNotes(prev => (prev || []).map(x => (x.id === n.id ? { ...x, pinned: next } : x)));
     const { error: err } = await supabase.from('notes').update({ pinned: next }).eq('id', n.id);
     if (err) setError(err.message);
+  }
+
+  /* ── Geser urutan catatan (drag handle) ──
+     Saat handle digeser melewati catatan lain di grup yang sama (pinned/biasa),
+     posisinya langsung ditukar di layar; saat dilepas, urutan final disimpan
+     sebagai sort_order (index) untuk semua catatan. */
+  function moveNote(srcId, targetId) {
+    setNotes(prev => {
+      const list = [...(prev || [])];
+      const si = list.findIndex(x => x.id === srcId);
+      const ti = list.findIndex(x => x.id === targetId);
+      if (si < 0 || ti < 0 || si === ti) return prev;
+      if (!!list[si].pinned !== !!list[ti].pinned) return prev; // hanya dalam grup yang sama
+      const [moved] = list.splice(si, 1);
+      list.splice(ti, 0, moved);
+      return list;
+    });
+  }
+
+  function endReorder() {
+    dragIdRef.current = null;
+    setDragId(null);
+    setNotes(prev => {
+      const list = (prev || []).map((n, i) => ({ ...n, sort_order: i }));
+      // Simpan idempotent — aman walau updater sempat jalan dua kali (StrictMode)
+      Promise.all(list.map(n => supabase.from('notes').update({ sort_order: n.sort_order }).eq('id', n.id)))
+        .then(results => {
+          const bad = results.find(r => r.error);
+          if (bad) setError(bad.error.message);
+        });
+      return list;
+    });
   }
 
   function copyNote() {
@@ -271,21 +336,44 @@ export default function NotesPage() {
 
   function NoteRow({ n }) {
     const isActive = n.id === activeId && (!isMobile || mobileView === 'editor');
+    const isDragging = dragId === n.id;
     const preview = plainText(n.content).slice(0, 60);
+    const showHandle = !isMobile && canReorder;
     return (
       <div
         onClick={() => { setActiveId(n.id); if (isMobile) setMobileView('editor'); }}
+        onDragOver={e => {
+          if (!dragIdRef.current || dragIdRef.current === n.id) return;
+          e.preventDefault();
+          moveNote(dragIdRef.current, n.id);
+        }}
+        onDrop={e => e.preventDefault()}
         style={{
           padding: '10px 11px', borderRadius: '11px', cursor: 'pointer',
           background: isActive ? 'var(--hover)' : 'transparent',
           border: `1px solid ${isActive ? 'var(--br)' : 'transparent'}`,
           display: 'flex', flexDirection: 'column', gap: '3px',
-          transition: 'background 0.12s',
+          transition: 'background 0.12s, opacity 0.12s',
+          opacity: isDragging ? 0.45 : 1,
         }}
         onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--hover)'; }}
         onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {showHandle && (
+            <span
+              draggable
+              onClick={e => e.stopPropagation()}
+              onDragStart={e => {
+                dragIdRef.current = n.id;
+                setDragId(n.id);
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              onDragEnd={endReorder}
+              title="Geser ke atas / bawah untuk atur urutan"
+              style={{ display: 'flex', flexShrink: 0, cursor: 'grab', color: 'var(--t3)', margin: '0 -2px' }}
+            ><GripVertical size={12} /></span>
+          )}
           <span style={{
             ...TYPE.small, fontWeight: isActive ? 700 : 600, flex: 1, minWidth: 0,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -403,6 +491,11 @@ export default function NotesPage() {
                 <div style={{ ...TYPE.caption, fontWeight: 800, letterSpacing: '0.6px', textTransform: 'uppercase', padding: '10px 6px 4px', color: 'var(--t3)' }}>All notes</div>
               )}
               {rest.map(n => <NoteRow key={n.id} n={n} />)}
+              {notes !== null && notes.length > 1 && !canReorder && !isMobile && (
+                <div style={{ ...TYPE.caption, padding: '10px 6px 2px', lineHeight: 1.5 }}>
+                  Mau geser urutan catatan? Jalankan <strong>supabase-notes-update-1.sql</strong> sekali di Supabase SQL Editor, lalu refresh halaman ini.
+                </div>
+              )}
             </div>
           </div>
         )}

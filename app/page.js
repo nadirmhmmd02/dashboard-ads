@@ -465,8 +465,7 @@ export default function DashboardPage() {
       setTodayIdx(built.todayIdx);
 
       // Top campaigns — Campaign · Spend · Result · Cost/Result · CTR
-      // Urutan: Awareness → Traffic → Conversion (lalu spend desc). Warna per tipe.
-      const TYPE_ORDER = { AWARENESS: 0, TRAFFIC: 1, CONVERSION: 2 };
+      // Urutan: CTR tertinggi di atas (permintaan Nadir 3 Agu 2026). Warna per tipe.
       const TYPE_COLOR = { AWARENESS: PURPLE, TRAFFIC: ORANGE, CONVERSION: GREEN };
       const tops = campsWithData
         .map(c => {
@@ -487,7 +486,7 @@ export default function DashboardPage() {
             color: TYPE_COLOR[type],
           };
         })
-        .sort((a, b) => (TYPE_ORDER[a.type] - TYPE_ORDER[b.type]) || (b.spend - a.spend));
+        .sort((a, b) => (b.ctr - a.ctr) || (b.spend - a.spend));
       setTopCampaigns(tops);
 
       // Donut spend breakdown

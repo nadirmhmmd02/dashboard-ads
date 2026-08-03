@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { supabase } from '../supabase';
 import { useAuth } from '../components/AuthContext';
 import useIsMobile from '../components/useIsMobile';
@@ -22,6 +22,13 @@ function hasActivity(c,y,m){ if(!c.mulai||!c.selesai)return false; const s=parse
 function budgetForMonth(c,y,m){ const days=daysInMonth(y,m); let t=0; for(let d=1;d<=days;d++){ if(isActive(c,y,m,d))t++ } return t*(c.bh||0) }
 function fmtRp(v){ if(!v)return'—'; if(v>=1000000)return'Rp '+(v/1000000).toFixed(1).replace('.0','')+' jt'; return'Rp '+(v/1000).toFixed(0)+'rb' }
 
+const STATUSES = ['Draft','Running','Done'];
+const STATUS_STYLE = {
+  Draft:   { bg:'rgba(245,158,11,0.12)',  color:'#f59e0b',   icon:'✏' },
+  Running: { bg:'rgba(16,185,129,0.14)',  color:'#10b981',   icon:'▶' },
+  Done:    { bg:'rgba(115,115,115,0.12)', color:'var(--t3)', icon:'✓' },
+};
+
 const emptyForm = { name:'', obj:'Awareness', konten:'', bh:'', mulai:'', selesai:'', status:'Draft' };
 
 export default function CalendarPage() {
@@ -38,6 +45,8 @@ export default function CalendarPage() {
   const [editId, setEditId]             = useState(null);
   const [tableKey, setTableKey]         = useState(0);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  // Dropdown ganti status langsung dari tabel (admin) — posisi fixed dari rect pill
+  const [statusDrop, setStatusDrop]     = useState(null); // { id, x, y }
 
   // Lebar kolom Campaign — drag di batas Campaign|Objective (pola sama dgn halaman Campaigns),
   // double-click handle = auto-fit ke nama campaign terpanjang (seperti Excel). Desktop only.
@@ -134,6 +143,28 @@ export default function CalendarPage() {
     await supabase.from('campaigns').delete().eq('id', id);
     loadCampaigns();
   }
+
+  // Ganti status langsung dari pill di tabel — optimistik, rollback kalau gagal
+  async function changeStatus(id, status) {
+    setStatusDrop(null);
+    setCampaigns(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+    const { error: err } = await supabase.from('campaigns').update({ status }).eq('id', id);
+    if (err) { setError(err.message); loadCampaigns(); }
+  }
+
+  // Dropdown status tutup saat klik di luar / scroll / resize (posisinya fixed)
+  useEffect(() => {
+    if (!statusDrop) return;
+    const close = () => setStatusDrop(null);
+    document.addEventListener('mousedown', close);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [statusDrop]);
 
   const reminders = campaigns.filter(c => {
     if (!c.mulai) return false;
@@ -367,14 +398,29 @@ export default function CalendarPage() {
                       <td style={{ padding:'6px', fontSize:'11px', color:'var(--t2)', textAlign:'right', whiteSpace:'nowrap' }}>{c.selesai ? parseLocal(c.selesai).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '—'}</td>
                       <td style={{ padding:'6px', fontSize:'11px', fontWeight:'500', color:'var(--t1)', textAlign:'right', whiteSpace:'nowrap' }}>{fmtRp(bt)}</td>
                       <td style={{ padding:'6px' }}>
-                        <span style={{
-                          display:'inline-flex', alignItems:'center', gap:'3px',
-                          padding:'2px 7px', borderRadius:'20px', fontSize:'9px', fontWeight:'600',
-                          background: st==='Running' ? 'rgba(16,185,129,0.14)' : st==='Done' ? 'rgba(115,115,115,0.12)' : 'rgba(245,158,11,0.12)',
-                          color: st==='Running' ? '#10b981' : st==='Done' ? 'var(--t3)' : '#f59e0b',
-                          whiteSpace:'nowrap',
-                        }}>
-                          {st==='Running' ? '▶' : st==='Done' ? '✓' : '✏'} {st}
+                        {/* Admin: pill jadi tombol dropdown — ganti status langsung tanpa buka modal Edit */}
+                        <span
+                          role={isAdmin ? 'button' : undefined}
+                          title={isAdmin ? 'Klik untuk ganti status' : undefined}
+                          onMouseDown={isAdmin ? (e => e.stopPropagation()) : undefined}
+                          onClick={isAdmin ? (e => {
+                            const r = e.currentTarget.getBoundingClientRect();
+                            setStatusDrop(prev => prev?.id === c.id ? null : { id:c.id, x:r.left, y:r.bottom + 4 });
+                          }) : undefined}
+                          style={{
+                            display:'inline-flex', alignItems:'center', gap:'3px',
+                            padding:'2px 7px', borderRadius:'20px', fontSize:'9px', fontWeight:'600',
+                            background: STATUS_STYLE[st]?.bg || STATUS_STYLE.Draft.bg,
+                            color: STATUS_STYLE[st]?.color || STATUS_STYLE.Draft.color,
+                            whiteSpace:'nowrap',
+                            cursor: isAdmin ? 'pointer' : 'default',
+                            userSelect:'none',
+                            border: statusDrop?.id === c.id ? '1px solid currentColor' : '1px solid transparent',
+                            transition:'border-color 0.15s',
+                          }}
+                        >
+                          {STATUS_STYLE[st]?.icon || STATUS_STYLE.Draft.icon} {st}
+                          {isAdmin && <ChevronDown size={9} style={{ marginLeft:'1px' }} />}
                         </span>
                       </td>
                       {isAdmin && (
@@ -474,6 +520,52 @@ export default function CalendarPage() {
           </div>
         </div>
       )}
+
+      {/* Dropdown status (fixed — di luar tabel supaya tidak kepotong overflow scroll) */}
+      {statusDrop && (() => {
+        const c = campaigns.find(x => x.id === statusDrop.id);
+        if (!c) return null;
+        return (
+          <div
+            onMouseDown={e => e.stopPropagation()}
+            style={{
+              position:'fixed', left: statusDrop.x, top: statusDrop.y, zIndex:60,
+              minWidth:'128px', padding:'5px',
+              background:'var(--cd)', border:'1px solid var(--br)', borderRadius:'10px',
+              boxShadow:'0 12px 32px rgba(0,0,0,0.25)',
+              animation:'wdScaleIn 0.15s cubic-bezier(0.4,0,0.2,1)',
+            }}
+          >
+            {STATUSES.map(s => {
+              const isCur = s === c.status;
+              return (
+                <div
+                  key={s}
+                  onClick={() => { if (!isCur) changeStatus(c.id, s); else setStatusDrop(null); }}
+                  style={{
+                    display:'flex', alignItems:'center', gap:'7px',
+                    padding:'7px 10px', borderRadius:'7px', cursor:'pointer',
+                    fontSize:'12px', fontWeight: isCur ? '600' : '500',
+                    color:'var(--t1)',
+                    background: isCur ? 'var(--sf)' : 'transparent',
+                    transition:'background 0.1s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--sf)'}
+                  onMouseLeave={e => e.currentTarget.style.background = isCur ? 'var(--sf)' : 'transparent'}
+                >
+                  <span style={{
+                    display:'inline-flex', alignItems:'center', justifyContent:'center',
+                    width:'16px', height:'16px', borderRadius:'50%', fontSize:'8px',
+                    background: STATUS_STYLE[s].bg, color: STATUS_STYLE[s].color, flexShrink:0,
+                  }}>{STATUS_STYLE[s].icon}</span>
+                  <span style={{ flex:1 }}>{s}</span>
+                  {isCur && <span style={{ fontSize:'10px', color:'var(--ac)' }}>✓</span>}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {/* Modal */}
       {showModal && (
