@@ -922,7 +922,8 @@ export default function DashboardPage() {
               </div>
             );
             return (
-              <div style={{ flex:'1 1 0', minHeight:'150px', maxHeight:'190px', display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:'10px' }}>
+              // Tinggi baris: lihat catatan "FIT LAYAR TINGGI" di ROW 3
+              <div style={{ flex:'1 1 0', minHeight:'150px', maxHeight:'210px', display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:'10px' }}>
                 {kpis.map((k, i) => <KpiCard key={k.label} {...k} delay={i * 55}/>)}
               </div>
             );
@@ -968,7 +969,10 @@ export default function DashboardPage() {
             );
             return (
               <div style={{
-                flex:'1 1 0', minHeight:'74px', maxHeight:'96px',
+                // Strip CPM/CPC/CPL/CTR sengaja TIDAK ikut melar (flex-grow 0):
+                // isinya cuma ikon + 2 baris teks, kalau ditinggikan malah kosong.
+                // Boleh menyusut sampai 74px di layar pendek.
+                flex:'0 1 96px', minHeight:'74px',
                 display:'grid', gridTemplateColumns:'repeat(4, minmax(0,1fr))', gap:'10px',
               }}>
                 {mini.map((m, i) => {
@@ -1006,7 +1010,13 @@ export default function DashboardPage() {
           <div style={ isMobile ? {
             display:'flex', flexDirection:'column', gap:'16px', flexShrink:0,
           } : {
-            flex:'1 1 0', minHeight:'260px', maxHeight:'500px', display:'grid', gridTemplateColumns:'2.8fr 4.2fr 3fr', gap:'10px',
+            /* FIT LAYAR TINGGI — baris ini penyerap utama sisa tinggi layar.
+               Dulu ketiga baris dipatok maxHeight tetap (190+96+500) sehingga di
+               layar 1080px ke atas tersisa pita kosong di bawah. Sekarang: strip
+               4C tidak melar, KPI melar sedikit (cap 210), sisanya ke baris ini —
+               isinya (donut/AreaChart/Top Campaigns) memang dibuat mengisi tinggi.
+               Cap 820px menjaga layar sangat tinggi tidak jadi melar aneh. */
+            flex:'1 1 0', minHeight:'260px', maxHeight:'820px', display:'grid', gridTemplateColumns:'2.8fr 4.2fr 3fr', gap:'10px',
           }}>
 
             {/* Spend Breakdown (donut) */}
