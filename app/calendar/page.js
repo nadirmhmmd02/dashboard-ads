@@ -152,10 +152,17 @@ export default function CalendarPage() {
     if (err) { setError(err.message); loadCampaigns(); }
   }
 
-  // Dropdown status tutup saat klik di luar / scroll / resize (posisinya fixed)
+  // Dropdown status tutup saat klik di luar / scroll / resize (posisinya fixed).
+  // PENTING: listener React di app router menempel di `document` juga, dan
+  // stopPropagation TIDAK menahan listener lain di node yang sama — jadi klik di
+  // dalam dropdown harus dikecualikan lewat penanda data-wd-status, kalau tidak
+  // dropdown keburu ditutup sebelum klik pilihannya sempat diproses.
   useEffect(() => {
     if (!statusDrop) return;
-    const close = () => setStatusDrop(null);
+    const close = (e) => {
+      if (e?.target?.closest?.('[data-wd-status]')) return;
+      setStatusDrop(null);
+    };
     document.addEventListener('mousedown', close);
     window.addEventListener('scroll', close, true);
     window.addEventListener('resize', close);
@@ -400,9 +407,9 @@ export default function CalendarPage() {
                       <td style={{ padding:'6px' }}>
                         {/* Admin: pill jadi tombol dropdown — ganti status langsung tanpa buka modal Edit */}
                         <span
+                          data-wd-status={isAdmin ? 'pill' : undefined}
                           role={isAdmin ? 'button' : undefined}
                           title={isAdmin ? 'Klik untuk ganti status' : undefined}
-                          onMouseDown={isAdmin ? (e => e.stopPropagation()) : undefined}
                           onClick={isAdmin ? (e => {
                             const r = e.currentTarget.getBoundingClientRect();
                             setStatusDrop(prev => prev?.id === c.id ? null : { id:c.id, x:r.left, y:r.bottom + 4 });
@@ -527,7 +534,7 @@ export default function CalendarPage() {
         if (!c) return null;
         return (
           <div
-            onMouseDown={e => e.stopPropagation()}
+            data-wd-status="drop"
             style={{
               position:'fixed', left: statusDrop.x, top: statusDrop.y, zIndex:60,
               minWidth:'128px', padding:'5px',
@@ -541,7 +548,9 @@ export default function CalendarPage() {
               return (
                 <div
                   key={s}
-                  onClick={() => { if (!isCur) changeStatus(c.id, s); else setStatusDrop(null); }}
+                  // onMouseDown (bukan onClick) — pola sama dengan autocomplete Ad Content
+                  // di halaman ini: aksi tetap jalan walau elemen keburu di-unmount.
+                  onMouseDown={() => { if (!isCur) changeStatus(c.id, s); else setStatusDrop(null); }}
                   style={{
                     display:'flex', alignItems:'center', gap:'7px',
                     padding:'7px 10px', borderRadius:'7px', cursor:'pointer',
