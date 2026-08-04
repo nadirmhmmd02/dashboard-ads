@@ -6,21 +6,41 @@ import {
   ScanLine, MousePointerClick, UserPlus, Target,
 } from 'lucide-react';
 import Logo from './Logo';
+import { useAuth } from './AuthContext';
 import { authFetch } from '../supabase';
 import { buildReportData, monthChunks, isWholeMonths, rangeLabelOf, monthToken } from './reportData';
 
-/* ─── Report palette — SELALU dark (artefak laporan, tidak ikut tema) ─── */
-const BG     = '#090A0C';
-const CARD   = '#121417';
-const BORDER = '#23262C';
-const TXT    = '#FFFFFF';
-const SUB    = '#9CA3AF';
-const MUTE   = '#5B616B';
-const GREEN  = '#2FB673';   // emerald — ikut palet redesain 2026
+/* ─── Warna data — SAMA di kedua tema (aturan palet redesain 2026) ─── */
+const GREEN  = '#2FB673';   // emerald
 const BLUE   = '#3B82F6';
 const PURPLE = '#8B5CF6';
 const ORANGE = '#F59E0B';
 const RED    = '#EF4444';
+
+/* ─── Palet laporan — IKUT tema dashboard yang sedang dipakai ───
+   Nilainya sengaja hex literal (bukan var CSS): laporan di-render di elemen
+   tersembunyi lalu difoto html2canvas, jadi warnanya harus pasti.
+   Angka-angkanya dijaga sama dengan globals.css biar hasil export identik
+   dengan yang dilihat di layar. */
+const REPORT_THEME = {
+  dark: {
+    BG: '#090A0C', CARD: '#121417', BORDER: '#23262C', TILE: '#181B1F',
+    TXT: '#FFFFFF', SUB: '#9CA3AF', MUTE: '#5B616B',
+    ACCENT: GREEN, ACCENT_SOFT: 'rgba(47,182,115,0.14)',
+    LOGO_BG: GREEN, LOGO_MARK: '#0A0F06',
+    POS: GREEN,                 // badge % naik — sama dgn --pos tema gelap
+  },
+  light: {
+    BG: '#F1F2EF', CARD: '#FFFFFF', BORDER: '#E7E9E4', TILE: '#F1F2EF',
+    // MUTE sengaja sedikit lebih gelap dari --t3 layar (#93A099, cuma 2.7:1 di
+    // putih): laporan ini dicetak/diproyeksikan, teks kecilnya harus tetap kebaca.
+    TXT: '#101915', SUB: '#5F6B63', MUTE: '#78857D',
+    ACCENT: '#1E6B4B', ACCENT_SOFT: 'rgba(30,107,75,0.10)',
+    LOGO_BG: '#14382A', LOGO_MARK: '#C8F169',
+    POS: '#16A34A',             // --pos tema terang: hijau lebih gelap biar terbaca di putih
+  },
+};
+const paletteFor = (theme) => REPORT_THEME[theme === 'light' ? 'light' : 'dark'];
 
 /* ─── UI palette (tombol + dropdown di header) — ikut tema dashboard ─── */
 const UI_CARD   = 'var(--cd)';
@@ -48,12 +68,12 @@ function smoothPath(pts) {
 }
 
 /* ─── Badge % vs periode sebelumnya (panah = arah nyata; warna = baik/buruk) ─── */
-function Pct({ pct, goodDir = 'up', size = 14 }) {
+function Pct({ pct, goodDir = 'up', size = 14, P }) {
   if (pct === null || pct === undefined) return null;
   const up = pct >= 0;
   const good = goodDir === 'up' ? up : !up;
   return (
-    <span style={{ fontSize: size + 'px', fontWeight: 700, color: good ? GREEN : RED, whiteSpace: 'nowrap' }}>
+    <span style={{ fontSize: size + 'px', fontWeight: 700, color: good ? P.POS : RED, whiteSpace: 'nowrap' }}>
       {up ? '▲' : '▼'} {Math.abs(pct).toFixed(1)}%
     </span>
   );
@@ -87,7 +107,8 @@ function Spark({ arr = [], color = GREEN, h = 34 }) {
 }
 
 /* ─── Donut Spend Breakdown ─── */
-function DonutCard({ donut }) {
+function DonutCard({ donut, P }) {
+  const { CARD, BORDER, SUB, MUTE } = P;
   const segs  = donut?.segs || [];
   const total = donut?.total || { value: '—', label: 'Total Spend' };
   return (
@@ -135,7 +156,8 @@ function DonutCard({ donut }) {
 /* ─── Kartu chart harian gabungan (semua metrik, tiap warna satu metrik) ───
    Sumbu-X: tampil LENGKAP kalau ≤ ~1 bulan; kalau lebih panjang (mis. 2 bulan
    jadi 1 gambar) ditipiskan proporsional jadi ~15 label biar tidak berdesakan. */
-function DailyMultiCard({ chartData = {}, dates = [], summary = {} }) {
+function DailyMultiCard({ chartData = {}, dates = [], summary = {}, P }) {
+  const { CARD, BORDER, SUB, MUTE } = P;
   const series = [
     { key: 'spend',     name: 'Spend',     color: GREEN,  total: fmtSpendFull(summary.totalSpend) },
     { key: 'awareness', name: 'Awareness', color: PURPLE, total: fmtNumFull(summary.totalImpressions) },
@@ -203,7 +225,8 @@ function DailyMultiCard({ chartData = {}, dates = [], summary = {} }) {
 }
 
 /* ─── ReportBody — kartu laporan 1280×720 (dipakai untuk 1 gambar & pisah per bulan) ─── */
-const ReportBody = forwardRef(function ReportBody({ summary, chartData = {}, chartDates = [], donut = {}, rangeLabel = '', activeCount = 0 }, ref) {
+const ReportBody = forwardRef(function ReportBody({ summary, chartData = {}, chartDates = [], donut = {}, rangeLabel = '', activeCount = 0, P }, ref) {
+  const { BG, CARD, BORDER, TILE, TXT, SUB, MUTE, ACCENT, ACCENT_SOFT, LOGO_BG, LOGO_MARK } = P;
   const kpis = summary ? [
     { label: 'Total Spend',  value: fmtSpendFull(summary.totalSpend),     pct: summary.pctSpend,       color: GREEN,  spark: chartData.spend },
     { label: 'Reach',        value: fmtNumFull(summary.totalReach),       pct: summary.pctReach,       color: BLUE,   spark: chartData.awareness },
@@ -227,13 +250,13 @@ const ReportBody = forwardRef(function ReportBody({ summary, chartData = {}, cha
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '18px', borderBottom: `1px solid ${BORDER}`, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <div style={{ width: '46px', height: '46px', borderRadius: '13px', background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Logo size={27} color="#0A0F06" />
+          <div style={{ width: '46px', height: '46px', borderRadius: '13px', background: LOGO_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Logo size={27} color={LOGO_MARK} />
           </div>
           <div style={{ fontSize: '31px', fontWeight: 800, letterSpacing: '-0.6px' }}>Performance Marketing Report</div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ display: 'inline-block', padding: '7px 16px', borderRadius: '10px', background: 'rgba(47,182,115,0.14)', color: GREEN, fontSize: '15px', fontWeight: 700 }}>
+          <div style={{ display: 'inline-block', padding: '7px 16px', borderRadius: '10px', background: ACCENT_SOFT, color: ACCENT, fontSize: '15px', fontWeight: 700 }}>
             {rangeLabel || '—'}
           </div>
           <div style={{ fontSize: '13px', color: MUTE, marginTop: '8px' }}>Meta Ads · {activeCount} active campaigns</div>
@@ -250,7 +273,7 @@ const ReportBody = forwardRef(function ReportBody({ summary, chartData = {}, cha
             </div>
             <div style={{ fontSize: '25px', fontWeight: 800, letterSpacing: '-0.6px', margin: '9px 0 6px' }}>{k.value}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Pct pct={k.pct} />
+              <Pct pct={k.pct} P={P} />
               <span style={{ fontSize: '12px', color: MUTE }}>vs prev period</span>
             </div>
             <div style={{ flex: 1, minHeight: 0, marginTop: '8px', display: 'flex', alignItems: 'flex-end' }}>
@@ -266,13 +289,13 @@ const ReportBody = forwardRef(function ReportBody({ summary, chartData = {}, cha
           const Ic = m.icon;
           return (
             <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '14px', overflow: 'hidden' }}>
-              <div style={{ width: '42px', height: '42px', borderRadius: '50%', flexShrink: 0, background: '#181B1F', border: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '50%', flexShrink: 0, background: TILE, border: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Ic size={19} color={SUB} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
                   <span style={{ fontSize: '14px', color: SUB }}>{m.label}</span>
-                  <Pct pct={m.pct} goodDir={m.goodDir} size={13} />
+                  <Pct pct={m.pct} goodDir={m.goodDir} size={13} P={P} />
                 </div>
                 <div style={{ fontSize: '25px', fontWeight: 800, letterSpacing: '-0.6px', margin: '3px 0 2px', whiteSpace: 'nowrap' }}>{m.value}</div>
                 <div style={{ fontSize: '12px', color: MUTE, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.sub}</div>
@@ -284,8 +307,8 @@ const ReportBody = forwardRef(function ReportBody({ summary, chartData = {}, cha
 
       {/* ROW 3 — donut + daily performance */}
       <div style={{ display: 'grid', gridTemplateColumns: '2.8fr 7.2fr', gap: '14px', flex: 1, minHeight: 0, marginTop: '14px' }}>
-        <DonutCard donut={donut} />
-        <DailyMultiCard chartData={chartData} dates={chartDates} summary={summary || {}} />
+        <DonutCard donut={donut} P={P} />
+        <DailyMultiCard chartData={chartData} dates={chartDates} summary={summary || {}} P={P} />
       </div>
     </div>
   );
@@ -293,6 +316,10 @@ const ReportBody = forwardRef(function ReportBody({ summary, chartData = {}, cha
 
 // compact: tombol icon-only (dipakai toolbar mobile biar chip muat satu baris)
 export default function ExportMenu({ summary, chartData = {}, chartDates = [], donut = {}, rangeLabel = '', activeCount = 0, since = '', until = '', compact = false }) {
+  // Laporan hasil export ikut tema dashboard yang sedang aktif (terang/gelap)
+  const { theme } = useAuth();
+  const P = paletteFor(theme);
+
   const [open, setOpen]   = useState(false);
   const [busy, setBusy]   = useState(false);
   const [splitMode, setSplitMode] = useState('combined');   // 'combined' | 'perMonth'
@@ -319,7 +346,7 @@ export default function ExportMenu({ summary, chartData = {}, chartDates = [], d
     setBusy(true);
     try {
       const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(reportRef.current, { scale: 2, backgroundColor: BG, useCORS: true, logging: false });
+      const canvas = await html2canvas(reportRef.current, { scale: 2, backgroundColor: P.BG, useCORS: true, logging: false });
       const wCss = canvas.width / 2, hCss = canvas.height / 2;
       if (type === 'jpg') {
         const a = document.createElement('a');
@@ -372,7 +399,7 @@ export default function ExportMenu({ summary, chartData = {}, chartDates = [], d
         const canvases = [];
         for (let i = 0; i < split.reports.length; i++) {
           const el = splitRefs.current[i];
-          if (el) canvases.push(await html2canvas(el, { scale: 2, backgroundColor: BG, useCORS: true, logging: false }));
+          if (el) canvases.push(await html2canvas(el, { scale: 2, backgroundColor: P.BG, useCORS: true, logging: false }));
         }
         if (split.format === 'jpg') {
           // JPG: tiap bulan jadi file terpisah, kedownload otomatis satu per satu (bukan zip)
@@ -490,13 +517,13 @@ export default function ExportMenu({ summary, chartData = {}, chartDates = [], d
       )}
 
       {/* Report tunggal (tersembunyi) — sumber export 1 gambar */}
-      <ReportBody ref={reportRef} summary={summary} chartData={chartData} chartDates={chartDates} donut={donut} rangeLabel={rangeLabel} activeCount={activeCount} />
+      <ReportBody ref={reportRef} summary={summary} chartData={chartData} chartDates={chartDates} donut={donut} rangeLabel={rangeLabel} activeCount={activeCount} P={P} />
 
       {/* Report per bulan (tersembunyi, hanya saat proses pisah) — sumber capture */}
       {split && split.reports.map((r, i) => (
         <ReportBody key={i} ref={el => { splitRefs.current[i] = el; }}
           summary={r.summary} chartData={r.chartData} chartDates={r.chartDates}
-          donut={r.donut} rangeLabel={r.rangeLabel} activeCount={r.activeCount} />
+          donut={r.donut} rangeLabel={r.rangeLabel} activeCount={r.activeCount} P={P} />
       ))}
     </div>
   );

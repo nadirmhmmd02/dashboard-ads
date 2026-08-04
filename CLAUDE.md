@@ -61,7 +61,7 @@ app/
     leadsConfig.js       → registry Leads Hub: STATUSES, STATUS_COLOR, SALES (Akmel/Hendra/Dedik) + SALES_COLOR, CATEGORIES (value DB → label tampilan, mis. Autopilot → "Package Franchise Autopilot"), kategoriLabel(). Nambah promo/sales = edit di sini.
     Dropdown.js          → dropdown animasi halus reusable (fix bug "jendela loncat": lapisan posisi DIPISAH dari lapisan animasi wdScaleIn). Props: label/icon/options({value,label,color,icon,hint,checked})/value/onSelect/primary/align(left|right|center)/direction(down|up)/keepOpen/footer/disabled(cursor not-allowed)/title/buttonStyle.
     AreaChart.js         → chart "Daily Spend" (smooth area, animasi ganti metrik). Dipakai dashboard.
-    ExportMenu.js        → tombol Export + laporan tersembunyi 16:9 (render PDF/JPG). Admin-only.
+    ExportMenu.js        → tombol Export + laporan tersembunyi 16:9 (render PDF/JPG). Admin-only. **Palet laporan IKUT tema dashboard** (registry `REPORT_THEME` light/dark + `paletteFor(theme)`, dialirkan sebagai prop `P` ke ReportBody/DonutCard/DailyMultiCard/Pct; `html2canvas backgroundColor` juga pakai `P.BG`). Warna data (green/blue/purple/orange) sama di dua tema; yang beda cuma bg/card/border/teks/aksen/logo tile + `POS` badge % (dark `#2FB673`, light `#16A34A` = --pos). `MUTE` light sengaja `#78857D` (lebih gelap dari --t3 layar) supaya teks kecil tetap kebaca saat dicetak.
     CountUp.js           → animasi angka naik dari 0 ke target.
     Logo.js              → LOGO MARK "Control Hub" (SVG, warna via prop, ikut container/tema).
     ThemeToggle.js       → shared theme toggle button dengan animasi fade transition. Dipakai dashboard + campaigns.
@@ -162,7 +162,7 @@ Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cance
 - ✅ Dashboard KPI real (5 card + growth badge + sparkline), strip CPM/CPC/CPL/CTR, Spend Breakdown donut (interaktif, angka penuh), Daily Spend AreaChart, Top Campaigns.
 - ✅ Filter tanggal kalender dual-month inline (Dashboard + Campaigns), default This month. Filter terpisah per halaman, persist saat pindah tab, reset saat browser refresh.
 - ✅ Campaigns: tabel per grup (Awareness→Traffic→Conversion), subtotal toggle (default hidden), kolom Total Spend. Status "Stop" (bukan "Paused"), tampilan non-active normal (tidak abu-abu), urutan active di atas.
-- ✅ Export laporan PDF/JPG 16:9 (admin-only).
+- ✅ Export laporan PDF/JPG 16:9 (admin-only) — hasil export mengikuti tema dashboard yang sedang aktif (terang → laporan terang, gelap → laporan gelap), per 4 Agu 2026.
 - ✅ Light/Dark mode (CSS var, satu source of truth di AuthContext), toggle di header dashboard + campaigns. Animasi fade transition saat swap tema.
 - ✅ Auth + Role (admin=`Dozan`, user=`user`) + route guard.
 - ✅ Rebranding logo **WILL OF D** di sidebar, login, export, favicon. Brand di samping logo (Sidebar + MobileNav): **"Baba Rafi Ad Hub" untuk SEMUA role** (per 16 Jul 2026 — "WILL OF D" tinggal codename dev di kode). Title tab browser: "Baba Rafi Ad Hub".
@@ -191,7 +191,7 @@ Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cance
 - [ ] Leads Hub: kolom assigned_to sudah ada di DB tapi belum ada UI-nya (nunggu ada banyak akun marketing).
 - [ ] Analytics & Insights Ads Hub: upgrade narasi ke LLM asli (Claude API) — v1 rule-based sudah live; butuh API key kalau mau.
 - [ ] Integrasi Google Ads / TikTok Ads / All Platforms (selector sudah ada, masih placeholder).
-- [ ] Notifikasi lonceng, Export CSV/Excel Calendar — placeholder.
+- [ ] Notifikasi lonceng — placeholder. (Tombol Export di Calendar SUDAH DIHAPUS 4 Agu 2026 atas permintaan Nadir — jangan dimunculkan lagi tanpa diminta.)
 - [ ] **Notes: Nadir jalankan `supabase-notes-setup.sql` di Supabase SQL Editor** (sekali saja) supaya fitur catatan hidup.
 - [ ] Verifikasi akurasi angka vs Meta Ads Manager.
 - [ ] Hapus file lama tidak terpakai: `SuggestionsModal.js`, `BarChart.js`, `Navbar.js`.
