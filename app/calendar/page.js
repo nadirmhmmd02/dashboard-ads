@@ -99,9 +99,13 @@ export default function CalendarPage() {
 
   const today = { y: now.getFullYear(), m: now.getMonth(), d: now.getDate() };
   const days  = daysInMonth(year, month);
+  // Urutan tabel: grup objektif dulu, lalu tanggal mulai TERCEPAT di atas
+  // (semua baris di sini pasti punya mulai+selesai karena lolos hasActivity).
   const sorted = [...campaigns]
     .filter(c => hasActivity(c, year, month))
-    .sort((a,b) => OBJ_ORDER.indexOf(a.obj) - OBJ_ORDER.indexOf(b.obj));
+    .sort((a,b) =>
+      (OBJ_ORDER.indexOf(a.obj) - OBJ_ORDER.indexOf(b.obj)) ||
+      (parseLocal(a.mulai) - parseLocal(b.mulai)));
 
   useEffect(() => { loadCampaigns(); }, []);
 
@@ -667,7 +671,17 @@ export default function CalendarPage() {
 
             <div style={{ marginBottom:'16px' }}>
               <div style={{ fontSize:'11px', color:'var(--t3)', textTransform:'uppercase', letterSpacing:'.4px', marginBottom:'5px', fontWeight:'600' }}>Daily Budget (Rp)</div>
-              <input style={inp} type="number" placeholder="100000" value={form.bh} onChange={e => setForm(f => ({ ...f, bh:e.target.value }))}/>
+              {/* Titik ribuan otomatis saat mengetik (100000 → 100.000) —
+                  pola sama dgn popup Edit Daily Budget di halaman Campaigns:
+                  tampilan diformat id-ID, state tetap digit mentah. */}
+              <input
+                style={inp}
+                type="text"
+                inputMode="numeric"
+                placeholder="100.000"
+                value={form.bh ? parseInt(form.bh).toLocaleString('id-ID') : ''}
+                onChange={e => setForm(f => ({ ...f, bh: e.target.value.replace(/\D/g, '') }))}
+              />
             </div>
 
             <div style={{ display:'flex', justifyContent:'flex-end', gap:'8px', paddingTop:'14px', borderTop:'1px solid var(--br)' }}>
