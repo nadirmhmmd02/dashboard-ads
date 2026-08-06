@@ -177,13 +177,6 @@ export default function CalendarPage() {
     };
   }, [statusDrop]);
 
-  const reminders = campaigns.filter(c => {
-    if (!c.mulai) return false;
-    const s = parseLocal(c.mulai), now2 = new Date(today.y, today.m, today.d);
-    const diff = (s - now2) / 86400000;
-    return diff >= 0 && diff <= 3;
-  });
-
   const totalBudget  = sorted.reduce((sum,c) => sum + budgetForMonth(c,year,month), 0);
   const budgetByObj  = OBJ_ORDER.reduce((acc,o) => {
     acc[o] = sorted.filter(c => c.obj===o).reduce((s,c) => s + budgetForMonth(c,year,month), 0);
@@ -211,19 +204,6 @@ export default function CalendarPage() {
       {error && (
         <div style={{ padding:'12px 16px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:'10px', color:'#ef4444', fontSize:'13px' }}>
           ⚠️ Gagal load data: {error}
-        </div>
-      )}
-
-      {/* Reminder banner */}
-      {reminders.length > 0 && (
-        <div style={{
-          display:'flex', alignItems:'center', gap:'8px',
-          padding:'10px 16px',
-          background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.2)',
-          borderRadius:'10px', fontSize:'12px', color:'var(--t2)',
-          animation:'wdFadeUp 0.35s cubic-bezier(0.4,0,0.2,1)',
-        }}>
-          🔔 <span><strong style={{color:'var(--ac)'}}>{reminders.length} campaign{reminders.length>1?'s':''}</strong> starting within 3 days — <strong>{reminders[0].name}</strong></span>
         </div>
       )}
 
