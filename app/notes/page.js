@@ -282,11 +282,91 @@ export default function NotesPage() {
     queueSave({ content: editorRef.current.innerHTML });
   }
 
+  /* ── Checklist ──
+     Span checkbox dibuat manual via Range API, BUKAN execCommand('insertHTML'):
+     dengan insertHTML Chrome sering menaruh kursor sebelum/di dalam span
+     contenteditable=false sehingga tidak bisa mengetik di samping checkbox.
+     Kursor selalu ditaruh eksplisit setelah spasi pengiring. */
+  function makeCheck() {
+    const span = document.createElement('span');
+    span.className = 'wd-check';
+    span.setAttribute('data-done', '0');
+    span.setAttribute('contenteditable', 'false');
+    span.textContent = '☐';
+    return span;
+  }
+
+  function placeCaretAfter(textNode) {
+    const sel = window.getSelection();
+    const r = document.createRange();
+    r.setStart(textNode, textNode.length);
+    r.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(r);
+  }
+
   function insertCheckbox() {
-    editorRef.current?.focus();
-    document.execCommand('insertHTML', false,
-      '<span class="wd-check" data-done="0" contenteditable="false">☐</span>&nbsp;');
-    queueSave({ content: editorRef.current.innerHTML });
+    const ed = editorRef.current;
+    if (!ed) return;
+    ed.focus();
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    // Pastikan baris jadi block <div> supaya perilaku Enter (lanjut checkbox)
+    // bisa mengenali batas baris. Di dalam bullet/numbered list jangan —
+    // formatBlock bakal merusak strukturnya.
+    const anchorEl = sel.anchorNode?.nodeType === 3 ? sel.anchorNode.parentNode : sel.anchorNode;
+    if (!anchorEl?.closest?.('li')) document.execCommand('formatBlock', false, '<div>');
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    const span = makeCheck();
+    // Spasi pengiring = nbsp, bukan spasi biasa — spasi biasa di ujung baris
+    // di-collapse browser sehingga kursor "hilang" di samping checkbox.
+    const space = document.createTextNode(' ');
+    range.insertNode(space);
+    range.insertNode(span);   // urutan akhir: span lalu spasi
+    placeCaretAfter(space);
+    queueSave({ content: ed.innerHTML });
+  }
+
+  /* Enter di baris checklist berperilaku seperti bullet list:
+     baris berisi teks → baris baru dengan checkbox baru;
+     baris checkbox kosong (Enter kedua) → checkbox dihapus, jadi baris polos. */
+  function onEditorKeyDown(e) {
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    const ed = editorRef.current;
+    const sel = window.getSelection();
+    if (!ed || !sel || !sel.rangeCount) return;
+    const anchorEl = sel.anchorNode?.nodeType === 3 ? sel.anchorNode.parentNode : sel.anchorNode;
+    if (!anchorEl || anchorEl.closest?.('li')) return;   // list asli: biarkan browser
+    // Blok baris = ancestor kursor yang anak langsung editor
+    let block = sel.getRangeAt(0).startContainer;
+    while (block && block.parentNode !== ed) block = block.parentNode;
+    if (!block || block.nodeType !== 1 || !block.querySelector('.wd-check')) return;
+    e.preventDefault();
+    const isEmpty = block.textContent.replace(/[☐☑ \s]/g, '') === '';
+    if (isEmpty) {
+      // Enter kedua: buang checkbox, baris ini jadi baris kosong biasa
+      block.innerHTML = '<br>';
+      const r = document.createRange();
+      r.setStart(block, 0);
+      r.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    } else {
+      // Enter pertama: pecah baris di posisi kursor, baris baru diawali checkbox
+      const range = sel.getRangeAt(0);
+      const tailRange = range.cloneRange();
+      tailRange.setEnd(block, block.childNodes.length);
+      const tail = tailRange.extractContents();   // sisa teks setelah kursor ikut pindah
+      const nd = document.createElement('div');
+      const space = document.createTextNode(' ');
+      nd.appendChild(makeCheck());
+      nd.appendChild(space);
+      nd.appendChild(tail);
+      block.after(nd);
+      placeCaretAfter(space);
+    }
+    queueSave({ content: ed.innerHTML });
   }
 
   function onEditorClick(e) {
@@ -600,6 +680,7 @@ export default function NotesPage() {
                   suppressContentEditableWarning
                   onInput={() => queueSave({ content: editorRef.current.innerHTML })}
                   onClick={onEditorClick}
+                  onKeyDown={onEditorKeyDown}
                   className="wd-note-editor"
                   style={{
                     flex: 1, overflowY: 'auto', padding: '18px 22px', outline: 'none',
