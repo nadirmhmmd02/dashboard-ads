@@ -770,14 +770,16 @@ export default function DashboardPage() {
           // Mobile: chip platform + date filter rata kanan (semua role)
           justifyContent: isMobile ? 'flex-end' : 'flex-start',
         }}>
-          {/* Platform selector */}
-          <PlatformSelector selected={platform} onSelect={setPlatform} />
+          {/* Platform selector — desktop: tinggi 40px seragam dgn tombol icon */}
+          <PlatformSelector selected={platform} onSelect={setPlatform} height={isMobile ? undefined : 40} />
 
           {/* Date filter */}
           <div style={{ position:'relative' }} data-filter>
             <button onClick={openFilter} style={{
               display:'flex', alignItems:'center', gap:'8px',
-              padding:'9px 14px',
+              // Desktop: tinggi eksplisit 40px biar rata dengan tombol icon di kanannya
+              padding: isMobile ? '9px 14px' : '0 14px',
+              height: isMobile ? undefined : '40px',
               background: CARD,
               border:`1px solid ${isCustom ? GREEN+'55' : BORDER}`,
               borderRadius:'10px', fontSize:'13px',

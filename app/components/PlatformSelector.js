@@ -58,7 +58,10 @@ export const PLATFORMS = [
 export const DEFAULT_PLATFORM = PLATFORMS[0]; // Meta Ads
 
 /* ── Komponen dropdown — visual identik dengan tombol Date Filter ── */
-export default function PlatformSelector({ selected, onSelect }) {
+// height (px, opsional): tinggi eksplisit tombol — dashboard desktop kirim 40
+// biar sama persis dengan tombol icon (Export/Compare/Refresh). Tanpa height,
+// tinggi ikut padding (perilaku lama, dipakai mobile).
+export default function PlatformSelector({ selected, onSelect, height }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -75,7 +78,8 @@ export default function PlatformSelector({ selected, onSelect }) {
     <div ref={ref} style={{ position: 'relative' }}>
       <button onClick={() => setOpen(prev => !prev)} style={{
         display: 'flex', alignItems: 'center', gap: '8px',
-        padding: '9px 14px',
+        padding: height ? '0 14px' : '9px 14px',
+        height: height ? height + 'px' : undefined,
         background: 'var(--cd)',
         border: `1px solid ${open ? 'var(--br-strong)' : 'var(--br)'}`,
         borderRadius: '10px', fontSize: '13px',
