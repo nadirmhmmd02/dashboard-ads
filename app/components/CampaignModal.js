@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { X, Globe, MessageCircle, ImageOff, RefreshCw, Users, Eye, MousePointerClick, UserPlus, Gauge, Coins, Wallet, Banknote, Target } from 'lucide-react';
+import { X, Globe, MessageCircle, ImageOff, RefreshCw, Users, Eye, MousePointerClick, UserPlus, Gauge, Coins, Wallet, Banknote, Target, RectangleVertical, Square } from 'lucide-react';
 import CountUp from './CountUp';
 import { authFetch } from '../supabase';
 
@@ -83,11 +83,10 @@ function embedUrl(permalink) {
   return (base.endsWith('/') ? base : base + '/') + 'embed/';
 }
 
-/* Format konten: reels = portrait, sisanya = feed */
-function adFormat(ad) {
-  const url = ad.creative?.instagram_permalink_url || '';
-  return url.includes('/reel/') ? 'portrait' : 'feed';
-}
+/* Format tampilan konten: DEFAULT portrait (mayoritas iklan Baba Rafi 9:16 —
+   keputusan Nadir 7 Agu 2026). Rasio asli media tidak bisa dideteksi dari
+   permalink, jadi ada toggle manual portrait/feed di header panel konten
+   untuk iklan yang memang format feed. */
 
 export default function CampaignModal({ campaign, query, periodLabel, onClose }) {
   const [detail, setDetail]     = useState(null);
@@ -95,6 +94,9 @@ export default function CampaignModal({ campaign, query, periodLabel, onClose })
   const [error, setError]       = useState(null);
   const [activeAd, setActiveAd] = useState(0);      // index konten terpilih
   const [closing, setClosing]   = useState(false);
+  // Format preview konten — default portrait, reset tiap ganti konten
+  const [viewFormat, setViewFormat] = useState('portrait');
+  useEffect(() => { setViewFormat('portrait'); }, [activeAd]);
 
   useEffect(() => {
     let alive = true;
@@ -155,7 +157,7 @@ export default function CampaignModal({ campaign, query, periodLabel, onClose })
   const currentAd  = uniqueAds[Math.min(activeAd, Math.max(uniqueAds.length - 1, 0))] || null;
   const currentUrl = currentAd ? embedUrl(currentAd.creative?.instagram_permalink_url) : null;
   const currentImg = currentAd ? (currentAd.creative?.image_url || currentAd.creative?.thumbnail_url) : null;
-  const isPortrait = currentAd ? adFormat(currentAd) === 'portrait' : false;
+  const isPortrait = viewFormat === 'portrait';
 
   /* ── Platform breakdown ── */
   const platforms  = (detail?.platforms || []).filter(p => parseFloat(p.spend || 0) > 0 || parseFloat(p.impressions || 0) > 0);
@@ -262,11 +264,35 @@ export default function CampaignModal({ campaign, query, periodLabel, onClose })
               <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'var(--t3)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <IgIcon size={12} color="var(--t3)" /> Ad Creative
               </span>
-              {uniqueAds.length > 1 && (
-                <span style={{ fontSize: '10.5px', color: 'var(--t3)' }}>
-                  {Math.min(activeAd, uniqueAds.length - 1) + 1} / {uniqueAds.length}
-                </span>
-              )}
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {uniqueAds.length > 1 && (
+                  <span style={{ fontSize: '10.5px', color: 'var(--t3)' }}>
+                    {Math.min(activeAd, uniqueAds.length - 1) + 1} / {uniqueAds.length}
+                  </span>
+                )}
+                {/* Toggle format preview — default portrait, klik untuk konten feed */}
+                {currentAd && (
+                  <span style={{ display: 'flex', gap: '3px', padding: '2px', borderRadius: '8px', border: '1px solid var(--br)', background: 'var(--cd)' }}>
+                    {[
+                      { v: 'portrait', Icon: RectangleVertical, title: 'Portrait (9:16)' },
+                      { v: 'feed',     Icon: Square,            title: 'Feed (1:1)' },
+                    ].map(o => {
+                      const on = viewFormat === o.v;
+                      return (
+                        <button key={o.v} onClick={() => setViewFormat(o.v)} title={o.title} style={{
+                          width: '22px', height: '22px', padding: 0, borderRadius: '6px', border: 'none',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                          background: on ? 'var(--cal-accent-soft)' : 'transparent',
+                          color: on ? 'var(--cal-accent-line)' : 'var(--t3)',
+                          transition: 'background 0.12s, color 0.12s',
+                        }}>
+                          <o.Icon size={12} />
+                        </button>
+                      );
+                    })}
+                  </span>
+                )}
+              </span>
             </div>
 
             {/* Preview */}
