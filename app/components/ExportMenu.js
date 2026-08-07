@@ -314,8 +314,9 @@ const ReportBody = forwardRef(function ReportBody({ summary, chartData = {}, cha
   );
 });
 
-// compact: tombol icon-only (dipakai toolbar mobile biar chip muat satu baris)
-export default function ExportMenu({ summary, chartData = {}, chartDates = [], donut = {}, rangeLabel = '', activeCount = 0, since = '', until = '', compact = false }) {
+// compact: tombol icon-only (mobile 36px default; desktop kirim size/radius 40/10
+// biar seragam dengan tombol Refresh/theme di header)
+export default function ExportMenu({ summary, chartData = {}, chartDates = [], donut = {}, rangeLabel = '', activeCount = 0, since = '', until = '', compact = false, size = 36, radius = 9 }) {
   // Laporan hasil export ikut tema dashboard yang sedang aktif (terang/gelap)
   const { theme } = useAuth();
   const P = paletteFor(theme);
@@ -444,8 +445,8 @@ export default function ExportMenu({ summary, chartData = {}, chartDates = [], d
         onClick={() => !busy && setOpen(o => !o)}
         title="Export"
         style={ compact ? {
-          width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: UI_CARD, border: `1px solid ${UI_BORDER}`, borderRadius: '9px',
+          width: size + 'px', height: size + 'px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: UI_CARD, border: `1px solid ${UI_BORDER}`, borderRadius: radius + 'px',
           cursor: busy ? 'default' : 'pointer', flexShrink: 0, transition: 'border-color 0.15s',
         } : {
           display: 'flex', alignItems: 'center', gap: '7px', padding: '9px 14px',

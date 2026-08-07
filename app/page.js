@@ -807,22 +807,8 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Compare — duduk di antara filter tanggal dan Export */}
-          {!isMobile && (
-            <button onClick={() => setShowCompare(true)} title="Compare two periods" style={{
-              display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px',
-              background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px',
-              fontSize: '13px', color: 'var(--t1)', cursor: 'pointer', fontFamily: 'inherit',
-              transition: 'border-color 0.15s',
-            }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--br-strong)'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = BORDER}
-            >
-              <GitCompareArrows size={14} color="var(--t2)" />
-              Compare
-            </button>
-          )}
-
+          {/* Export lalu Compare (urutan ditukar 7 Agu 2026) — dua-duanya icon-only
+              seukuran tombol Refresh; Export tetap punya dropdown format */}
           {!isMobile && isAdmin && (
             <ExportMenu
               summary={summary}
@@ -833,7 +819,23 @@ export default function DashboardPage() {
               activeCount={activeCampaignCount}
               since={isCustom ? customSince : ''}
               until={isCustom ? customUntil : ''}
+              compact
+              size={40}
+              radius={10}
             />
+          )}
+
+          {!isMobile && (
+            <button onClick={() => setShowCompare(true)} title="Compare two periods" style={{
+              width:ctrlSize, height:ctrlSize, display:'flex', alignItems:'center', justifyContent:'center',
+              background: CARD, border:`1px solid ${BORDER}`, borderRadius:ctrlRadius, cursor:'pointer',
+              flexShrink:0, transition:'border-color 0.15s',
+            }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--br-strong)'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = BORDER}
+            >
+              <GitCompareArrows size={15} color={SUB} />
+            </button>
           )}
 
           {!isMobile && refreshButton}
