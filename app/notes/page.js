@@ -305,12 +305,70 @@ export default function NotesPage() {
     sel.addRange(r);
   }
 
+  /* Checkbox untuk BLOK teks (beberapa baris di-block lalu klik checkbox):
+     berperilaku seperti bullet/numbered list — tiap baris dalam seleksi dapat
+     checkbox di awal barisnya (teks tidak dihapus). Kalau SEMUA baris terpilih
+     sudah ber-checkbox → checkbox dicabut (toggle, sama seperti list). */
+  function toggleCheckboxOnSelection(ed, sel) {
+    // Bungkus tiap baris jadi <div> dulu (teks polos di level atas editor jadi punya blok)
+    const anchorEl = sel.anchorNode?.nodeType === 3 ? sel.anchorNode.parentNode : sel.anchorNode;
+    if (!anchorEl?.closest?.('li')) document.execCommand('formatBlock', false, '<div>');
+    const range = sel.getRangeAt(0);
+    // Kumpulkan blok baris yang tersentuh seleksi (li di dalam list dihitung per item)
+    const blocks = [];
+    for (const node of Array.from(ed.childNodes)) {
+      if (!range.intersectsNode(node)) continue;
+      if (node.nodeType !== 1) continue;
+      if (node.tagName === 'UL' || node.tagName === 'OL') {
+        node.querySelectorAll('li').forEach(li => { if (range.intersectsNode(li)) blocks.push(li); });
+      } else if (node.tagName !== 'BR') {
+        blocks.push(node);
+      }
+    }
+    if (!blocks.length) return false;
+    const firstCheck = (b) => {
+      // checkbox dianggap "di awal baris" kalau anak elemen pertama yang bukan whitespace = .wd-check
+      for (const c of Array.from(b.childNodes)) {
+        if (c.nodeType === 3 && !c.textContent.trim()) continue;
+        return c.nodeType === 1 && c.classList?.contains('wd-check') ? c : null;
+      }
+      return null;
+    };
+    const allChecked = blocks.every(b => firstCheck(b));
+    for (const b of blocks) {
+      const existing = firstCheck(b);
+      if (allChecked) {
+        // cabut checkbox + spasi pengiringnya
+        const next = existing.nextSibling;
+        if (next && next.nodeType === 3 && /^[  ]/.test(next.textContent)) next.textContent = next.textContent.replace(/^[  ]/, '');
+        existing.remove();
+        if (!b.textContent.replace(/\s/g, '') && !b.querySelector('br,img')) b.innerHTML = '<br>';
+      } else if (!existing) {
+        // baris kosong (cuma <br>) → buang <br> supaya checkbox tidak turun baris
+        if (b.childNodes.length === 1 && b.firstChild.nodeName === 'BR') b.innerHTML = '';
+        b.insertBefore(document.createTextNode(' '), b.firstChild);
+        b.insertBefore(makeCheck(), b.firstChild);
+      }
+    }
+    // Seleksi tetap menyorot baris-baris yang sama (biar bisa lanjut format/aksi lain)
+    const r = document.createRange();
+    r.setStartBefore(blocks[0]);
+    r.setEndAfter(blocks[blocks.length - 1]);
+    sel.removeAllRanges();
+    sel.addRange(r);
+    return true;
+  }
+
   function insertCheckbox() {
     const ed = editorRef.current;
     if (!ed) return;
     ed.focus();
     const sel = window.getSelection();
     if (!sel || !sel.rangeCount) return;
+    // Ada teks yang di-block → mode massal per baris (seperti bullet/numbered list)
+    if (!sel.isCollapsed) {
+      if (toggleCheckboxOnSelection(ed, sel)) { queueSave({ content: ed.innerHTML }); return; }
+    }
     // Pastikan baris jadi block <div> supaya perilaku Enter (lanjut checkbox)
     // bisa mengenali batas baris. Di dalam bullet/numbered list jangan —
     // formatBlock bakal merusak strukturnya.

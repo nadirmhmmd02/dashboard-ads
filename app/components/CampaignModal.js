@@ -1,6 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { X, Globe, MessageCircle, ImageOff, RefreshCw, Users, Eye, MousePointerClick, UserPlus, Gauge, Coins, Wallet, Banknote, Target, RectangleVertical, Square } from 'lucide-react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { X, Globe, MessageCircle, ImageOff, RefreshCw, Users, Eye, MousePointerClick, UserPlus, Gauge, Coins, Wallet, Banknote, Target, RectangleVertical, Square, ChevronLeft, ChevronRight } from 'lucide-react';
 import CountUp from './CountUp';
 import { authFetch } from '../supabase';
 
@@ -83,10 +83,133 @@ function embedUrl(permalink) {
   return (base.endsWith('/') ? base : base + '/') + 'embed/';
 }
 
-/* Format tampilan konten: DEFAULT portrait (mayoritas iklan Baba Rafi 9:16 —
-   keputusan Nadir 7 Agu 2026). Rasio asli media tidak bisa dideteksi dari
-   permalink, jadi ada toggle manual portrait/feed di header panel konten
-   untuk iklan yang memang format feed. */
+/* ─── Preview media asli (per 15 Agu 2026) ───
+   Konten iklan ditampilkan FULL tanpa frame embed Instagram (header profil,
+   footer "Lihat lainnya", ikon like) — file gambar/video diambil langsung dari
+   CDN IG lewat /api/meta campaign_detail (ad.media). Ukuran kotak dihitung
+   dari rasio asli media supaya pas di area preview (portrait/feed otomatis,
+   tidak perlu toggle). Label kecil di pojok = platform sumber konten
+   (klik → buka post aslinya). Carousel → panah kiri/kanan + titik. */
+const PLATFORM_CHIP = {
+  instagram: { label: 'Instagram', Icon: IgIcon },
+  facebook:  { label: 'Facebook',  Icon: FbIcon },
+};
+
+function MediaPreview({ media, adName }) {
+  const areaRef = useRef(null);
+  const [area, setArea] = useState({ w: 0, h: 0 });
+  const [nat, setNat]   = useState({});      // url → { w, h } rasio asli
+  const [idx, setIdx]   = useState(0);       // slide carousel aktif (reset otomatis: komponen di-key per ad)
+
+  // Ukur area preview (content-box) — ikut berubah kalau modal di-resize
+  useLayoutEffect(() => {
+    const el = areaRef.current;
+    if (!el) return;
+    // dikurangi padding (18/6+12) + baris caption nama ad (~24px)
+    const measure = () => setArea({ w: el.clientWidth - 36, h: el.clientHeight - 18 - 24 });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const items = media.items || [];
+  const item  = items[Math.min(idx, items.length - 1)] || null;
+  const chip  = PLATFORM_CHIP[media.platform] || PLATFORM_CHIP.instagram;
+
+  // Kotak = rasio asli media (default 9:16 sebelum metadata termuat) yang muat di area
+  const n = item && nat[item.url];
+  const ratio = n && n.w && n.h ? n.w / n.h : 9 / 16;
+  let boxW = 0, boxH = 0;
+  if (area.w > 0 && area.h > 0) {
+    boxW = Math.min(area.w, area.h * ratio);
+    boxH = boxW / ratio;
+  }
+  const remember = (url, w, h) => { if (w && h) setNat(prev => (prev[url] ? prev : { ...prev, [url]: { w, h } })); };
+
+  const navBtn = (side) => ({
+    position: 'absolute', top: '50%', [side]: '8px', transform: 'translateY(-50%)',
+    width: '26px', height: '26px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+    background: 'rgba(0,0,0,0.45)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    backdropFilter: 'blur(4px)', transition: 'background 0.12s', zIndex: 2,
+  });
+
+  return (
+    <div ref={areaRef} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '6px 18px 12px', overflow: 'hidden' }}>
+      {item && boxW > 0 && (<>
+        <div key={item.url} style={{
+          position: 'relative', width: `${boxW}px`, height: `${boxH}px`,
+          borderRadius: '14px', overflow: 'hidden', background: 'var(--data-bg)',
+          animation: 'wdFadeUp 0.3s cubic-bezier(0.4,0,0.2,1)',
+        }}>
+          {item.type === 'VIDEO' ? (
+            <video
+              src={item.url} poster={item.thumb || undefined}
+              autoPlay muted loop playsInline controls preload="metadata"
+              onLoadedMetadata={e => remember(item.url, e.currentTarget.videoWidth, e.currentTarget.videoHeight)}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }}
+            />
+          ) : (
+            <img
+              src={item.url} alt={adName || ''}
+              onLoad={e => remember(item.url, e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          )}
+
+          {/* Label kecil platform sumber konten (klik = buka post asli) */}
+          {(() => {
+            const Tag = media.permalink ? 'a' : 'span';
+            return (
+              <Tag
+                {...(media.permalink ? { href: media.permalink, target: '_blank', rel: 'noopener noreferrer', title: `Open on ${chip.label}` } : {})}
+                style={{
+                  position: 'absolute', top: '10px', left: '10px', zIndex: 2,
+                  display: 'inline-flex', alignItems: 'center', gap: '5px',
+                  padding: '4px 9px 4px 7px', borderRadius: '20px',
+                  background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+                  color: '#fff', fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.3px',
+                  textDecoration: 'none', cursor: media.permalink ? 'pointer' : 'default',
+                  border: '1px solid rgba(255,255,255,0.18)',
+                }}>
+                <chip.Icon size={11} color="#fff" /> {chip.label}
+              </Tag>
+            );
+          })()}
+
+          {/* Carousel: panah + titik */}
+          {items.length > 1 && (
+            <>
+              <button onClick={() => setIdx(i => (i - 1 + items.length) % items.length)} style={navBtn('left')} title="Previous">
+                <ChevronLeft size={15} />
+              </button>
+              <button onClick={() => setIdx(i => (i + 1) % items.length)} style={navBtn('right')} title="Next">
+                <ChevronRight size={15} />
+              </button>
+              <div style={{ position: 'absolute', left: 0, right: 0, bottom: item.type === 'VIDEO' ? '52px' : '10px', display: 'flex', justifyContent: 'center', gap: '5px', zIndex: 2 }}>
+                {items.map((_, i) => (
+                  <span key={i} onClick={() => setIdx(i)} style={{
+                    width: i === idx ? '14px' : '6px', height: '6px', borderRadius: '3px', cursor: 'pointer',
+                    background: i === idx ? '#fff' : 'rgba(255,255,255,0.45)', transition: 'width 0.2s, background 0.2s',
+                  }} />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        {/* Caption nama ad (info yang sebelumnya ada di bawah embed) */}
+        <div style={{ fontSize: '10.5px', color: 'var(--t3)', marginTop: '8px', maxWidth: `${Math.max(boxW, 200)}px`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
+          {adName}
+        </div>
+      </>)}
+    </div>
+  );
+}
+
+/* Format tampilan konten untuk FALLBACK embed Instagram (dipakai hanya kalau
+   media asli tidak berhasil diambil): DEFAULT portrait (mayoritas iklan Baba
+   Rafi 9:16 — keputusan Nadir 7 Agu 2026). Rasio asli tidak terdeteksi dari
+   permalink, jadi ada toggle manual portrait/feed di header panel konten. */
 
 export default function CampaignModal({ campaign, query, periodLabel, onClose }) {
   const [detail, setDetail]     = useState(null);
@@ -158,6 +281,13 @@ export default function CampaignModal({ campaign, query, periodLabel, onClose })
   const currentUrl = currentAd ? embedUrl(currentAd.creative?.instagram_permalink_url) : null;
   const currentImg = currentAd ? (currentAd.creative?.image_url || currentAd.creative?.thumbnail_url) : null;
   const isPortrait = viewFormat === 'portrait';
+  // Media asli dari API (IG) → preview full. Tanpa itu: ada permalink → embed IG
+  // (fallback, masih ber-frame); tanpa permalink → gambar creative (konten Facebook).
+  const currentMedia = currentAd?.media
+    || (currentAd && !currentUrl && currentImg
+      ? { platform: 'facebook', permalink: null, items: [{ type: 'IMAGE', url: currentImg, thumb: currentImg }] }
+      : null);
+  const useEmbed = !!(currentAd && !currentMedia && currentUrl);
 
   /* ── Platform breakdown ── */
   const platforms  = (detail?.platforms || []).filter(p => parseFloat(p.spend || 0) > 0 || parseFloat(p.impressions || 0) > 0);
@@ -270,8 +400,8 @@ export default function CampaignModal({ campaign, query, periodLabel, onClose })
                     {Math.min(activeAd, uniqueAds.length - 1) + 1} / {uniqueAds.length}
                   </span>
                 )}
-                {/* Toggle format preview — default portrait, klik untuk konten feed */}
-                {currentAd && (
+                {/* Toggle format preview — HANYA untuk fallback embed IG (media asli rasionya otomatis) */}
+                {useEmbed && (
                   <span style={{ display: 'flex', gap: '3px', padding: '2px', borderRadius: '8px', border: '1px solid var(--br)', background: 'var(--cd)' }}>
                     {[
                       { v: 'portrait', Icon: RectangleVertical, title: 'Portrait (9:16)' },
@@ -295,7 +425,10 @@ export default function CampaignModal({ campaign, query, periodLabel, onClose })
               </span>
             </div>
 
-            {/* Preview */}
+            {/* Preview — media asli full-bleed; embed IG hanya fallback */}
+            {!loading && !error && currentMedia ? (
+              <MediaPreview key={currentAd.id} media={currentMedia} adName={currentAd.name} />
+            ) : (
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 18px 12px' }}>
               {loading ? (
                 <div style={{ textAlign: 'center', color: 'var(--t3)', fontSize: '12px' }}>
@@ -313,39 +446,29 @@ export default function CampaignModal({ campaign, query, periodLabel, onClose })
                   <div>No ad creative content in this campaign</div>
                 </div>
               ) : (
+                /* Fallback: embed Instagram (masih ber-frame) — hanya kalau media asli gagal diambil */
                 <div key={currentAd.id || ''} style={{ animation: 'wdFadeUp 0.3s cubic-bezier(0.4,0,0.2,1)', textAlign: 'center', maxWidth: '100%' }}>
-                  {currentUrl ? (
-                    <iframe
-                      src={currentUrl}
-                      loading="lazy"
-                      scrolling="no"
-                      frameBorder="0"
-                      allow="encrypted-media"
-                      style={{
-                        width: isPortrait ? '292px' : '340px',
-                        height: isPortrait ? '505px' : '425px',
-                        border: '1px solid var(--br)', borderRadius: '14px',
-                        background: '#fff', display: 'block', margin: '0 auto',
-                        boxShadow: 'var(--card-shadow)',
-                      }}
-                    />
-                  ) : (
-                    <img
-                      src={currentImg}
-                      alt={currentAd.name}
-                      style={{
-                        width: isPortrait ? '270px' : '330px',
-                        aspectRatio: isPortrait ? '9 / 16' : '1 / 1',
-                        objectFit: 'cover', border: '1px solid var(--br)', borderRadius: '14px', display: 'block', margin: '0 auto',
-                      }}
-                    />
-                  )}
+                  <iframe
+                    src={currentUrl}
+                    loading="lazy"
+                    scrolling="no"
+                    frameBorder="0"
+                    allow="encrypted-media"
+                    style={{
+                      width: isPortrait ? '292px' : '340px',
+                      height: isPortrait ? '505px' : '425px',
+                      border: '1px solid var(--br)', borderRadius: '14px',
+                      background: '#fff', display: 'block', margin: '0 auto',
+                      boxShadow: 'var(--card-shadow)',
+                    }}
+                  />
                   <div style={{ fontSize: '10.5px', color: 'var(--t3)', marginTop: '8px', maxWidth: '330px', margin: '8px auto 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {currentAd.name}
                   </div>
                 </div>
               )}
             </div>
+            )}
 
             {/* Strip thumbnail kalau ada > 1 konten */}
             {uniqueAds.length > 1 && (

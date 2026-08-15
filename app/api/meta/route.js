@@ -145,8 +145,9 @@ export async function GET(request) {
       }
 
       const [adsRes, platformRes] = await Promise.all([
-        // Ads di campaign ini + creative-nya (thumbnail besar, link post Instagram)
-        fetch(`https://graph.facebook.com/v19.0/${campaignId}/ads?fields=id,name,status,creative.thumbnail_width(1080).thumbnail_height(1080){id,thumbnail_url,image_url,instagram_permalink_url},insights.${dateField}{spend,impressions,reach,clicks,actions}&access_token=${ACCESS_TOKEN}&limit=50`),
+        // Ads di campaign ini + creative-nya (thumbnail besar, link post Instagram,
+        // id media IG untuk ambil file asli gambar/video)
+        fetch(`https://graph.facebook.com/v19.0/${campaignId}/ads?fields=id,name,status,creative.thumbnail_width(1080).thumbnail_height(1080){id,thumbnail_url,image_url,instagram_permalink_url,effective_instagram_media_id,object_type},insights.${dateField}{spend,impressions,reach,clicks,actions}&access_token=${ACCESS_TOKEN}&limit=50`),
         // Delivery nyata per platform (facebook/instagram/audience_network/messenger)
         fetch(`https://graph.facebook.com/v19.0/${campaignId}/insights?fields=spend,impressions,reach&breakdowns=publisher_platform&${dateParam}&access_token=${ACCESS_TOKEN}`),
       ]);
@@ -156,8 +157,33 @@ export async function GET(request) {
         return NextResponse.json({ error: adsData.error.message }, { status: 500 });
       }
 
+      /* Media asli konten iklan (bukan embed IG yang ada frame profil/footer):
+         via effective_instagram_media_id → media_url (mp4/jpg langsung dari CDN IG,
+         CORS terbuka). Carousel → children. Gagal ambil media = ad tetap dikirim
+         tanpa `media` (popup fallback ke embed/thumbnail). */
+      const ads = adsData.data || [];
+      const mediaIds = [...new Set(ads.map(a => a.creative?.effective_instagram_media_id).filter(Boolean))];
+      const mediaMap = {};
+      await Promise.all(mediaIds.map(async (id) => {
+        try {
+          const r = await fetch(`https://graph.facebook.com/v19.0/${id}?fields=media_type,media_url,thumbnail_url,permalink,children{media_type,media_url,thumbnail_url}&access_token=${ACCESS_TOKEN}`);
+          const m = await r.json();
+          if (m.error || !m.media_type) return;
+          const toItem = (x) => ({ type: x.media_type === 'VIDEO' ? 'VIDEO' : 'IMAGE', url: x.media_url || null, thumb: x.thumbnail_url || (x.media_type !== 'VIDEO' ? x.media_url : null) });
+          const items = m.media_type === 'CAROUSEL_ALBUM'
+            ? (m.children?.data || []).map(toItem).filter(x => x.url)
+            : [toItem(m)].filter(x => x.url);
+          if (!items.length) return;
+          mediaMap[id] = { platform: 'instagram', type: m.media_type, permalink: m.permalink || null, items };
+        } catch { /* abaikan — fallback di klien */ }
+      }));
+      for (const ad of ads) {
+        const mid = ad.creative?.effective_instagram_media_id;
+        if (mid && mediaMap[mid]) ad.media = mediaMap[mid];
+      }
+
       return NextResponse.json({
-        ads:       adsData.data || [],
+        ads,
         platforms: platformData.data || [],
       });
     }
