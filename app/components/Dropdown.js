@@ -34,6 +34,7 @@ export default function Dropdown({
   primary = false, align = 'left', direction = 'down',
   minWidth = 160, showCheck = true, keepOpen = false,
   footer = null, buttonStyle = {}, disabled = false, title,
+  block = false,   // true = wrapper & tombol lebar penuh (baris aksi, mis. TodoDetail)
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
@@ -55,12 +56,12 @@ export default function Dropdown({
   const origin = `${direction === 'down' ? 'top' : 'bottom'} ${align === 'right' ? 'right' : align === 'center' ? 'center' : 'left'}`;
 
   return (
-    <div ref={wrapRef} style={{ position: 'relative', display: 'inline-flex' }}>
+    <div ref={wrapRef} style={{ position: 'relative', display: block ? 'flex' : 'inline-flex', width: block ? '100%' : undefined }}>
       <button
         onClick={() => { if (!disabled) setOpen(v => !v); }}
         title={title}
         style={{
-          display: 'flex', alignItems: 'center', gap: '7px',
+          display: 'flex', alignItems: 'center', gap: '7px', ...(block ? { width: '100%' } : null),
           padding: '8px 12px', borderRadius: '10px',
           border: primary ? 'none' : '1px solid var(--br)',
           background: primary ? 'var(--cal-accent)' : 'var(--cd)',

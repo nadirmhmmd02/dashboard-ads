@@ -23,13 +23,16 @@ export default function AppShell({ children }) {
 
   // Marketing hanya boleh di Leads Hub — rute lain dilempar balik ke /leads
   const marketingBlocked = role === 'marketing' && !pathname.startsWith('/leads');
+  // Role user (viewer) tidak punya Analytics & Insights Ads Hub (per 19 Agu 2026) — dilempar ke dashboard
+  const userBlocked = role === 'user' && pathname === '/reports';
 
   useEffect(() => {
     if (!ready) return;
     if (!user && !isLogin) router.replace('/login');
     if (user && isLogin)   router.replace(homeFor(role));
     if (user && !isLogin && marketingBlocked) router.replace('/leads');
-  }, [ready, user, role, isLogin, marketingBlocked, router]);
+    if (user && !isLogin && userBlocked) router.replace('/');
+  }, [ready, user, role, isLogin, marketingBlocked, userBlocked, router]);
 
   useEffect(() => {
     if (showSuggest) {
@@ -70,7 +73,7 @@ export default function AppShell({ children }) {
 
   if (isLogin) return children;
   if (!ready || !user) return null;
-  if (marketingBlocked) return null; // jangan sempat render halaman Ads Hub
+  if (marketingBlocked || userBlocked) return null; // jangan sempat render halaman yang tidak boleh dilihat
 
   return (
     <div style={{

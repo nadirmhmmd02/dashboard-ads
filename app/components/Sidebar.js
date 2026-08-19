@@ -38,9 +38,13 @@ export const NAV_SECTIONS = [
   },
 ];
 
-// Menu per role: marketing hanya Leads Hub, role lain lihat semua
+// Menu per role: marketing hanya Leads Hub; user (viewer) tanpa Analytics & Insights
+// Ads Hub (per 19 Agu 2026, Calendar tetap); admin lihat semua.
 export function navSectionsFor(role) {
   if (role === 'marketing') return NAV_SECTIONS.filter(s => s.label === 'Leads Hub');
+  if (role === 'user') return NAV_SECTIONS.map(s => s.label === 'Ads Hub'
+    ? { ...s, items: s.items.filter(i => i.href !== '/reports') }
+    : s);
   return NAV_SECTIONS;
 }
 

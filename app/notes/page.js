@@ -12,6 +12,9 @@ import { supabase } from '../supabase';
 import useIsMobile from '../components/useIsMobile';
 import ThemeToggle from '../components/ThemeToggle';
 import { TYPE } from '../components/typography';
+import useTodos from '../components/useTodos';
+import TodoPanel from '../components/TodoPanel';
+import TodoDetail from '../components/TodoDetail';
 
 /* ─────────────────────────────────────────────────────────────
    NOTES — catatan pribadi admin (halaman penuh, /notes)
@@ -38,6 +41,9 @@ const AUTOSAVE_MS = 700;
    garisnya transparan, hanya kursor yang berubah saat disentuh. */
 const LIST_MIN = 210, LIST_MAX = 520, LIST_DEFAULT = 286;
 const LIST_W_KEY = 'wd-notes-list-w';
+/* Tinggi panel To Do di bawah daftar catatan — juga bisa digeser (row-resize) */
+const TODO_MIN = 150, TODO_MAX = 640, TODO_DEFAULT = 320;
+const TODO_H_KEY = 'wd-notes-todo-h';
 
 function plainText(html) {
   if (typeof document === 'undefined') return '';
@@ -104,13 +110,35 @@ export default function NotesPage() {
   const contentRef = useRef(null);
   const draggingRef = useRef(false);
 
+  /* ── To Do (ala Microsoft To Do) — data via useTodos, panel di bawah daftar catatan,
+        detail tugas menggantikan editor di kanan saat sebuah tugas dipilih ── */
+  const td = useTodos(role === 'admin');
+  const [todoView, setTodoView] = useState('myday');
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [todoH, setTodoH] = useState(TODO_DEFAULT);
+  const [todoDragHover, setTodoDragHover] = useState(false);
+  const leftCardRef = useRef(null);
+  const draggingTodoRef = useRef(false);
+  const selectedTask = useMemo(() => (td.todos || []).find(t => t.id === selectedTaskId) || null, [td.todos, selectedTaskId]);
+
   useEffect(() => {
     const saved = parseInt(localStorage.getItem(LIST_W_KEY) || '', 10);
     if (saved >= LIST_MIN && saved <= LIST_MAX) setListWidth(saved);
+    const savedH = parseInt(localStorage.getItem(TODO_H_KEY) || '', 10);
+    if (savedH >= TODO_MIN && savedH <= TODO_MAX) setTodoH(savedH);
   }, []);
 
   useEffect(() => {
     function onMove(e) {
+      if (draggingTodoRef.current && leftCardRef.current) {
+        // Geser pembatas daftar catatan ↔ panel To Do (tinggi panel = jarak kursor ke dasar kartu)
+        const bottom = leftCardRef.current.getBoundingClientRect().bottom;
+        let h = bottom - e.clientY;
+        if (h < TODO_MIN) h = TODO_MIN;
+        if (h > TODO_MAX) h = TODO_MAX;
+        setTodoH(h);
+        return;
+      }
       if (!draggingRef.current || !contentRef.current) return;
       const left = contentRef.current.getBoundingClientRect().left + 16; // padding kiri container
       let w = e.clientX - left;
@@ -119,6 +147,11 @@ export default function NotesPage() {
       setListWidth(w);
     }
     function onUp() {
+      if (draggingTodoRef.current) {
+        draggingTodoRef.current = false;
+        document.body.style.userSelect = '';
+        setTodoH(h => { localStorage.setItem(TODO_H_KEY, String(Math.round(h))); return h; });
+      }
       if (!draggingRef.current) return;
       draggingRef.current = false;
       document.body.style.userSelect = '';
@@ -136,6 +169,24 @@ export default function NotesPage() {
     draggingRef.current = true;
     document.body.style.userSelect = 'none';
     e.preventDefault();
+  }
+  function startTodoDrag(e) {
+    draggingTodoRef.current = true;
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  }
+
+  /* Pilih tugas → panel kanan jadi detail tugas; pilih catatan → kembali editor.
+     loadedIdRef di-reset supaya editor (yang sempat unmount) mengisi ulang innerHTML. */
+  function selectTask(id) {
+    setSelectedTaskId(id);
+    loadedIdRef.current = null;
+    if (isMobile) setMobileView('editor');
+  }
+  function selectNote(id) {
+    setSelectedTaskId(null);
+    setActiveId(id);
+    if (isMobile) setMobileView('editor');
   }
 
   // Catatan pribadi — hanya admin
@@ -188,7 +239,7 @@ export default function NotesPage() {
     editorRef.current.innerHTML = active?.content || '';
     loadedIdRef.current = activeId;
     setStatus('');
-  }, [activeId, active, mobileView]);
+  }, [activeId, active, mobileView, selectedTaskId]);
 
   useEffect(() => () => clearTimeout(saveTimer.current), []);
 
@@ -215,6 +266,7 @@ export default function NotesPage() {
       .single();
     if (err) { setError(err.message); return; }
     setNotes(prev => [data, ...(prev || [])]);
+    setSelectedTaskId(null);
     setActiveId(data.id);
     loadedIdRef.current = null;
     setMobileView('editor');
@@ -228,6 +280,22 @@ export default function NotesPage() {
     setNotes(rest);
     setConfirmDelete(null);
     if (activeId === id) { setActiveId(rest[0]?.id || null); loadedIdRef.current = null; }
+  }
+
+  /* Eksekusi konfirmasi hapus — confirmDelete = { kind: 'note'|'task'|'list', item } */
+  async function confirmDeleteNow() {
+    const c = confirmDelete;
+    if (!c) return;
+    if (c.kind === 'note') { await removeNote(c.item.id); return; }
+    if (c.kind === 'task') {
+      await td.removeTask(c.item.id);
+      if (selectedTaskId === c.item.id) { setSelectedTaskId(null); loadedIdRef.current = null; if (isMobile) setMobileView('list'); }
+    } else if (c.kind === 'list') {
+      await td.removeList(c.item.id);
+      if (todoView === `list:${c.item.id}`) setTodoView('tasks');
+      if (selectedTask && selectedTask.list_id === c.item.id) { setSelectedTaskId(null); loadedIdRef.current = null; }
+    }
+    setConfirmDelete(null);
   }
 
   async function togglePin(n) {
@@ -473,13 +541,13 @@ export default function NotesPage() {
   );
 
   function NoteRow({ n }) {
-    const isActive = n.id === activeId && (!isMobile || mobileView === 'editor');
+    const isActive = n.id === activeId && !selectedTaskId && (!isMobile || mobileView === 'editor');
     const isDragging = dragId === n.id;
     const preview = plainText(n.content).slice(0, 60);
     const showHandle = !isMobile && canReorder;
     return (
       <div
-        onClick={() => { setActiveId(n.id); if (isMobile) setMobileView('editor'); }}
+        onClick={() => selectNote(n.id)}
         onDragOver={e => {
           if (!dragIdRef.current || dragIdRef.current === n.id) return;
           e.preventDefault();
@@ -525,7 +593,7 @@ export default function NotesPage() {
             }}
           ><Pin size={12} fill={n.pinned ? 'currentColor' : 'none'} /></button>
           <button
-            onClick={e => { e.stopPropagation(); setConfirmDelete(n); }}
+            onClick={e => { e.stopPropagation(); setConfirmDelete({ kind: 'note', item: n }); }}
             title="Delete note"
             style={{ display: 'flex', background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'var(--t3)', flexShrink: 0 }}
             onMouseEnter={e => e.currentTarget.style.color = '#EF4444'}
@@ -562,7 +630,7 @@ export default function NotesPage() {
           <div style={{ minWidth: 0 }}>
             <h1 style={{ ...TYPE.h1, ...(isMobile ? { fontSize: '20px' } : null) }}>Notes</h1>
             <p style={{ ...TYPE.small, marginTop: '3px' }}>
-              {notes === null ? 'Loading…' : `${notes.length} note${notes.length === 1 ? '' : 's'} · synced across your devices`}
+              {notes === null ? 'Loading…' : `${notes.length} note${notes.length === 1 ? '' : 's'}${td.todos && !td.error ? ` · ${td.todos.filter(t => !t.done).length} open task${td.todos.filter(t => !t.done).length === 1 ? '' : 's'}` : ''} · synced across your devices`}
             </p>
           </div>
         </div>
@@ -586,7 +654,7 @@ export default function NotesPage() {
 
         {/* ── Daftar catatan ── */}
         {showList && (
-          <div style={{
+          <div ref={leftCardRef} style={{
             ...card, width: isMobile ? '100%' : `${listWidth}px`, flexShrink: 0,
             display: 'flex', flexDirection: 'column', overflow: 'hidden',
             animation: 'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) backwards',
@@ -635,6 +703,40 @@ export default function NotesPage() {
                 </div>
               )}
             </div>
+
+            {/* ── Pembatas daftar ↔ To Do (desktop: bisa digeser atas-bawah) ── */}
+            <div
+              onMouseDown={isMobile ? undefined : startTodoDrag}
+              onMouseEnter={() => setTodoDragHover(true)}
+              onMouseLeave={() => setTodoDragHover(false)}
+              title={isMobile ? undefined : 'Drag to resize'}
+              style={{
+                height: '1px', flexShrink: 0, position: 'relative',
+                background: 'var(--br)',
+                cursor: isMobile ? 'default' : 'row-resize',
+              }}
+            >
+              {!isMobile && (
+                <div style={{
+                  position: 'absolute', left: 0, right: 0, top: '-3px', height: '7px', zIndex: 5,
+                  background: todoDragHover || draggingTodoRef.current ? 'var(--br-strong)' : 'transparent',
+                  transition: 'background 0.15s', borderRadius: '999px',
+                }} />
+              )}
+            </div>
+
+            {/* ── Panel To Do (ala Microsoft To Do) ── */}
+            <div style={{ height: isMobile ? '44%' : `${todoH}px`, flexShrink: 0, minHeight: 0, background: 'var(--cd)' }}>
+              <TodoPanel
+                td={td}
+                view={todoView}
+                setView={setTodoView}
+                selectedId={selectedTaskId}
+                onSelect={selectTask}
+                onRequestDeleteList={(l) => setConfirmDelete({ kind: 'list', item: l })}
+                isMobile={isMobile}
+              />
+            </div>
           </div>
         )}
 
@@ -660,7 +762,15 @@ export default function NotesPage() {
             ...card, flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden',
             animation: 'wdFadeUp 0.4s cubic-bezier(0.4,0,0.2,1) 60ms backwards',
           }}>
-            {active ? (
+            {selectedTask ? (
+              <TodoDetail
+                key={selectedTask.id}
+                task={selectedTask}
+                td={td}
+                onRequestDelete={(t) => setConfirmDelete({ kind: 'task', item: t })}
+                isMobile={isMobile}
+              />
+            ) : active ? (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '13px 16px', borderBottom: '1px solid var(--br)' }}>
                   <input
@@ -797,9 +907,13 @@ export default function NotesPage() {
             background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '16px',
             boxShadow: 'var(--pop-shadow)', animation: 'wdScaleIn 0.16s cubic-bezier(0.4,0,0.2,1)',
           }}>
-            <div style={{ ...TYPE.h4 }}>Delete this note?</div>
+            <div style={{ ...TYPE.h4 }}>
+              {confirmDelete.kind === 'task' ? 'Delete this task?' : confirmDelete.kind === 'list' ? 'Delete this list?' : 'Delete this note?'}
+            </div>
             <div style={{ ...TYPE.small, marginTop: '7px', lineHeight: 1.6 }}>
-              “{confirmDelete.title || 'Untitled note'}” will be removed from every device. This can’t be undone.
+              {confirmDelete.kind === 'task' && <>“{confirmDelete.item.title || 'Untitled task'}” will be removed from every device. This can’t be undone.</>}
+              {confirmDelete.kind === 'list' && <>“{confirmDelete.item.name}” and <strong>all tasks inside it</strong> will be removed from every device. This can’t be undone.</>}
+              {confirmDelete.kind === 'note' && <>“{confirmDelete.item.title || 'Untitled note'}” will be removed from every device. This can’t be undone.</>}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '9px', marginTop: '16px' }}>
               <button onClick={() => setConfirmDelete(null)} style={{
@@ -807,7 +921,7 @@ export default function NotesPage() {
                 background: 'var(--cd)', color: 'var(--t1)', fontSize: '12.5px', fontWeight: 600,
                 cursor: 'pointer', fontFamily: 'inherit',
               }}>Cancel</button>
-              <button onClick={() => removeNote(confirmDelete.id)} style={{
+              <button onClick={confirmDeleteNow} style={{
                 padding: '9px 15px', borderRadius: '9px', border: 'none',
                 background: '#EF4444', color: '#fff', fontSize: '12.5px', fontWeight: 700,
                 cursor: 'pointer', fontFamily: 'inherit',
