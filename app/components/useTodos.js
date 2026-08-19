@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '../supabase';
+import { playDoneSound, playStepSound } from './todoSound';
 
 /* ─────────────────────────────────────────────────────────────
    useTodos — lapisan data To-Do (halaman Notes, admin).
@@ -50,7 +51,10 @@ export default function useTodos(enabled) {
   const load = useCallback(async () => {
     const [{ data: l, error: le }, { data: t, error: te }] = await Promise.all([
       supabase.from('todo_lists').select('id,name,color,sort_order,created_at').order('sort_order', { ascending: true, nullsFirst: false }).order('created_at'),
-      supabase.from('todos').select('id,list_id,title,notes,done,done_at,starred,due_date,my_day_date,steps,sort_order,created_at,updated_at').order('created_at', { ascending: false }),
+      // Urutan = sort_order hasil geser manual (kecil = atas); tugas baru (sort_order NULL)
+      // selalu paling atas, lalu yang terbaru dibuat.
+      supabase.from('todos').select('id,list_id,title,notes,done,done_at,starred,due_date,my_day_date,steps,sort_order,created_at,updated_at')
+        .order('sort_order', { ascending: true, nullsFirst: true }).order('created_at', { ascending: false }),
     ]);
     const err = le || te;
     if (err) {
@@ -93,11 +97,38 @@ export default function useTodos(enabled) {
     timers.current[id] = setTimeout(send, TEXT_DEBOUNCE_MS);
   }
 
-  const toggleDone  = (t) => updateTask(t.id, { done: !t.done, done_at: !t.done ? new Date().toISOString() : null });
+  const toggleDone  = (t) => {
+    if (!t.done) playDoneSound();   // bunyi "berhasil" hanya saat menandai selesai
+    updateTask(t.id, { done: !t.done, done_at: !t.done ? new Date().toISOString() : null });
+  };
   const toggleStar  = (t) => updateTask(t.id, { starred: !t.starred });
   const toggleMyDay = (t) => updateTask(t.id, { my_day_date: t.my_day_date === todayStr() ? null : todayStr() });
   const setDue      = (t, date) => updateTask(t.id, { due_date: date || null });
   const moveToList  = (t, listId) => updateTask(t.id, { list_id: listId || null });
+
+  /* ── Geser urutan (drag di panel) ──
+     moveTask: tukar posisi di array global todos saat kursor melewati tugas lain
+     (layar langsung berubah). commitOrder: saat dilepas, simpan sort_order = index
+     untuk semua tugas (idempotent, jumlah tugas kecil). */
+  function moveTask(srcId, targetId) {
+    setTodos(prev => {
+      const list = [...(prev || [])];
+      const si = list.findIndex(t => t.id === srcId);
+      const ti = list.findIndex(t => t.id === targetId);
+      if (si < 0 || ti < 0 || si === ti) return prev;
+      const [moved] = list.splice(si, 1);
+      list.splice(ti, 0, moved);
+      return list;
+    });
+  }
+  function commitOrder() {
+    setTodos(prev => {
+      const list = (prev || []).map((t, i) => ({ ...t, sort_order: i }));
+      Promise.all(list.map(t => supabase.from('todos').update({ sort_order: t.sort_order }).eq('id', t.id)))
+        .then(rs => { const bad = rs.find(r => r.error); if (bad) fail(bad.error); });
+      return list;
+    });
+  }
 
   async function removeTask(id) {
     setTodos(prev => (prev || []).filter(t => t.id !== id));
@@ -108,7 +139,11 @@ export default function useTodos(enabled) {
   /* ── Steps (sub-tugas) — disimpan sebagai JSON di kolom steps ── */
   const setSteps = (t, steps) => updateTask(t.id, { steps });
   const addStep    = (t, title) => setSteps(t, [...(t.steps || []), { id: crypto.randomUUID(), title: title.trim(), done: false }]);
-  const toggleStep = (t, sid)   => setSteps(t, (t.steps || []).map(s => (s.id === sid ? { ...s, done: !s.done } : s)));
+  const toggleStep = (t, sid)   => {
+    const cur = (t.steps || []).find(s => s.id === sid);
+    if (cur && !cur.done) playStepSound();
+    setSteps(t, (t.steps || []).map(s => (s.id === sid ? { ...s, done: !s.done } : s)));
+  };
   const renameStep = (t, sid, title) => updateTask(t.id, { steps: (t.steps || []).map(s => (s.id === sid ? { ...s, title } : s)) }, { debounce: true });
   const removeStep = (t, sid)   => setSteps(t, (t.steps || []).filter(s => s.id !== sid));
 
@@ -137,6 +172,7 @@ export default function useTodos(enabled) {
   return {
     lists, todos, error, reload: load,
     createTask, updateTask, toggleDone, toggleStar, toggleMyDay, setDue, moveToList, removeTask,
+    moveTask, commitOrder,
     addStep, toggleStep, renameStep, removeStep,
     createList, updateList, removeList,
   };

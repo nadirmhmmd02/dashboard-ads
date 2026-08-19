@@ -44,6 +44,8 @@ const LIST_W_KEY = 'wd-notes-list-w';
 /* Tinggi panel To Do di bawah daftar catatan — juga bisa digeser (row-resize) */
 const TODO_MIN = 150, TODO_MAX = 640, TODO_DEFAULT = 320;
 const TODO_H_KEY = 'wd-notes-todo-h';
+const TODO_MIN_KEY = 'wd-notes-todo-min';   // '1' = panel To Do di-minimize (tinggal header)
+const TODO_HEADER_H = 40;                   // tinggi header panel saat minimized
 
 function plainText(html) {
   if (typeof document === 'undefined') return '';
@@ -116,6 +118,8 @@ export default function NotesPage() {
   const [todoView, setTodoView] = useState('myday');
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [todoH, setTodoH] = useState(TODO_DEFAULT);
+  const [todoMin, setTodoMin] = useState(false);
+  const [todoDragging, setTodoDragging] = useState(false);   // matikan transisi tinggi saat digeser
   const [todoDragHover, setTodoDragHover] = useState(false);
   const leftCardRef = useRef(null);
   const draggingTodoRef = useRef(false);
@@ -126,7 +130,12 @@ export default function NotesPage() {
     if (saved >= LIST_MIN && saved <= LIST_MAX) setListWidth(saved);
     const savedH = parseInt(localStorage.getItem(TODO_H_KEY) || '', 10);
     if (savedH >= TODO_MIN && savedH <= TODO_MAX) setTodoH(savedH);
+    if (localStorage.getItem(TODO_MIN_KEY) === '1') setTodoMin(true);
   }, []);
+
+  function toggleTodoMin() {
+    setTodoMin(v => { localStorage.setItem(TODO_MIN_KEY, v ? '0' : '1'); return !v; });
+  }
 
   useEffect(() => {
     function onMove(e) {
@@ -149,6 +158,7 @@ export default function NotesPage() {
     function onUp() {
       if (draggingTodoRef.current) {
         draggingTodoRef.current = false;
+        setTodoDragging(false);
         document.body.style.userSelect = '';
         setTodoH(h => { localStorage.setItem(TODO_H_KEY, String(Math.round(h))); return h; });
       }
@@ -171,7 +181,9 @@ export default function NotesPage() {
     e.preventDefault();
   }
   function startTodoDrag(e) {
+    if (todoMin) return;   // saat minimized pembatas tidak bisa digeser
     draggingTodoRef.current = true;
+    setTodoDragging(true);
     document.body.style.userSelect = 'none';
     e.preventDefault();
   }
@@ -713,20 +725,26 @@ export default function NotesPage() {
               style={{
                 height: '1px', flexShrink: 0, position: 'relative',
                 background: 'var(--br)',
-                cursor: isMobile ? 'default' : 'row-resize',
+                cursor: isMobile || todoMin ? 'default' : 'row-resize',
               }}
             >
-              {!isMobile && (
+              {!isMobile && !todoMin && (
                 <div style={{
                   position: 'absolute', left: 0, right: 0, top: '-3px', height: '7px', zIndex: 5,
-                  background: todoDragHover || draggingTodoRef.current ? 'var(--br-strong)' : 'transparent',
+                  background: todoDragHover || todoDragging ? 'var(--br-strong)' : 'transparent',
                   transition: 'background 0.15s', borderRadius: '999px',
                 }} />
               )}
             </div>
 
-            {/* ── Panel To Do (ala Microsoft To Do) ── */}
-            <div style={{ height: isMobile ? '44%' : `${todoH}px`, flexShrink: 0, minHeight: 0, background: 'var(--cd)' }}>
+            {/* ── Panel To Do (ala Microsoft To Do) ──
+                Minimize ala Windows: tinggi menyusut ke header saja (panel menempel di dasar
+                kartu, jadi tampak "turun & mengecil ke bawah"); transisi dimatikan saat digeser. */}
+            <div style={{
+              height: todoMin ? `${TODO_HEADER_H}px` : isMobile ? '44%' : `${todoH}px`,
+              flexShrink: 0, minHeight: 0, background: 'var(--cd)', overflow: 'hidden',
+              transition: todoDragging ? 'none' : 'height 0.34s cubic-bezier(0.4,0,0.2,1)',
+            }}>
               <TodoPanel
                 td={td}
                 view={todoView}
@@ -735,6 +753,8 @@ export default function NotesPage() {
                 onSelect={selectTask}
                 onRequestDeleteList={(l) => setConfirmDelete({ kind: 'list', item: l })}
                 isMobile={isMobile}
+                minimized={todoMin}
+                onToggleMinimize={toggleTodoMin}
               />
             </div>
           </div>

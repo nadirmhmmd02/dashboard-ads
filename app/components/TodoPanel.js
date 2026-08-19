@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   ListTodo, Sun, Star, CalendarDays, Inbox, Circle, CircleCheck, Plus,
-  ChevronRight, Check, X, Pencil, Trash2, CircleAlert,
+  ChevronRight, Check, X, Pencil, Trash2, CircleAlert, Minus, ChevronUp,
 } from 'lucide-react';
 import Dropdown from './Dropdown';
 import { TYPE } from './typography';
@@ -56,18 +56,77 @@ function dotIcon(color) {
 
 export default function TodoPanel({
   td, view, setView, selectedId, onSelect, onRequestDeleteList, isMobile,
+  minimized = false, onToggleMinimize,
 }) {
   const { lists, todos, error } = td;
   const [draft, setDraft] = useState('');
   const [showDone, setShowDone] = useState(false);
   const [listEdit, setListEdit] = useState(null);   // null | { mode:'new'|'rename', id, name, color }
 
+  /* ── Geser urutan tugas (tekan kiri di baris → kursor tangan → geser atas/bawah) ──
+     Tanpa HTML5 drag: mousedown di baris mencatat titik awal; begitu bergerak >5px jadi
+     mode geser (body cursor grabbing), baris lain yang dilewati kursor (onMouseEnter)
+     memicu td.moveTask; mouseup → commitOrder + klik berikutnya ditelan (bukan pilih). */
+  const dragRef = useRef({ id: null, startY: 0, active: false, moved: false });
+  const suppressClick = useRef(false);
+  const tdRef = useRef(td); tdRef.current = td;   // listener global pakai td terbaru tanpa re-subscribe
+  const [dragId, setDragId] = useState(null);
+  const canDrag = !isMobile && view !== 'planned';   // Planned urut tenggat, tidak bisa digeser
+
+  useEffect(() => {
+    function onMove(e) {
+      const d = dragRef.current;
+      if (!d.id) return;
+      if (!d.active && Math.abs(e.clientY - d.startY) > 5) {
+        d.active = true;
+        setDragId(d.id);
+        document.body.style.userSelect = 'none';
+      }
+    }
+    function onUp() {
+      const d = dragRef.current;
+      if (!d.id) return;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      if (d.active) {
+        if (d.moved) tdRef.current.commitOrder();
+        suppressClick.current = true;                       // klik yang menyusul mouseup ditelan
+        setTimeout(() => { suppressClick.current = false; }, 0);
+      }
+      d.id = null; d.active = false; d.moved = false;
+      setDragId(null);
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
+  function pressRow(id, e) {
+    if (!canDrag || e.button !== 0) return;
+    if (e.target.closest('button,input,a')) return;   // tombol selesai/⭐ bukan pegangan
+    dragRef.current = { id, startY: e.clientY, active: false, moved: false };
+    document.body.style.cursor = 'grabbing';           // "tangan" begitu ditekan
+  }
+  function enterRow(id) {
+    const d = dragRef.current;
+    if (!d.active || d.id === id) return;
+    td.moveTask(d.id, id);
+    d.moved = true;
+  }
+  function clickRow(id) {
+    if (suppressClick.current) return;   // setelah geser, jangan dianggap klik pilih
+    onSelect(id);
+  }
+
   const meta = viewMeta(view, lists);
   const inView = useMemo(() => tasksForView(todos, view), [todos, view]);
   const open = useMemo(() => {
     const o = inView.filter(t => !t.done);
     if (view === 'planned') return [...o].sort((a, b) => (a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : 0));
-    return o; // urutan load = created_at desc (baru di atas)
+    return o; // urutan array todos = sort_order (geser manual), tugas baru paling atas
   }, [inView, view]);
   const done = useMemo(() => [...inView.filter(t => t.done)].sort((a, b) => (b.done_at || '').localeCompare(a.done_at || '')), [inView]);
 
@@ -119,8 +178,8 @@ export default function TodoPanel({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%' }}>
-      {/* Header: judul + pilihan view */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px 6px', flexShrink: 0 }}>
+      {/* Header: judul + minimize + pilihan view — tinggi tetap 40px (= TODO_HEADER_H di notes/page.js saat minimized) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px 4px', minHeight: '40px', boxSizing: 'border-box', flexShrink: 0 }}>
         {listEdit ? (
           /* Editor inline nama + warna daftar (buat baru / ganti nama) */
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '7px' }}>
@@ -159,6 +218,23 @@ export default function TodoPanel({
             {todos !== null && !error && (
               <span style={{ ...TYPE.caption, color: 'var(--t3)' }}>· {openCount} open</span>
             )}
+            {/* Minimize / restore ala Windows — di antara judul dan pilihan view */}
+            {onToggleMinimize && (
+              <button
+                onClick={onToggleMinimize}
+                title={minimized ? 'Restore To Do' : 'Minimize To Do'}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '22px', height: '20px', marginLeft: '2px', borderRadius: '6px',
+                  background: 'transparent', border: '1px solid transparent', cursor: 'pointer',
+                  color: 'var(--t3)', transition: 'background 0.12s, color 0.12s, border-color 0.12s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--hover)'; e.currentTarget.style.borderColor = 'var(--br)'; e.currentTarget.style.color = 'var(--t1)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.color = 'var(--t3)'; }}
+              >
+                {minimized ? <ChevronUp size={13} strokeWidth={2.5} /> : <Minus size={13} strokeWidth={2.5} />}
+              </button>
+            )}
             <span style={{ flex: 1 }} />
             <Dropdown
               label={meta.label}
@@ -181,8 +257,8 @@ export default function TodoPanel({
         )}
       </div>
 
-      {/* Quick add */}
-      {!error && (
+      {/* Quick add (disembunyikan saat minimized — tinggal header yang tampak) */}
+      {!error && !minimized && (
         <div style={{ padding: '0 10px 6px', flexShrink: 0 }}>
           <div style={{
             display: 'flex', alignItems: 'center', gap: '7px', padding: '7px 10px',
@@ -203,8 +279,8 @@ export default function TodoPanel({
         </div>
       )}
 
-      {/* Daftar tugas */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 10px 10px', display: 'flex', flexDirection: 'column', gap: '1px' }}>
+      {/* Daftar tugas — saat minimized tetap dirender (ikut terpotong animasi tinggi) tapi tak bisa di-scroll */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: minimized ? 'hidden' : 'auto', padding: '0 10px 10px', display: 'flex', flexDirection: 'column', gap: '1px', opacity: minimized ? 0 : 1, transition: 'opacity 0.22s ease' }}>
         {error?.missing && (
           <div style={{ ...TYPE.caption, padding: '8px 6px', lineHeight: 1.6, display: 'flex', gap: '7px' }}>
             <CircleAlert size={13} color="var(--t3)" style={{ flexShrink: 0, marginTop: '2px' }} />
@@ -220,7 +296,7 @@ export default function TodoPanel({
             {view === 'myday' ? 'My Day is empty — add what you want to focus on today.' : 'No tasks here yet.'}
           </div>
         )}
-        {open.map(t => <TaskRow key={t.id} t={t} td={td} view={view} isSel={t.id === selectedId} onSelect={onSelect} />)}
+        {open.map(t => <TaskRow key={t.id} t={t} td={td} view={view} isSel={t.id === selectedId} onSelect={clickRow} onPress={t.done ? null : pressRow} onEnter={t.done ? null : enterRow} isDragging={dragId === t.id} dragMode={!!dragId} canDrag={canDrag && !t.done} />)}
         {done.length > 0 && (
           <>
             <button onClick={() => setShowDone(v => !v)} style={{
@@ -230,7 +306,7 @@ export default function TodoPanel({
               <ChevronRight size={11} style={{ transform: showDone ? 'rotate(90deg)' : 'none', transition: 'transform 0.18s' }} />
               Completed <span style={{ fontWeight: 600, letterSpacing: 0, textTransform: 'none' }}>({done.length})</span>
             </button>
-            {showDone && done.map(t => <TaskRow key={t.id} t={t} td={td} view={view} isSel={t.id === selectedId} onSelect={onSelect} />)}
+            {showDone && done.map(t => <TaskRow key={t.id} t={t} td={td} view={view} isSel={t.id === selectedId} onSelect={clickRow} onPress={t.done ? null : pressRow} onEnter={t.done ? null : enterRow} isDragging={dragId === t.id} dragMode={!!dragId} canDrag={canDrag && !t.done} />)}
           </>
         )}
       </div>
@@ -239,7 +315,7 @@ export default function TodoPanel({
 }
 
 /* Baris tugas — di level modul supaya tidak di-remount tiap render panel */
-function TaskRow({ t, td, view, isSel, onSelect }) {
+function TaskRow({ t, td, view, isSel, onSelect, onPress, onEnter, isDragging = false, dragMode = false, canDrag = false }) {
     const steps = t.steps || [];
     const stepsDone = steps.filter(s => s.done).length;
     const inMyDay = t.my_day_date === todayStr();
@@ -249,16 +325,23 @@ function TaskRow({ t, td, view, isSel, onSelect }) {
     return (
       <div
         onClick={() => onSelect(t.id)}
+        onMouseDown={onPress ? (e) => onPress(t.id, e) : undefined}
+        onMouseEnter={e => { if (onEnter) onEnter(t.id); if (!isSel && !dragMode) e.currentTarget.style.background = 'var(--hover)'; }}
+        onMouseLeave={e => { if (!isSel && !isDragging) e.currentTarget.style.background = 'transparent'; }}
+        title={canDrag ? 'Click to open · press & drag to reorder' : undefined}
         style={{
           display: 'flex', alignItems: 'flex-start', gap: '8px',
-          padding: '8px 9px', borderRadius: '11px', cursor: 'pointer',
-          background: isSel ? 'var(--hover)' : 'transparent',
-          border: `1px solid ${isSel ? 'var(--br)' : 'transparent'}`,
-          transition: 'background 0.12s',
+          padding: '8px 9px', borderRadius: '11px',
+          cursor: dragMode ? 'grabbing' : 'pointer',
+          background: isSel || isDragging ? 'var(--hover)' : 'transparent',
+          border: `1px solid ${isSel || isDragging ? 'var(--br)' : 'transparent'}`,
+          boxShadow: isDragging ? 'var(--pop-shadow)' : 'none',
+          opacity: isDragging ? 0.85 : 1,
+          transform: isDragging ? 'scale(1.02)' : 'none',
+          transition: 'background 0.12s, box-shadow 0.15s, transform 0.15s, opacity 0.15s',
           animation: 'wdFadeUp 0.25s cubic-bezier(0.4,0,0.2,1) backwards',
+          position: 'relative', zIndex: isDragging ? 2 : 'auto',
         }}
-        onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'var(--hover)'; }}
-        onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}
       >
         <button
           onClick={e => { e.stopPropagation(); td.toggleDone(t); }}
