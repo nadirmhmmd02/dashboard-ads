@@ -103,7 +103,7 @@ export default function AppShell({ children }) {
               boxShadow: 'var(--pop-shadow)', overflow: 'hidden',
               display: 'flex', flexDirection: 'column',
               animation: closing
-                ? 'wdSlideUp 0.18s cubic-bezier(0.4,0,0.2,1) reverse forwards'
+                ? 'wdSlideDown 0.2s cubic-bezier(0.4,0,0.2,1) forwards'
                 : 'wdSlideUp 0.22s cubic-bezier(0.4,0,0.2,1)',
             }}>
               <div style={{

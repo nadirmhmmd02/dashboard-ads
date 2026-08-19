@@ -251,7 +251,7 @@ export default function CampaignModal({ campaign, query, periodLabel, onClose })
   // Tutup dengan animasi reverse
   function close() {
     setClosing(true);
-    setTimeout(onClose, 170);
+    setTimeout(onClose, 200);   // = durasi wdSlideDown/wdFadeOut
   }
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') close(); };
@@ -340,7 +340,8 @@ export default function CampaignModal({ campaign, query, periodLabel, onClose })
         position: 'fixed', inset: 0, zIndex: 100,
         background: 'rgba(5,7,10,0.55)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '28px',
-        animation: closing ? 'wdFadeIn 0.17s ease reverse forwards' : 'wdFadeIn 0.2s ease',
+        // Tutup = keyframe terpisah (wdFadeOut); `reverse` pada animasi yang sudah selesai tidak diputar ulang
+        animation: closing ? 'wdFadeOut 0.2s ease forwards' : 'wdFadeIn 0.2s ease',
       }}
     >
       <div style={{
@@ -350,7 +351,7 @@ export default function CampaignModal({ campaign, query, periodLabel, onClose })
         boxShadow: 'var(--pop-shadow)', overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
         animation: closing
-          ? 'wdSlideUp 0.17s cubic-bezier(0.4,0,0.2,1) reverse forwards'
+          ? 'wdSlideDown 0.2s cubic-bezier(0.4,0,0.2,1) forwards'
           : 'wdSlideUp 0.24s cubic-bezier(0.4,0,0.2,1)',
       }}>
         {/* hairline aksen atas */}

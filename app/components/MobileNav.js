@@ -114,7 +114,7 @@ export default function MobileNav() {
             position: 'fixed', inset: 0, zIndex: 90,
             background: 'rgba(0,0,0,0.5)',
             animation: closing
-              ? 'wdFadeIn 0.2s ease reverse forwards'
+              ? 'wdFadeOut 0.2s ease forwards'
               : 'wdFadeIn 0.22s ease',
           }} />
 
@@ -125,7 +125,7 @@ export default function MobileNav() {
             boxShadow: 'var(--pop-shadow)',
             display: 'flex', flexDirection: 'column',
             animation: closing
-              ? `wdDrawerIn 0.22s ${EASE} reverse forwards`
+              ? `wdDrawerOut 0.22s ${EASE} forwards`
               : `wdDrawerIn 0.26s ${EASE}`,
           }}>
             {/* Logo header */}
