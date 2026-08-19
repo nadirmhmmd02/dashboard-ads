@@ -145,7 +145,17 @@ function MediaPreview({ media, adName }) {
           {item.type === 'VIDEO' ? (
             <video
               src={item.url} poster={item.thumb || undefined}
-              autoPlay muted loop playsInline controls preload="metadata"
+              autoPlay loop playsInline controls preload="metadata"
+              /* Default BERSUARA (keputusan Nadir 19 Agu 2026; tombol mute tetap ada di controls).
+                 Popup dibuka lewat klik, jadi browser umumnya mengizinkan autoplay bersuara;
+                 kalau ditolak (Safari ketat / kebijakan site), jatuh ke mute supaya tetap jalan. */
+              ref={el => {
+                if (!el || el.dataset.wdAuto) return;
+                el.dataset.wdAuto = '1';
+                el.muted = false;
+                const p = el.play();
+                if (p && p.catch) p.catch(() => { el.muted = true; el.play().catch(() => {}); });
+              }}
               onLoadedMetadata={e => remember(item.url, e.currentTarget.videoWidth, e.currentTarget.videoHeight)}
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }}
             />

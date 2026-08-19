@@ -23,8 +23,9 @@ export default function AppShell({ children }) {
 
   // Marketing hanya boleh di Leads Hub — rute lain dilempar balik ke /leads
   const marketingBlocked = role === 'marketing' && !pathname.startsWith('/leads');
-  // Role user (viewer) tidak punya Analytics & Insights Ads Hub (per 19 Agu 2026) — dilempar ke dashboard
-  const userBlocked = role === 'user' && pathname === '/reports';
+  // Role user (viewer) tidak punya Analytics & Insights (Ads Hub /reports & Leads Hub /leads/insights,
+  // per 19 Agu 2026) — dilempar ke dashboard
+  const userBlocked = role === 'user' && (pathname === '/reports' || pathname === '/leads/insights');
 
   useEffect(() => {
     if (!ready) return;
