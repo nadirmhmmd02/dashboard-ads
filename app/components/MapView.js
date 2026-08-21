@@ -77,6 +77,19 @@ export default function MapView({ outlets, theme, focus }) {
         attribution: TILE.attribution, maxZoom: 19, subdomains: 'abcd',
       }).addTo(map);
 
+      // Kontainer berubah ukuran (sidebar collapse/expand, resize window):
+      // Leaflet TIDAK auto-resize — panggil invalidateSize sekali di akhir
+      // (debounce), supaya animasi sidebar tetap mulus tanpa redraw tiap frame.
+      let roTimer = null;
+      const ro = new ResizeObserver(() => {
+        if (roTimer) clearTimeout(roTimer);
+        roTimer = setTimeout(() => {
+          if (mapRef.current) mapRef.current.invalidateSize({ animate: false });
+        }, 150);
+      });
+      ro.observe(boxRef.current);
+      map.__wdRo = ro;
+
       clusterRef.current = L.markerClusterGroup({
         showCoverageOnHover: false,
         maxClusterRadius: 52,
@@ -95,7 +108,10 @@ export default function MapView({ outlets, theme, focus }) {
     })();
     return () => {
       cancelled = true;
-      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
+      if (mapRef.current) {
+        if (mapRef.current.__wdRo) mapRef.current.__wdRo.disconnect();
+        mapRef.current.remove(); mapRef.current = null;
+      }
       markersRef.current.clear();
       clusterRef.current = null; tileRef.current = null;
     };

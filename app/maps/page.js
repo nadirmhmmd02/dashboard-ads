@@ -348,7 +348,11 @@ export default function MapsPage() {
     borderBottom: '1px solid var(--br)', background: 'var(--cd)',
     position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap',
   };
-  const td = { padding: '9px 12px', fontSize: '12px', color: 'var(--t1)', borderBottom: '1px solid var(--br)', verticalAlign: 'middle' };
+  const td = {
+    padding: '9px 12px', fontSize: '12px', color: 'var(--t1)',
+    borderBottom: '1px solid var(--br)', verticalAlign: 'middle',
+    overflow: 'hidden', textOverflow: 'ellipsis',
+  };
 
   /* ── Setup hint (tabel Supabase belum dibuat) ── */
   if (needsSetup) {
@@ -750,7 +754,18 @@ export default function MapsPage() {
 
         {/* Tabel */}
         <div style={{ overflowX: 'auto', maxHeight: '480px', overflowY: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '860px' }}>
+          {/* tableLayout FIXED wajib: dgn ~490 baris, layout auto bikin browser
+              mengukur ulang semua cell tiap reflow (animasi sidebar jadi patah-patah) */}
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '860px', tableLayout: 'fixed' }}>
+            <colgroup>
+              <col />{/* Outlet = sisa lebar */}
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '135px' }} />
+              <col style={{ width: '110px' }} />
+              <col style={{ width: '135px' }} />
+              <col style={{ width: '58px' }} />
+              <col style={{ width: '150px' }} />
+            </colgroup>
             <thead>
               <tr>
                 <th style={th}>Outlet</th>
