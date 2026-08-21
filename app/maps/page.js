@@ -484,7 +484,7 @@ export default function MapsPage() {
           ) : (
             <>
               <div style={{ flex: 1, fontSize: '12px', color: 'var(--t1)', fontWeight: 600 }}>
-                {pendingGeocode} outlet{pendingGeocode > 1 ? 's' : ''} don&apos;t have a city name yet
+                {`${pendingGeocode} ${pendingGeocode > 1 ? 'outlets' : 'outlet'} don't have a city name yet`}
                 <span style={{ color: 'var(--t3)', fontWeight: 500 }}> — needed for the City filter (one-time, cached)</span>
               </div>
               <button onClick={startGeocode} style={{
@@ -502,9 +502,12 @@ export default function MapsPage() {
         display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '10px',
         height: isMobile ? 'auto' : 'min(560px, 58vh)', minHeight: isMobile ? 0 : '400px',
       }}>
-        {/* Peta */}
+        {/* Peta — zIndex: 0 WAJIB: bikin stacking context sendiri supaya
+            z-index internal Leaflet (pane 400, kontrol 1000) TERKURUNG di
+            kartu ini dan tidak menimpa modal/toast halaman */}
         <div style={{
           ...card, flex: isMobile ? 'none' : 2.6, minWidth: 0, overflow: 'hidden', position: 'relative',
+          zIndex: 0,
           height: isMobile ? '320px' : 'auto',
           animation: `wdFadeUp 0.45s ${EASE}`,
         }}>
@@ -839,7 +842,7 @@ export default function MapsPage() {
         <div
           onMouseDown={e => { if (e.target === e.currentTarget) closeWilayah(); }}
           style={{
-            position: 'fixed', inset: 0, zIndex: 90,
+            position: 'fixed', inset: 0, zIndex: 1200, // di atas seluruh lapisan Leaflet (maks 1000)
             background: 'rgba(0,0,0,0.45)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
             animation: wilayahClosing ? `wdFadeOut 0.2s ${EASE} forwards` : `wdFadeIn 0.2s ${EASE}`,
@@ -915,7 +918,7 @@ export default function MapsPage() {
       {/* ── TOAST hasil sync / geocode ── */}
       {toast && (
         <div style={{
-          position: 'fixed', bottom: '20px', right: '20px', zIndex: 100,
+          position: 'fixed', bottom: '20px', right: '20px', zIndex: 1300, // di atas modal & Leaflet
           width: 'min(340px, calc(100vw - 40px))',
           background: 'var(--cd)', border: '1px solid var(--br)', borderRadius: '14px',
           boxShadow: 'var(--pop-shadow)', padding: '14px 16px',
