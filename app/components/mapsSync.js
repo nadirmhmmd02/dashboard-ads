@@ -80,6 +80,65 @@ export function coordKey(lat, lng) {
   return lat.toFixed(5) + ',' + lng.toFixed(5);
 }
 
+/* ── Kota dari ALAMAT (sumber utama, keputusan Nadir 21 Agu 2026) ──
+   Alamat format Google Maps memuat "Kota X" / "Kabupaten X" / "Kab. X"
+   / "X Regency" (Bali). Tingkat yang diambil = KOTA/KABUPATEN (bukan
+   kecamatan); Jakarta dipecah per wilayah administrasi. Alamat tanpa
+   pola → null → fallback reverse-geocode OpenStreetMap.
+   Kamus singkatan yang nyata ada di sheet: SBY, Bks, dsb. */
+const KOTA_ALIAS = {
+  'sby': 'Surabaya', 'bks': 'Bekasi', 'bdg': 'Bandung', 'smg': 'Semarang',
+  'jkt': 'Jakarta', 'mlg': 'Malang', 'sda': 'Sidoarjo', 'yk': 'Yogyakarta',
+  'jogja': 'Yogyakarta', 'tangsel': 'Tangerang Selatan',
+  'jaksel': 'Jakarta Selatan', 'jaktim': 'Jakarta Timur', 'jakbar': 'Jakarta Barat',
+  'jakut': 'Jakarta Utara', 'jakpus': 'Jakarta Pusat',
+};
+// Nama provinsi sebagai pembatas akhir nama kota. "Lampung" SENGAJA tidak
+// ada (Bandar Lampung / Lampung Tengah adalah nama kota/kabupaten).
+const PROV_STOP = '(?:Jawa|Bali|Banten|DKI|Daerah|Sumatera|Sumatra|Nusa|Kalimantan|Sulawesi|Riau|Jambi|Aceh|Maluku|Papua|Gorontalo|Kepulauan|Indonesia)';
+const RE_KOTA = new RegExp(
+  '\\b(?:Kota|Kabupaten|Kab\\.?)\\s+(?:Adm\\.?\\s+|Administrasi\\s+)?' +
+  '([A-Za-z][A-Za-z\'.\\-]*(?:\\s+[A-Za-z][A-Za-z\'.\\-]*){0,2}?)' +
+  '(?=\\s*,|\\s*\\d{5}|\\s+' + PROV_STOP + '\\b|\\s+kode\\s*pos\\b|\\s*$)', 'i');
+// Format Inggris Google Maps: "Badung Regency, Indonesia", "Malang City, East Java".
+// WAJIB diikuti koma — kalau tidak, nama perumahan ikut tertangkap
+// ("Ruko Permata Regency Kavling 1", "Manyar Garden Regency Kav 29").
+const RE_REGENCY = /\b([A-Z][A-Za-z'.\-]+(?:\s+[A-Z][A-Za-z'.\-]+)?)\s+(?:Regency|City)\s*,/;
+// Arah Inggris hanya untuk kota yang memang bernama arah (bukan provinsi "East Java")
+const RE_EN_DIR  = /\b((?:West|North|Central|South|East)\s+(?:Jakarta|Lampung))\b/;
+const EN_DIR = { west: 'Barat', north: 'Utara', central: 'Tengah', south: 'Selatan', east: 'Timur' };
+
+function titleCase(s) {
+  return s.toLowerCase().replace(/(^|[\s\-])([a-z])/g, (m, p, c) => p + c.toUpperCase());
+}
+
+export function kotaFromAlamat(alamat) {
+  const s = (alamat || '').replace(/\s+/g, ' ').trim();
+  if (!s) return null;
+  let name = null;
+  const m = s.match(RE_KOTA);
+  if (m) name = m[1].trim();
+  else {
+    const r = s.match(RE_REGENCY) || s.match(RE_EN_DIR);
+    if (r) name = r[1].trim();
+  }
+  if (!name) return null;
+  name = name.replace(/[.,]+$/, '').replace(/\s*(kode\s*pos|kodepos)$/i, '').trim();
+  if (!name || /^\d/.test(name)) return null;
+
+  const alias = KOTA_ALIAS[name.toLowerCase()];
+  if (alias) return alias;
+
+  // "West Jakarta" → "Jakarta Barat"; "Central Lampung" → "Lampung Tengah"; "Central Jakarta" → "Jakarta Pusat"
+  const en = name.match(/^(West|North|Central|South|East)\s+(.+)$/i);
+  if (en) {
+    const base = titleCase(en[2]);
+    const dir = en[1].toLowerCase() === 'central' && /^jakarta$/i.test(base) ? 'Pusat' : EN_DIR[en[1].toLowerCase()];
+    return `${base} ${dir}`;
+  }
+  return titleCase(name); // "bogor" / "SURABAYA" → "Bogor" / "Surabaya"
+}
+
 /* ── CSV → daftar outlet ──
    Kolom dibaca BERDASARKAN NAMA HEADER (baris 1) — tahan kolom
    geser/tambah. Baris tanpa Nama Outlet dilewati (dihitung).
@@ -109,10 +168,12 @@ export function outletsFromCsv(csvText) {
     if (!nama) { skipped++; continue; }
     const ordinatRaw = col(r, 'Titik Ordinat');
     const coord = parseOrdinat(ordinatRaw);
+    const alamat = col(r, 'Alamat');
     list.push({
       nama,
       depo:        col(r, 'Depo'),
-      alamat:      col(r, 'Alamat'),
+      alamat,
+      kota_alamat: kotaFromAlamat(alamat),   // null = perlu reverse-geocode
       ordinat_raw: ordinatRaw,
       lat:         coord.lat,
       lng:         coord.lng,
@@ -146,11 +207,16 @@ const WATCHED = ['alamat', 'ordinat_raw', 'nama_gmaps'];
 const COPY_FIELDS = ['depo', 'alamat', 'ordinat_raw', 'lat', 'lng', 'coord_error',
   'nomor_hp', 'nama_lama', 'nama_gmaps', 'status', 'link_gmaps', 'catatan', 'row_no'];
 
-export function diffOutlets(fresh, existing) {
+/* opts.resetKota = true → kota hasil geocode LAMA dibuang (diisi ulang),
+   dipakai sekali saat aturan penentuan kota berubah (KOTA_VERSION naik). */
+export function diffOutlets(fresh, existing, opts = {}) {
   const byName = new Map(existing.map(e => [e.nama, e]));
   const seen = new Set();
   const inserts = [], updates = [], alerts = [], reappeared = [];
   const now = new Date().toISOString();
+  // Kota: dari alamat kalau ada (menimpa apa pun), kalau tidak → pertahankan
+  // hasil geocode yang sudah ada (kecuali reset), kalau belum ada → null (pending)
+  const kotaFor = (f, cur) => f.kota_alamat || (opts.resetKota ? null : (cur?.kota || null));
 
   for (const f of fresh) {
     const cur = byName.get(f.nama);
@@ -165,7 +231,7 @@ export function diffOutlets(fresh, existing) {
       if (cur.missing_since) reappeared.push(f.nama);
       updates.push({
         nama: f.nama,
-        fields: { ...pick(f, COPY_FIELDS), last_seen_at: now, missing_since: null, updated_at: now },
+        fields: { ...pick(f, COPY_FIELDS), kota: kotaFor(f, cur), last_seen_at: now, missing_since: null, updated_at: now },
       });
       continue;
     }
@@ -178,14 +244,14 @@ export function diffOutlets(fresh, existing) {
       seen.add(lama);
       updates.push({
         nama: lama,
-        fields: { nama: f.nama, ...pick(f, COPY_FIELDS), last_seen_at: now, missing_since: null, updated_at: now },
+        fields: { nama: f.nama, ...pick(f, COPY_FIELDS), kota: kotaFor(f, relokasiDari), last_seen_at: now, missing_since: null, updated_at: now },
       });
       alerts.push({ outlet_nama: f.nama, type: 'relokasi', detail: { dari: lama, ke: f.nama, alamat_baru: f.alamat } });
       if (relokasiDari.missing_since) reappeared.push(f.nama);
       continue;
     }
 
-    inserts.push({ ...pick(f, COPY_FIELDS), nama: f.nama, first_seen_at: now, last_seen_at: now, updated_at: now });
+    inserts.push({ ...pick(f, COPY_FIELDS), nama: f.nama, kota: f.kota_alamat || null, first_seen_at: now, last_seen_at: now, updated_at: now });
   }
 
   // Hilang dari sheet: ada di snapshot, tidak ada di data baru → alert 1x
@@ -208,6 +274,7 @@ export function diffOutlets(fresh, existing) {
     hilang,
     summary: {
       total: fresh.length,
+      kota_dari_alamat: fresh.filter(f => f.kota_alamat).length,
       baru: inserts.length,
       relokasi: firstSync ? 0 : alerts.filter(a => a.type === 'relokasi').length,
       berubah:  firstSync ? 0 : alerts.filter(a => a.type === 'perubahan_info').length,

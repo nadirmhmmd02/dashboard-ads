@@ -19,6 +19,11 @@ const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const SHEET_ID      = process.env.MAPS_SHEET_ID;
 const SHEET_TAB     = 'GOOGLE MAPS OUTLET';
+/* Versi aturan penentuan KOTA. Naikkan angka ini kalau logika kota berubah
+   (kotaFromAlamat / prioritas Nominatim) → sync berikutnya otomatis membuang
+   cache & kota lama lalu mengisi ulang. v2 (21 Agu 2026): kota dari ALAMAT
+   dulu, fallback OSM tingkat kota/kabupaten (bukan kecamatan). */
+const KOTA_VERSION  = 2;
 
 const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -123,8 +128,16 @@ async function doSync(db) {
   const { data: existing, error: exErr } = await db.from('maps_outlets').select('*').limit(2000);
   if (exErr) throw exErr;
 
+  // 3b. Aturan penentuan kota berubah? (KOTA_VERSION disimpan di log sync terakhir)
+  //     → buang cache geocode + kota lama yang tidak berasal dari alamat, sekali saja.
+  const { data: lastLog } = await db.from('maps_sync_log').select('summary').order('run_at', { ascending: false }).limit(1);
+  const resetKota = (lastLog?.[0]?.summary?.kota_version || 1) !== KOTA_VERSION;
+  if (resetKota) {
+    await db.from('maps_geocode_cache').delete().neq('coord_key', '');
+  }
+
   // 4. Diff
-  const diff = diffOutlets(parsed.outlets, existing || []);
+  const diff = diffOutlets(parsed.outlets, existing || [], { resetKota });
 
   // 5. Tulis: insert baru (batch), update biasa (upsert batch), rename (satu-satu)
   for (let i = 0; i < diff.inserts.length; i += 500) {
@@ -173,6 +186,8 @@ async function doSync(db) {
     dilewati: parsed.skipped,
     duplikat: parsed.duplicates,
     needs_review: needsReview,
+    kota_version: KOTA_VERSION,
+    kota_reset: resetKota,
   };
   await db.from('maps_sync_log').insert({ summary });
 
@@ -274,10 +289,14 @@ async function nominatimKota(lat, lng) {
     if (!res.ok) return '-';
     const json = await res.json();
     const a = json.address || {};
-    const raw = a.city || a.town || a.municipality || a.county || a.state_district || a.village || '';
+    // Tingkat KOTA/KABUPATEN saja. Di data OSM Indonesia: city = kota,
+    // county = kabupaten; "municipality"/"village" = KECAMATAN/desa → JANGAN
+    // dipakai (bug v1: kota terisi nama kecamatan).
+    const raw = a.city || a.county || a.state_district || a.town || '';
     if (!raw) return '-';
-    // "Kota Surabaya" / "Kabupaten Sidoarjo" → "Surabaya" / "Sidoarjo"
-    return raw.replace(/^(Kota|Kabupaten|Kab\.)\s+/i, '').trim() || '-';
+    // "Kota Surabaya" / "Kabupaten Sidoarjo" / "Badung Regency" → nama saja
+    return raw.replace(/^(Kota|Kabupaten|Kab\.)\s+(Adm\.?\s+|Administrasi\s+)?/i, '')
+              .replace(/\s+(Regency|City)$/i, '').trim() || '-';
   } catch (e) {
     return undefined;
   }
