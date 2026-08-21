@@ -215,21 +215,32 @@ export default function MapsPage() {
     const total = pendingGeocode;
     setGeo({ running: true, done: 0, total });
     let done = 0;
+    let fails = 0; // gangguan berturut-turut (timeout server / jaringan) — coba lagi, jangan langsung nyerah
     try {
-      for (let i = 0; i < 40 && !geoStop.current; i++) {
-        const res = await authFetch('/api/maps', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'geocode', limit: 35 }),
-        });
-        const json = await res.json();
+      for (let i = 0; i < 200 && !geoStop.current; i++) {
+        let json;
+        try {
+          const res = await authFetch('/api/maps', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'geocode' }),
+          });
+          json = await res.json(); // 504/timeout Vercel → bukan JSON → masuk catch
+        } catch (e) {
+          if (++fails >= 3) throw new Error('Server tidak merespons 3× berturut-turut.');
+          continue;
+        }
         if (json.error) throw new Error(json.error);
         done += json.processed || 0;
-        setGeo({ running: true, done, total });
-        if (!json.remaining || !json.processed) break;
+        // total akurat dari server (done + sisa), bukan tebakan awal
+        setGeo({ running: true, done, total: done + (json.remaining || 0) });
+        if (json.blocked) throw new Error('OpenStreetMap menolak permintaan sementara (rate limit). Tunggu 1–2 menit lalu klik "Geocode now" lagi.');
+        if (!json.remaining) break;
+        if (!json.processed) { if (++fails >= 3) throw new Error('Tidak ada kemajuan 3× berturut-turut.'); continue; }
+        fails = 0;
       }
       showToast('ok', [`Geocoding done — ${done} outlets got a city name.`]);
     } catch (e) {
-      showToast('err', ['Geocoding stopped: ' + e.message, `${done} processed — click again to continue.`]);
+      showToast('err', ['Geocoding stopped: ' + e.message, `${done} processed this round — progress is saved, click "Geocode now" again to continue.`]);
     }
     setGeo({ running: false, done: 0, total: 0 });
     await load();
@@ -478,7 +489,7 @@ export default function MapsPage() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--t1)', marginBottom: '5px' }}>
                   Geocoding cities… {geo.done} of {geo.total}
-                  <span style={{ fontWeight: 500, color: 'var(--t3)' }}> — takes ±1 second per outlet (OpenStreetMap rate limit), leave this tab open</span>
+                  <span style={{ fontWeight: 500, color: 'var(--t3)' }}> — ±3 seconds per outlet (OpenStreetMap rate limit), leave this tab open; progress is saved if you stop</span>
                 </div>
                 <div style={{ height: '5px', borderRadius: '999px', background: 'var(--hover)', overflow: 'hidden' }}>
                   <div style={{

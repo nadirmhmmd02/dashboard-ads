@@ -204,8 +204,16 @@ async function doSetProvinsi(db, body) {
    supaya tiap koordinat cuma pernah ditanya SEKALI seumur hidup. */
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+/* Batch BERBASIS WAKTU, bukan jumlah: Nominatim menjawab ±2-3 detik per
+   request (+ jeda wajib 1 detik + tulis DB), jadi 35 outlet ≈ 2 menit —
+   melewati limit 60 detik Vercel dan fungsinya dipotong di tengah jalan
+   (bug 21 Agu 2026). Sekarang: kerjakan selama ±40 detik, lapor, klien
+   lanjut memanggil sampai remaining = 0. */
+const TIME_BUDGET_MS = 40000;
+
 async function doGeocode(db, body) {
-  const limit = Math.min(Math.max(parseInt(body.limit) || 35, 1), 35);
+  const started = Date.now();
+  const limit = Math.min(Math.max(parseInt(body.limit) || 60, 1), 80);
 
   const { data: pending, error: pErr } = await db.from('maps_outlets')
     .select('id,nama,lat,lng')
@@ -220,18 +228,23 @@ async function doGeocode(db, body) {
   const cacheMap = new Map((cached || []).map(c => [c.coord_key, c]));
 
   let processed = 0;
-  let firstRequest = true;
+  let blocked = false;
+  let lastReqAt = 0;
   for (const o of pending) {
+    if (Date.now() - started > TIME_BUDGET_MS) break; // sisanya putaran berikut
     const key = coordKey(o.lat, o.lng);
     let kota;
     const hit = cacheMap.get(key);
     if (hit) {
       kota = hit.kota || '-';
     } else {
-      if (!firstRequest) await sleep(1100); // Nominatim: maks 1 request/detik
-      firstRequest = false;
+      // Nominatim: maks 1 request/detik — hitung dari AWAL request sebelumnya
+      // (kalau jawabannya sendiri sudah >1 detik, tidak perlu menunggu lagi)
+      const wait = 1000 - (Date.now() - lastReqAt);
+      if (wait > 0) await sleep(wait);
+      lastReqAt = Date.now();
       kota = await nominatimKota(o.lat, o.lng);
-      if (kota === undefined) break; // rate-limited / error jaringan → stop, sisanya putaran berikut
+      if (kota === undefined) { blocked = true; break; } // rate-limited / jaringan → stop putaran ini
       await db.from('maps_geocode_cache').upsert(
         { coord_key: key, kota: kota === '-' ? null : kota }, { onConflict: 'coord_key' });
       cacheMap.set(key, { coord_key: key, kota: kota === '-' ? null : kota });
@@ -245,15 +258,18 @@ async function doGeocode(db, body) {
     .select('id', { count: 'exact', head: true })
     .not('lat', 'is', null).is('kota', null);
 
-  return NextResponse.json({ processed, remaining: count || 0 });
+  return NextResponse.json({ processed, remaining: count || 0, blocked, elapsed: Date.now() - started });
 }
 
 async function nominatimKota(lat, lng) {
   try {
+    // Batasi 12 detik per request supaya satu jawaban lambat tidak menghabiskan jatah waktu
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 12000);
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=10&accept-language=id`,
-      { headers: { 'User-Agent': 'BabaRafiAdHub-MapsHub/1.0 (https://dashboard-ads-babarafi.vercel.app)' } }
-    );
+      { headers: { 'User-Agent': 'BabaRafiAdHub-MapsHub/1.0 (https://dashboard-ads-babarafi.vercel.app)' }, signal: ctrl.signal }
+    ).finally(() => clearTimeout(timer));
     if (res.status === 429 || res.status === 403) return undefined; // dibatasi → stop putaran ini
     if (!res.ok) return '-';
     const json = await res.json();
