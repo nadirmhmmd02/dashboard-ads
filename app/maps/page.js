@@ -118,6 +118,7 @@ export default function MapsPage() {
   const [focus, setFocus]     = useState(null);
   const [panelTab, setPanelTab] = useState('alerts');
 
+  const [showAllRows, setShowAllRows] = useState(false);
   const [showWilayah, setShowWilayah] = useState(false);
   const [wilayahClosing, setWilayahClosing] = useState(false);
   const [expandedDepo, setExpandedDepo] = useState(null);
@@ -295,6 +296,13 @@ export default function MapsPage() {
 
   const mapOutlets = useMemo(() =>
     filtered.filter(o => o.lat != null && o.lng != null && !o.missing_since), [filtered]);
+
+  /* Render tabel dibatasi 100 baris (klik "Show all" utk sisanya) — ~490 baris
+     sekaligus bikin animasi sidebar patah-patah (paint tiap frame terlalu berat).
+     Search/filter tetap bekerja atas SEMUA data. */
+  const ROWS_CAP = 100;
+  const visibleRows = useMemo(() =>
+    showAllRows ? filtered : filtered.slice(0, ROWS_CAP), [filtered, showAllRows]);
 
   const pendingGeocode = useMemo(() =>
     outlets.filter(o => o.lat != null && o.kota == null).length, [outlets]);
@@ -512,6 +520,7 @@ export default function MapsPage() {
         <div style={{
           ...card, flex: isMobile ? 'none' : 2.6, minWidth: 0, overflow: 'hidden', position: 'relative',
           zIndex: 0,
+          contain: 'layout paint', // cat ulang peta tidak menular ke seluruh halaman
           height: isMobile ? '320px' : 'auto',
           animation: `wdFadeUp 0.45s ${EASE}`,
         }}>
@@ -753,7 +762,7 @@ export default function MapsPage() {
         </div>
 
         {/* Tabel */}
-        <div style={{ overflowX: 'auto', maxHeight: '480px', overflowY: 'auto' }}>
+        <div style={{ overflowX: 'auto', maxHeight: '480px', overflowY: 'auto', contain: 'layout paint' }}>
           {/* tableLayout FIXED wajib: dgn ~490 baris, layout auto bikin browser
               mengukur ulang semua cell tiap reflow (animasi sidebar jadi patah-patah) */}
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '860px', tableLayout: 'fixed' }}>
@@ -791,7 +800,7 @@ export default function MapsPage() {
                     )}
                   </td>
                 </tr>
-              ) : filtered.map((o, i) => (
+              ) : visibleRows.map((o, i) => (
                 <tr key={o.id}
                   onClick={() => { if (o.lat != null && !o.missing_since) setFocus({ ...o, _t: Date.now() }); }}
                   style={{
@@ -847,6 +856,22 @@ export default function MapsPage() {
                   </td>
                 </tr>
               ))}
+              {filtered.length > visibleRows.length && (
+                <tr>
+                  <td colSpan={7} style={{ ...td, textAlign: 'center', padding: '14px', borderBottom: 'none' }}>
+                    <button onClick={() => setShowAllRows(true)} style={{
+                      padding: '8px 18px', borderRadius: '10px', border: '1px solid var(--br)',
+                      background: 'var(--cd)', color: 'var(--t1)', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                      transition: 'border-color 0.15s',
+                    }}
+                      onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--br-strong)'}
+                      onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--br)'}
+                    >
+                      Show all {filtered.length.toLocaleString('id-ID')} outlets
+                    </button>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
