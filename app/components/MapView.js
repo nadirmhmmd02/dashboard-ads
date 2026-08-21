@@ -52,6 +52,10 @@ export default function MapView({ outlets, theme, focus }) {
   const clusterRef = useRef(null);
   const markersRef = useRef(new Map()); // nama → marker
   const LRef       = useRef(null);
+  // Anti race: data bisa datang SEBELUM import Leaflet selesai —
+  // rebuild selalu membaca outlet TERBARU dari ref, bukan closure lama
+  const outletsRef = useRef(outlets);
+  outletsRef.current = outlets;
 
   // Init sekali (guard StrictMode double-mount via cleanup remove())
   useEffect(() => {
@@ -110,7 +114,7 @@ export default function MapView({ outlets, theme, focus }) {
     markersRef.current.clear();
 
     const pts = [];
-    for (const o of outlets) {
+    for (const o of outletsRef.current) {
       if (o.lat == null || o.lng == null) continue;
       const color = statusColor(o.status, false);
       const marker = L.marker([o.lat, o.lng], {
