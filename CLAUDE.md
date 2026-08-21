@@ -188,6 +188,7 @@ Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cance
 
 ## BELUM / PENDING (JANGAN dikerjakan tanpa diminta)
 
+- [ ] **MAPS HUB — modul baru, brief FINAL & siap eksekusi (21 Agu 2026), nunggu perintah Nadir mulai.** Semua keputusan + rencana teknis lengkap di **`MAPS-HUB-PLAN.md`** (root repo) — BACA FILE ITU dulu sebelum mengerjakan apa pun terkait Maps Hub. Inti: monitoring status Google Maps 500+ outlet dari Google Sheets (read-only via gviz CSV, tanpa service account; Sheet ID di `.env.local` `MAPS_SHEET_ID`), sync manual + diff (Baru/Relokasi/Perubahan Info/Hilang), peta Leaflet + clustering, alert + Data Quality, admin-only.
 - [ ] Leads Hub: IMPORT file export spreadsheet lama (leads < 17 Jul 2026) + smart grouping — Nadir akan kirim file CSV/Excel.
 - [ ] Leads Hub: REDESAIN dashboard & list (Nadir cari referensi Pinterest; usulkan design dulu → approve → terapkan; UI sekarang = fondasi fungsional).
 - [ ] Leads Hub: Analytics & Insights (placeholder; kemungkinan AI-generated, belum didetailkan).
