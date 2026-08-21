@@ -1,7 +1,9 @@
 # MAPS HUB — Rencana Eksekusi Final
 
-Status: **FINAL & SIAP EKSEKUSI — BELUM DIMULAI. Jangan dikerjakan sebelum Nadir bilang mulai.**
+Status: **DIEKSEKUSI 21 Agu 2026 — kode selesai & di-push.** Tinggal 2 langkah manual Nadir: jalankan `supabase-maps-setup.sql` + tambah env `MAPS_SHEET_ID` di Vercel (lihat CLAUDE.md bagian pending).
 Sumber: `Baba_Rafi_Maps_Hub_Brief_Final.md` (Downloads) + sesi pematangan bersama Claude Code, 21 Agu 2026 (semua keputusan di bawah sudah disetujui Nadir).
+
+**Deviasi eksekusi (21 Agu 2026):** geocoding kota TIDAK jadi via script lokal (opsi A) — script lokal tidak bisa menulis ke Supabase tanpa kredensial admin (password dipegang Nadir, tidak boleh ditulis di file). Gantinya: tombol **"Geocode now"** di halaman /maps — klien memanggil API berulang (batch 35 outlet/panggilan, 1.1 detik/outlet sesuai rate limit Nominatim, progress bar + tombol Stop, hasil di-cache permanen). Efeknya sama (sekali jalan ±8 menit), UX lebih baik, tetap patuh limit 60 detik Vercel.
 
 ---
 
@@ -80,9 +82,10 @@ Validasi: lat -11..6, lng 94..142 (rentang Indonesia). Gagal parse / di luar ren
 
 - [ ] 7 duplikat Nama Outlet: SPBU Al Ma'soem Ceuri (No 15 vs 324 → yg 324 = Balen), SPBU Raya Bojongsoang (16 vs 18 → yg 18 = Amir Machmud Cimahi), Semeru (100 Malang vs 404 Mojokerto), Wahidin (178 Sidoarjo vs 358 Pasuruan) → rename biar unik; RC Veteran 4 (282 vs 326), Karang Tengah (357 vs 378), Alfamidi Margacinta (483 vs 485) → alamat sama persis, cek dobel entry.
 - [ ] Depo seragam: "Jakarta" (No 393, 394) = "DKI Jakarta"; "Tangerang Kota" (No 441) = "Kota Tangerang"; depo kosong (No 383). Sebelum rapi: filter depo menampilkan dua varian, tapi provinsi tetap benar via mapping.
-- [ ] 16 baris tanpa Nama Outlet dipindah/dibersihkan.
+- [x] 16 baris tanpa Nama Outlet → SUDAH dibersihkan Nadir (21 Agu 2026 sore, terverifikasi — tinggal 1 baris).
 - [x] "mataram" → sudah diganti (21 Agu 2026).
 - [x] 2 koordinat tanpa minus (Indomaret Pesantren Jombang, SPBU Mondoroko) → sudah dibenerin (21 Agu 2026, diverifikasi).
+- [ ] TEMUAN BARU: "Indomart Pandu Raya 2" koordinatnya berformat **Plus Code Google** (`CR68+XC Tegal Gundil…`) — bukan lat,lng, tidak bisa diparse → Needs Review. Ganti di sheet dengan koordinat biasa (klik kanan titik di Google Maps → angka lat,lng → copy).
 
 ## 9. DITUNDA / IDE TERSIMPAN (JANGAN dikerjakan tanpa diminta)
 

@@ -12,6 +12,7 @@ import {
   ChevronsLeft,
   LogOut,
   NotebookPen,
+  MapPinned,
 } from 'lucide-react';
 import Logo from './Logo';
 import { useAuth } from './AuthContext';
@@ -38,13 +39,23 @@ export const NAV_SECTIONS = [
   },
 ];
 
+// Maps Hub (monitoring Google Maps 500+ outlet) — ADMIN-ONLY fase 1
+// (lihat MAPS-HUB-PLAN.md; role lain menyusul kalau sistem sudah matang).
+export const MAPS_SECTION = {
+  label: 'Maps Hub',
+  items: [
+    { href: '/maps', label: 'Outlet Maps', icon: MapPinned },
+  ],
+};
+
 // Menu per role: marketing hanya Leads Hub; user (viewer) tanpa Analytics & Insights
 // di KEDUA hub (Ads Hub /reports & Leads Hub /leads/insights — per 19 Agu 2026, Calendar tetap);
-// admin lihat semua.
+// admin lihat semua + Maps Hub.
 export const USER_HIDDEN = ['/reports', '/leads/insights'];
 export function navSectionsFor(role) {
   if (role === 'marketing') return NAV_SECTIONS.filter(s => s.label === 'Leads Hub');
   if (role === 'user') return NAV_SECTIONS.map(s => ({ ...s, items: s.items.filter(i => !USER_HIDDEN.includes(i.href)) }));
+  if (role === 'admin') return [...NAV_SECTIONS, MAPS_SECTION];
   return NAV_SECTIONS;
 }
 

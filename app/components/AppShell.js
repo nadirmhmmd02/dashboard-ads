@@ -26,6 +26,8 @@ export default function AppShell({ children }) {
   // Role user (viewer) tidak punya Analytics & Insights (Ads Hub /reports & Leads Hub /leads/insights,
   // per 19 Agu 2026) — dilempar ke dashboard
   const userBlocked = role === 'user' && (pathname === '/reports' || pathname === '/leads/insights');
+  // Maps Hub admin-only fase 1 (MAPS-HUB-PLAN.md) — role lain dilempar ke home-nya
+  const mapsBlocked = role !== 'admin' && pathname.startsWith('/maps');
 
   useEffect(() => {
     if (!ready) return;
@@ -33,7 +35,8 @@ export default function AppShell({ children }) {
     if (user && isLogin)   router.replace(homeFor(role));
     if (user && !isLogin && marketingBlocked) router.replace('/leads');
     if (user && !isLogin && userBlocked) router.replace('/');
-  }, [ready, user, role, isLogin, marketingBlocked, userBlocked, router]);
+    if (user && !isLogin && mapsBlocked) router.replace(homeFor(role));
+  }, [ready, user, role, isLogin, marketingBlocked, userBlocked, mapsBlocked, router]);
 
   useEffect(() => {
     if (showSuggest) {
