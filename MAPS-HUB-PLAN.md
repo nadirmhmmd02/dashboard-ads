@@ -86,7 +86,7 @@ Validasi: lat -11..6, lng 94..142 (rentang Indonesia). Gagal parse / di luar ren
 - [x] 16 baris tanpa Nama Outlet → SUDAH dibersihkan Nadir (21 Agu 2026 sore, terverifikasi — tinggal 1 baris).
 - [x] "mataram" → sudah diganti (21 Agu 2026).
 - [x] 2 koordinat tanpa minus (Indomaret Pesantren Jombang, SPBU Mondoroko) → sudah dibenerin (21 Agu 2026, diverifikasi).
-- [ ] TEMUAN BARU: "Indomart Pandu Raya 2" koordinatnya berformat **Plus Code Google** (`CR68+XC Tegal Gundil…`) — bukan lat,lng, tidak bisa diparse → Needs Review. Ganti di sheet dengan koordinat biasa (klik kanan titik di Google Maps → angka lat,lng → copy).
+- [x] "Indomart Pandu Raya 2" koordinat Plus Code → SUDAH diganti Nadir jadi lat,lng normal (`-6.568045, 106.800152`), diverifikasi dari sheet 24 Agu 2026. Tinggal Sync sekali kalau di peta masih Needs Review.
 
 ## 9. DITUNDA / IDE TERSIMPAN (JANGAN dikerjakan tanpa diminta)
 

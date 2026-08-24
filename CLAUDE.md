@@ -92,7 +92,7 @@ app/
   supabase-leads-setup.sql (root repo) → SQL setup Leads Hub: tabel campaign_ref + leads + lead_history (audit trail via trigger log_lead_changes, security definer) + RLS (admin full; marketing read/update approved; user read approved; history admin-only). Sudah dijalankan 17 Jul 2026.
   supabase-leads-update-1.sql (root repo) → SQL update #1: kolom leads.sales + leads.is_new (label NEW) + trigger audit ikut mencatat sales. Sudah dijalankan 18 Jul 2026.
   supabase-notes-setup.sql (root repo) → SQL tabel `notes` (catatan pribadi + RLS per pemilik + trigger updated_at + kolom sort_order). SUDAH dijalankan (Notes hidup & tersinkron per 19 Agu 2026).
-  supabase-todo-setup.sql (root repo) → SQL tabel `todo_lists` + `todos` (To Do di halaman Notes; steps = jsonb; RLS per pemilik; trigger updated_at). **STATUS: BELUM DIJALANKAN Nadir per 19 Agu 2026** — sampai dijalankan, panel To Do menampilkan hint "To Do is not set up yet…".
+  supabase-todo-setup.sql (root repo) → SQL tabel `todo_lists` + `todos` (To Do di halaman Notes; steps = jsonb; RLS per pemilik; trigger updated_at). **SUDAH DIJALANKAN** (diverifikasi 24 Agu 2026 — tabel ada di Supabase, panel To Do hidup).
   supabase-notes-update-1.sql (root repo) → SQL update notes #1: kolom `sort_order` (geser urutan catatan) + trigger updated_at tidak berubah saat cuma geser urutan. Untuk yang sudah terlanjur menjalankan setup versi lama; setup versi terbaru sudah mencakup semuanya.
   icon.svg, apple-icon.svg → favicon + touch icon (Control Hub, square gelap + mark putih).
 ```
@@ -201,7 +201,6 @@ Preset di kiri + kalender 2 bulan di kanan (pilih range langsung) + footer Cance
 - [ ] Analytics & Insights Ads Hub: upgrade narasi ke LLM asli (Claude API) — v1 rule-based sudah live; butuh API key kalau mau.
 - [ ] Integrasi Google Ads / TikTok Ads / All Platforms (selector sudah ada, masih placeholder).
 - [ ] Notifikasi lonceng — placeholder. (Tombol Export di Calendar SUDAH DIHAPUS 4 Agu 2026 atas permintaan Nadir — jangan dimunculkan lagi tanpa diminta.)
-- [ ] **To Do: Nadir jalankan `supabase-todo-setup.sql` di Supabase SQL Editor** (sekali saja) supaya panel To Do di halaman Notes hidup.
 - [ ] Verifikasi akurasi angka vs Meta Ads Manager.
 - [ ] Hapus file lama tidak terpakai: `SuggestionsModal.js`, `BarChart.js`, `Navbar.js`.
 
