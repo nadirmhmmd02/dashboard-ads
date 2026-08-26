@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  X, Plus, Search, Pin, Trash2, Copy, Check, ChevronLeft,
+  X, Plus, Search, Pin, Trash2, Copy, Check, ChevronLeft, ChevronDown,
   Bold, Italic, Strikethrough, List, ListOrdered,
   Highlighter, SquareCheck, Type, CircleAlert, RefreshCw, GripVertical,
 } from 'lucide-react';
@@ -46,6 +46,60 @@ const TODO_MIN = 150, TODO_MAX = 640, TODO_DEFAULT = 320;
 const TODO_H_KEY = 'wd-notes-todo-h';
 const TODO_MIN_KEY = 'wd-notes-todo-min';   // '1' = panel To Do di-minimize (tinggal header)
 const TODO_HEADER_H = 40;                   // tinggi header panel saat minimized
+const GROUPS_KEY = 'wd-notes-groups-min';   // grup daftar catatan yang dilipat { pinned, all }
+
+/* ── Auto-link ──
+   URL di dalam catatan otomatis dibungkus <a> warna aksen (styling di globals.css
+   .wd-note-editor a). Klik biasa tetap mengedit teks; Ctrl+klik membuka link. */
+const URL_RE  = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
+const URL_ONE = /^(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)$/i;
+function cleanUrl(raw) { return (raw || '').replace(/[.,;:!?)\]}'"»…]+$/, ''); }
+function makeLinkEl(url) {
+  const a = document.createElement('a');
+  a.href = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+  a.className = 'wd-link';
+  a.title = 'Ctrl+click to open link';
+  a.setAttribute('rel', 'noopener');
+  return a;
+}
+/* Bungkus semua URL polos di dalam root jadi <a>; teks yang sudah di dalam link
+   atau checkbox dilewati. Return true kalau ada yang berubah. */
+function linkifyDom(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const targets = [];
+  let tn;
+  while ((tn = walker.nextNode())) {
+    const p = tn.parentNode;
+    if (p?.closest?.('a, .wd-check')) continue;
+    URL_RE.lastIndex = 0;
+    if (URL_RE.test(tn.textContent)) targets.push(tn);
+  }
+  for (const node of targets) {
+    const text = node.textContent;
+    const frag = document.createDocumentFragment();
+    let last = 0;
+    URL_RE.lastIndex = 0;   // regex global menyimpan posisi — wajib reset, kalau tidak matchAll mulai dari posisi basi
+    for (const m of text.matchAll(URL_RE)) {
+      const url = cleanUrl(m[0]);
+      if (!url) continue;
+      frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+      const a = makeLinkEl(url);
+      a.textContent = url;
+      frag.appendChild(a);
+      last = m.index + url.length;
+    }
+    frag.appendChild(document.createTextNode(text.slice(last)));
+    node.replaceWith(frag);
+  }
+  return targets.length > 0;
+}
+function linkifyHtml(html) {
+  if (typeof document === 'undefined') return html || '';
+  const root = document.createElement('div');
+  root.innerHTML = html || '';
+  linkifyDom(root);
+  return root.innerHTML;
+}
 
 function plainText(html) {
   if (typeof document === 'undefined') return '';
@@ -95,6 +149,10 @@ export default function NotesPage() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [mobileView, setMobileView] = useState('list'); // mobile: 'list' | 'editor'
 
+  // Grup daftar catatan (PINNED / ALL NOTES) bisa dilipat — isi "tersedot" ke atas
+  // masuk ke header grup (kebalikan arah To Do), diingat di localStorage.
+  const [groupMin, setGroupMin] = useState({ pinned: false, all: false });
+
   // Geser urutan catatan (drag handle di daftar). canReorder = false kalau kolom
   // sort_order belum ada di DB (supabase-notes-update-1.sql belum dijalankan).
   const [canReorder, setCanReorder] = useState(true);
@@ -131,11 +189,35 @@ export default function NotesPage() {
     const savedH = parseInt(localStorage.getItem(TODO_H_KEY) || '', 10);
     if (savedH >= TODO_MIN && savedH <= TODO_MAX) setTodoH(savedH);
     if (localStorage.getItem(TODO_MIN_KEY) === '1') setTodoMin(true);
+    try {
+      const g = JSON.parse(localStorage.getItem(GROUPS_KEY) || '{}');
+      setGroupMin({ pinned: !!g.pinned, all: !!g.all });
+    } catch { /* nilai rusak → pakai default terbuka */ }
   }, []);
 
   function toggleTodoMin() {
     setTodoMin(v => { localStorage.setItem(TODO_MIN_KEY, v ? '0' : '1'); return !v; });
   }
+
+  function toggleGroup(id) {
+    setGroupMin(prev => {
+      const next = { ...prev, [id]: !prev[id] };
+      localStorage.setItem(GROUPS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+  // Buka paksa satu grup (dipakai saat catatan baru dibuat / di-pin) supaya
+  // hasil aksinya tidak "hilang" di dalam grup yang sedang dilipat.
+  function expandGroup(id) {
+    setGroupMin(prev => {
+      if (!prev[id]) return prev;
+      const next = { ...prev, [id]: false };
+      localStorage.setItem(GROUPS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+  // Saat sedang mencari, lipatan diabaikan supaya hasil pencarian selalu terlihat
+  const isGroupMin = (id) => !q.trim() && groupMin[id];
 
   useEffect(() => {
     function onMove(e) {
@@ -248,7 +330,8 @@ export default function NotesPage() {
   useEffect(() => {
     if (!editorRef.current) return;
     if (loadedIdRef.current === activeId) return;
-    editorRef.current.innerHTML = active?.content || '';
+    // URL polos di catatan lama ikut dijadikan link saat catatan dibuka
+    editorRef.current.innerHTML = linkifyHtml(active?.content || '');
     loadedIdRef.current = activeId;
     setStatus('');
   }, [activeId, active, mobileView, selectedTaskId]);
@@ -278,6 +361,7 @@ export default function NotesPage() {
       .single();
     if (err) { setError(err.message); return; }
     setNotes(prev => [data, ...(prev || [])]);
+    expandGroup('all');   // catatan baru masuk All notes — pastikan grupnya terbuka
     setSelectedTaskId(null);
     setActiveId(data.id);
     loadedIdRef.current = null;
@@ -312,6 +396,7 @@ export default function NotesPage() {
 
   async function togglePin(n) {
     const next = !n.pinned;
+    expandGroup(next ? 'pinned' : 'all');   // grup tujuan dibuka biar catatannya kelihatan pindah
     setNotes(prev => (prev || []).map(x => (x.id === n.id ? { ...x, pinned: next } : x)));
     const { error: err } = await supabase.from('notes').update({ pinned: next }).eq('id', n.id);
     if (err) setError(err.message);
@@ -466,10 +551,41 @@ export default function NotesPage() {
     queueSave({ content: ed.innerHTML });
   }
 
+  /* Kata tepat sebelum kursor = URL → bungkus jadi <a>, kursor ditaruh setelahnya
+     supaya spasi/Enter yang sedang diketik jatuh DI LUAR link. */
+  function linkifyAtCaret() {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount || !sel.isCollapsed) return false;
+    const node = sel.anchorNode;
+    if (!node || node.nodeType !== 3) return false;
+    if (node.parentNode?.closest?.('a')) return false;
+    const offset = sel.anchorOffset;
+    const m = node.textContent.slice(0, offset).match(/(\S+)$/);
+    if (!m) return false;
+    const word = cleanUrl(m[1]);
+    if (!URL_ONE.test(word)) return false;
+    const start = offset - m[1].length;
+    const r = document.createRange();
+    r.setStart(node, start);
+    r.setEnd(node, start + word.length);
+    const a = makeLinkEl(word);
+    try { r.surroundContents(a); } catch { return false; }
+    const after = document.createRange();
+    after.setStartAfter(a);
+    after.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(after);
+    return true;
+  }
+
   /* Enter di baris checklist berperilaku seperti bullet list:
      baris berisi teks → baris baru dengan checkbox baru;
      baris checkbox kosong (Enter kedua) → checkbox dihapus, jadi baris polos. */
   function onEditorKeyDown(e) {
+    // URL yang baru selesai diketik langsung jadi link begitu spasi/Enter ditekan
+    if ((e.key === ' ' || e.key === 'Enter') && !e.shiftKey) {
+      if (linkifyAtCaret()) queueSave({ content: editorRef.current.innerHTML });
+    }
     if (e.key !== 'Enter' || e.shiftKey) return;
     const ed = editorRef.current;
     const sel = window.getSelection();
@@ -508,12 +624,64 @@ export default function NotesPage() {
   }
 
   function onEditorClick(e) {
+    // Ctrl/Cmd+klik pada link → buka di tab baru; klik biasa tetap mengedit teks
+    const link = e.target.closest?.('a');
+    if (link && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      window.open(link.href, '_blank', 'noopener');
+      return;
+    }
     const box = e.target.closest?.('.wd-check');
     if (!box) return;
     const done = box.getAttribute('data-done') === '1';
     box.setAttribute('data-done', done ? '0' : '1');
     box.textContent = done ? '☐' : '☑';
     queueSave({ content: editorRef.current.innerHTML });
+  }
+
+  /* Paste: URL tunggal → langsung link di posisi kursor. Paste teks panjang →
+     biarkan browser menempel dulu, lalu seluruh isi di-linkify; posisi kursor
+     dijaga pakai penanda sementara (span) yang dihapus lagi setelahnya. */
+  function onEditorPaste(e) {
+    const ed = editorRef.current;
+    if (!ed) return;
+    const raw = (e.clipboardData?.getData('text/plain') || '').trim();
+    const single = cleanUrl(raw);
+    if (single && !/\s/.test(raw) && URL_ONE.test(single)) {
+      e.preventDefault();
+      const sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return;
+      const r = sel.getRangeAt(0);
+      r.deleteContents();
+      const a = makeLinkEl(single);
+      a.textContent = single;
+      const space = document.createTextNode(' ');   // nbsp — spasi biasa di ujung baris di-collapse browser
+      r.insertNode(space);
+      r.insertNode(a);
+      placeCaretAfter(space);
+      queueSave({ content: ed.innerHTML });
+      return;
+    }
+    setTimeout(() => {
+      const sel = window.getSelection();
+      let marker = null;
+      if (sel && sel.rangeCount) {
+        marker = document.createElement('span');
+        sel.getRangeAt(0).insertNode(marker);
+      }
+      const changed = linkifyDom(ed);
+      if (marker) {
+        const parent = marker.parentNode;
+        const idx = Array.prototype.indexOf.call(parent.childNodes, marker);
+        marker.remove();
+        const r = document.createRange();
+        r.setStart(parent, idx);
+        r.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(r);
+      }
+      if (changed) queueSave({ content: ed.innerHTML });
+    }, 0);
   }
 
   const visible = useMemo(() => {
@@ -619,6 +787,58 @@ export default function NotesPage() {
     );
   }
 
+  /* ── Grup daftar yang bisa dilipat ──
+     Dipanggil sebagai FUNGSI biasa (bukan komponen JSX) supaya elemennya tidak
+     di-remount tiap render — kalau remount, transisi lipatnya tidak jalan
+     (pelajaran yang sama dengan TaskRow di TodoPanel). Animasi tinggi pakai
+     grid-template-rows 1fr→0fr: isi grup "tersedot" ke atas masuk ke header
+     (kebalikan arah minimize To Do), keluar lagi ke bawah saat dibuka. */
+  const groupHeader = (id, label, count) => {
+    const min = isGroupMin(id);
+    return (
+      <button
+        onClick={() => toggleGroup(id)}
+        title={min ? 'Show notes' : 'Hide notes'}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '5px', width: '100%',
+          background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+          textAlign: 'left', ...TYPE.caption, fontWeight: 800, letterSpacing: '0.6px',
+          textTransform: 'uppercase', padding: '8px 6px 4px', color: 'var(--t3)',
+          transition: 'color 0.12s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.color = 'var(--t2)'}
+        onMouseLeave={e => e.currentTarget.style.color = 'var(--t3)'}
+      >
+        <ChevronDown size={12} strokeWidth={2.5} style={{
+          flexShrink: 0,
+          transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+          transform: min ? 'rotate(-90deg)' : 'none',
+        }} />
+        <span>{label}</span>
+        <span style={{ fontWeight: 700, opacity: 0.85 }}>· {count}</span>
+      </button>
+    );
+  };
+  const groupBody = (id, children) => {
+    const min = isGroupMin(id);
+    return (
+      <div style={{
+        display: 'grid', gridTemplateRows: min ? '0fr' : '1fr',
+        transition: 'grid-template-rows 0.34s cubic-bezier(0.4,0,0.2,1)',
+      }}>
+        <div style={{
+          overflow: 'hidden', minHeight: 0,
+          display: 'flex', flexDirection: 'column', gap: '2px',
+          opacity: min ? 0 : 1,
+          transform: min ? 'translateY(-8px)' : 'none',
+          transition: 'opacity 0.26s ease, transform 0.34s cubic-bezier(0.4,0,0.2,1)',
+        }}>
+          {children}
+        </div>
+      </div>
+    );
+  };
+
   const showList   = !isMobile || mobileView === 'list';
   const showEditor = !isMobile || mobileView === 'editor';
 
@@ -701,14 +921,10 @@ export default function NotesPage() {
                   {q ? 'No note matches your search.' : 'No notes yet — hit New note to write your first one.'}
                 </div>
               )}
-              {pinned.length > 0 && (
-                <div style={{ ...TYPE.caption, fontWeight: 800, letterSpacing: '0.6px', textTransform: 'uppercase', padding: '8px 6px 4px', color: 'var(--t3)' }}>Pinned</div>
-              )}
-              {pinned.map(n => <NoteRow key={n.id} n={n} />)}
-              {pinned.length > 0 && rest.length > 0 && (
-                <div style={{ ...TYPE.caption, fontWeight: 800, letterSpacing: '0.6px', textTransform: 'uppercase', padding: '10px 6px 4px', color: 'var(--t3)' }}>All notes</div>
-              )}
-              {rest.map(n => <NoteRow key={n.id} n={n} />)}
+              {pinned.length > 0 && groupHeader('pinned', 'Pinned', pinned.length)}
+              {pinned.length > 0 && groupBody('pinned', pinned.map(n => <NoteRow key={n.id} n={n} />))}
+              {rest.length > 0 && groupHeader('all', 'All notes', rest.length)}
+              {rest.length > 0 && groupBody('all', rest.map(n => <NoteRow key={n.id} n={n} />))}
               {notes !== null && notes.length > 1 && !canReorder && !isMobile && (
                 <div style={{ ...TYPE.caption, padding: '10px 6px 2px', lineHeight: 1.5 }}>
                   Mau geser urutan catatan? Jalankan <strong>supabase-notes-update-1.sql</strong> sekali di Supabase SQL Editor, lalu refresh halaman ini.
@@ -869,6 +1085,7 @@ export default function NotesPage() {
                   onInput={() => queueSave({ content: editorRef.current.innerHTML })}
                   onClick={onEditorClick}
                   onKeyDown={onEditorKeyDown}
+                  onPaste={onEditorPaste}
                   className="wd-note-editor"
                   style={{
                     flex: 1, overflowY: 'auto', padding: '18px 22px', outline: 'none',

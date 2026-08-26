@@ -341,7 +341,18 @@ button {
 .wd-note-editor ul,
 .wd-note-editor ol { padding-left: 22px; margin: 6px 0; }
 .wd-note-editor li { margin: 3px 0; }
-.wd-note-editor a { color: var(--ac); }
+/* Link di catatan: warna aksen theme-aware (light = emerald, dark = lime neon).
+   Klik biasa = edit teks; Ctrl+klik = buka link (handler di notes/page.js). */
+.wd-note-editor a {
+  color: var(--ac);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2.5px;
+  text-decoration-color: color-mix(in srgb, var(--ac) 45%, transparent);
+  transition: text-decoration-color 0.15s;
+}
+.wd-note-editor a:hover { text-decoration-color: var(--ac); }
 /* Kotak centang bisa diklik — dibuat non-editable supaya tidak terhapus separuh */
 .wd-note-editor .wd-check {
   cursor: pointer;
