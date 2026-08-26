@@ -353,6 +353,10 @@ button {
   transition: text-decoration-color 0.15s;
 }
 .wd-note-editor a:hover { text-decoration-color: var(--ac); }
+/* Saat Ctrl/Cmd ditekan (class wd-ctrl dari notes/page.js): kursor link = pointer,
+   isyarat bahwa klik akan membuka link di tab baru */
+.wd-note-editor.wd-ctrl a { cursor: pointer; }
+.wd-note-editor.wd-ctrl a:hover { text-decoration-color: var(--ac); opacity: 0.85; }
 /* Kotak centang bisa diklik — dibuat non-editable supaya tidak terhapus separuh */
 .wd-note-editor .wd-check {
   cursor: pointer;

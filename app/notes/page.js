@@ -338,6 +338,25 @@ export default function NotesPage() {
 
   useEffect(() => () => clearTimeout(saveTimer.current), []);
 
+  /* Ctrl/Cmd ditekan → editor diberi class `wd-ctrl`: kursor di atas link berubah
+     jadi pointer (icon klik) sebagai isyarat "klik = buka tab baru". Lepas tombol
+     atau jendela kehilangan fokus (mis. Alt+Tab saat Ctrl masih ditekan) → normal.
+     Toggle langsung via classList (bukan state) supaya tidak re-render halaman. */
+  useEffect(() => {
+    const set = (on) => editorRef.current?.classList.toggle('wd-ctrl', on);
+    const down = (e) => { if (e.key === 'Control' || e.key === 'Meta') set(true); };
+    const up   = (e) => { if (e.key === 'Control' || e.key === 'Meta') set(false); };
+    const off  = () => set(false);
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', off);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', off);
+    };
+  }, []);
+
   function queueSave(patch) {
     if (!activeId) return;
     setStatus('saving');
