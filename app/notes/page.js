@@ -47,6 +47,7 @@ const TODO_H_KEY = 'wd-notes-todo-h';
 const TODO_MIN_KEY = 'wd-notes-todo-min';   // '1' = panel To Do di-minimize (tinggal header)
 const TODO_HEADER_H = 40;                   // tinggi header panel saat minimized
 const GROUPS_KEY = 'wd-notes-groups-min';   // grup daftar catatan yang dilipat { pinned, all }
+const ACTIVE_KEY = 'wd-notes-active-id';    // catatan terakhir dibuka — dibuka lagi setelah refresh
 
 /* ── Auto-link ──
    URL di dalam catatan otomatis dibungkus <a> warna aksen (styling di globals.css
@@ -321,8 +322,18 @@ export default function NotesPage() {
     setCanReorder(hasOrderCol);
     const sorted = sortNotes(data || []);
     setNotes(sorted);
-    setActiveId(prev => prev || sorted[0]?.id || null);
+    // Buka lagi catatan yang terakhir dibuka (localStorage); kalau sudah
+    // dihapus / belum pernah ada → catatan paling atas seperti biasa.
+    const savedId = localStorage.getItem(ACTIVE_KEY);
+    const restored = savedId && sorted.some(n => n.id === savedId) ? savedId : null;
+    setActiveId(prev => prev || restored || sorted[0]?.id || null);
   }, []);
+
+  // Simpan catatan aktif tiap berganti — satu tempat, mencakup semua jalur
+  // (klik daftar, catatan baru, hapus catatan aktif, dst.)
+  useEffect(() => {
+    if (activeId) localStorage.setItem(ACTIVE_KEY, activeId);
+  }, [activeId]);
 
   useEffect(() => { if (role === 'admin') load(); }, [role, load]);
 
@@ -1117,6 +1128,8 @@ export default function NotesPage() {
                   onClick={onEditorClick}
                   onKeyDown={onEditorKeyDown}
                   onPaste={onEditorPaste}
+                  onDragStart={e => e.preventDefault()}
+                  onDrop={e => e.preventDefault()}
                   className="wd-note-editor"
                   style={{
                     flex: 1, overflowY: 'auto', padding: '18px 22px', outline: 'none',
