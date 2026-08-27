@@ -658,13 +658,17 @@ export default function NotesPage() {
     queueSave({ content: editorRef.current.innerHTML });
   }
 
-  /* Paste: URL tunggal → langsung link di posisi kursor. Paste teks panjang →
-     biarkan browser menempel dulu, lalu seluruh isi di-linkify; posisi kursor
-     dijaga pakai penanda sementara (span) yang dihapus lagi setelahnya. */
+  /* Paste: SELALU teks polos — format bawaan sumber (tabel/warna/font dari
+     spreadsheet atau web) TIDAK ikut terbawa, tampilan mengikuti gaya Notes.
+     URL tunggal → langsung link di posisi kursor. Teks panjang → ditempel via
+     insertText (plain), lalu seluruh isi di-linkify; posisi kursor dijaga
+     pakai penanda sementara (span) yang dihapus lagi setelahnya. */
   function onEditorPaste(e) {
     const ed = editorRef.current;
     if (!ed) return;
-    const raw = (e.clipboardData?.getData('text/plain') || '').trim();
+    const plain = e.clipboardData?.getData('text/plain') || '';
+    if (!plain) return;   // clipboard tanpa teks (mis. gambar) → biarkan default
+    const raw = plain.trim();
     const single = cleanUrl(raw);
     if (single && !/\s/.test(raw) && URL_ONE.test(single)) {
       e.preventDefault();
@@ -681,6 +685,10 @@ export default function NotesPage() {
       queueSave({ content: ed.innerHTML });
       return;
     }
+    // Teks umum: tempel versi PLAIN-nya saja (execCommand insertText menjaga
+    // undo stack + memicu onInput → auto-save), format sumber dibuang.
+    e.preventDefault();
+    document.execCommand('insertText', false, plain);
     setTimeout(() => {
       const sel = window.getSelection();
       let marker = null;
