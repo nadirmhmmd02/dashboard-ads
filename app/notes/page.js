@@ -334,6 +334,10 @@ export default function NotesPage() {
     editorRef.current.innerHTML = linkifyHtml(active?.content || '');
     loadedIdRef.current = activeId;
     setStatus('');
+    // Catatan dipakai seperti log/history — begitu dibuka langsung scroll ke
+    // PALING BAWAH supaya tulisan terbaru langsung kelihatan (rAF: tunggu layout).
+    const ed = editorRef.current;
+    requestAnimationFrame(() => { ed.scrollTop = ed.scrollHeight; });
   }, [activeId, active, mobileView, selectedTaskId]);
 
   useEffect(() => () => clearTimeout(saveTimer.current), []);
