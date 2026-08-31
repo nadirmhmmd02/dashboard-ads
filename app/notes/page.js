@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  X, Plus, Search, Pin, Trash2, Copy, Check, ChevronLeft, ChevronDown, ChevronUp,
+  X, Plus, Search, Pin, Trash2, Copy, Check, ChevronLeft, ChevronDown,
   Bold, Italic, Strikethrough, List, ListOrdered,
   Highlighter, SquareCheck, Type, CircleAlert, RefreshCw, GripVertical,
 } from 'lucide-react';
@@ -1179,56 +1179,24 @@ export default function NotesPage() {
                     copied ? <Check size={15} color="var(--ac)" strokeWidth={3} /> : <Copy size={15} />)}
                 </div>
 
-                <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex' }}>
-                  <div
-                    ref={editorRef}
-                    contentEditable
-                    suppressContentEditableWarning
-                    onInput={() => queueSave({ content: editorRef.current.innerHTML })}
-                    onClick={onEditorClick}
-                    onKeyDown={onEditorKeyDown}
-                    onPaste={onEditorPaste}
-                    onMouseDown={onEditorMouseDown}
-                    onMouseMove={onEditorMouseMove}
-                    onDragStart={e => e.preventDefault()}
-                    onDrop={e => e.preventDefault()}
-                    className="wd-note-editor"
-                    style={{
-                      flex: 1, minWidth: 0, overflowY: 'auto', padding: '18px 22px', outline: 'none',
-                      fontSize: '14px', lineHeight: 1.7, color: 'var(--t1)',
-                    }}
-                  />
-                  {/* ── Tombol scroll ke atas / bawah (31 Agu 2026) — detail kecil ala
-                        tombol navigasi spreadsheet, pojok kanan bawah editor. Hanya
-                        arah vertikal (permintaan Nadir: samping tidak perlu). ── */}
-                  <div style={{
-                    position: 'absolute', right: '14px', bottom: '12px', zIndex: 4,
-                    display: 'flex', flexDirection: 'column',
-                    background: 'var(--cd)', border: '1px solid var(--br)',
-                    borderRadius: '9px', overflow: 'hidden', boxShadow: 'var(--shadow)',
-                  }}>
-                    {[
-                      ['Scroll ke paling atas', <ChevronUp key="u" size={14} />, () => editorRef.current?.scrollTo({ top: 0, behavior: 'smooth' })],
-                      ['Scroll ke paling bawah', <ChevronDown key="d" size={14} />, () => editorRef.current?.scrollTo({ top: editorRef.current.scrollHeight, behavior: 'smooth' })],
-                    ].map(([title, icon, onClick], i) => (
-                      <button
-                        key={title}
-                        onMouseDown={e => e.preventDefault()}   // jaga fokus & seleksi editor
-                        onClick={onClick}
-                        title={title}
-                        style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          width: '26px', height: '23px', border: 'none', cursor: 'pointer',
-                          background: 'transparent', color: 'var(--t3)',
-                          borderTop: i === 1 ? '1px solid var(--br)' : 'none',
-                          transition: 'background 0.12s, color 0.12s',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--hover)'; e.currentTarget.style.color = 'var(--t1)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--t3)'; }}
-                      >{icon}</button>
-                    ))}
-                  </div>
-                </div>
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onInput={() => queueSave({ content: editorRef.current.innerHTML })}
+                  onClick={onEditorClick}
+                  onKeyDown={onEditorKeyDown}
+                  onPaste={onEditorPaste}
+                  onMouseDown={onEditorMouseDown}
+                  onMouseMove={onEditorMouseMove}
+                  onDragStart={e => e.preventDefault()}
+                  onDrop={e => e.preventDefault()}
+                  className="wd-note-editor"
+                  style={{
+                    flex: 1, overflowY: 'auto', padding: '18px 22px', outline: 'none',
+                    fontSize: '14px', lineHeight: 1.7, color: 'var(--t1)',
+                  }}
+                />
               </>
             ) : (
               <div style={{
