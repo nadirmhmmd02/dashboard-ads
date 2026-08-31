@@ -336,6 +336,13 @@ button {
   color: var(--t3);
   pointer-events: none;
 }
+/* Tab ala Notepad Windows (notes/page.js): karakter tab harus DIRENDER, bukan
+   di-collapse jadi satu spasi — pre-wrap + tab-size. Berlaku juga untuk spasi
+   ganda (tampil apa adanya, lebih jujur seperti notepad). */
+.wd-note-editor { white-space: pre-wrap; tab-size: 4; }
+/* Area "gutter" kiri editor (klik = block satu baris, ala Notepad/Word):
+   kursor berubah jadi panah biasa sebagai isyarat — class dari notes/page.js */
+.wd-note-editor.wd-gutter { cursor: default; }
 .wd-note-editor h3 { font-size: 16px; font-weight: 800; margin: 14px 0 6px; letter-spacing: -0.2px; }
 .wd-note-editor h3:first-child { margin-top: 0; }
 .wd-note-editor ul,

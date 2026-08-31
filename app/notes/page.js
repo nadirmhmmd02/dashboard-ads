@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  X, Plus, Search, Pin, Trash2, Copy, Check, ChevronLeft, ChevronDown,
+  X, Plus, Search, Pin, Trash2, Copy, Check, ChevronLeft, ChevronDown, ChevronUp,
   Bold, Italic, Strikethrough, List, ListOrdered,
   Highlighter, SquareCheck, Type, CircleAlert, RefreshCw, GripVertical,
 } from 'lucide-react';
@@ -616,6 +616,23 @@ export default function NotesPage() {
      baris berisi teks → baris baru dengan checkbox baru;
      baris checkbox kosong (Enter kedua) → checkbox dihapus, jadi baris polos. */
   function onEditorKeyDown(e) {
+    /* Tab = respon di DALAM tulisan ala Notepad Windows (31 Agu 2026) — bukan
+       loncat fokus ke elemen lain. Di dalam bullet/numbered list: Tab/Shift+Tab
+       menggeser level list; di teks biasa: sisipkan karakter tab (dirender via
+       white-space pre-wrap + tab-size di globals.css). */
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const ed = editorRef.current;
+      const s = window.getSelection();
+      const el = s?.anchorNode?.nodeType === 3 ? s.anchorNode.parentNode : s?.anchorNode;
+      if (el?.closest?.('li')) {
+        document.execCommand(e.shiftKey ? 'outdent' : 'indent');
+      } else if (!e.shiftKey) {
+        document.execCommand('insertText', false, '\t');
+      }
+      if (ed) queueSave({ content: ed.innerHTML });
+      return;
+    }
     // URL yang baru selesai diketik langsung jadi link begitu spasi/Enter ditekan
     if ((e.key === ' ' || e.key === 'Enter') && !e.shiftKey) {
       if (linkifyAtCaret()) queueSave({ content: editorRef.current.innerHTML });
@@ -655,6 +672,48 @@ export default function NotesPage() {
       placeCaretAfter(space);
     }
     queueSave({ content: ed.innerHTML });
+  }
+
+  /* ── Klik di tepi KIRI sebuah baris = block satu baris itu (ala Notepad/Word,
+        31 Agu 2026). "Gutter" = area padding kiri editor (22px): kursor di sana
+        berubah jadi panah (class wd-gutter), klik memilih seluruh blok baris
+        pada ketinggian klik. Baris = div/p/h3 anak langsung editor, atau li. ── */
+  const GUTTER_W = 22;   // = padding kiri editor
+
+  function lineBlockFromPoint(x, y) {
+    const ed = editorRef.current;
+    let node = null;
+    if (document.caretRangeFromPoint) node = document.caretRangeFromPoint(x, y)?.startContainer;
+    else if (document.caretPositionFromPoint) node = document.caretPositionFromPoint(x, y)?.offsetNode;
+    if (!node || node === ed || !ed.contains(node)) return null;
+    let block = node;
+    while (block.parentNode !== ed && !(block.nodeType === 1 && block.tagName === 'LI')) {
+      block = block.parentNode;
+      if (!block || block === ed) return null;
+    }
+    return block;
+  }
+
+  function onEditorMouseDown(e) {
+    const ed = editorRef.current;
+    if (!ed || e.button !== 0) return;
+    if (e.clientX - ed.getBoundingClientRect().left > GUTTER_W) return;
+    const block = lineBlockFromPoint(ed.getBoundingClientRect().left + GUTTER_W + 6, e.clientY);
+    if (!block) return;
+    e.preventDefault();   // jangan pindahkan kursor ke awal baris — kita mau block
+    ed.focus({ preventScroll: true });   // toolbar (bold dsb.) tetap bisa langsung dipakai
+    const sel = window.getSelection();
+    const r = document.createRange();
+    r.selectNodeContents(block);
+    sel.removeAllRanges();
+    sel.addRange(r);
+  }
+
+  function onEditorMouseMove(e) {
+    const ed = editorRef.current;
+    if (!ed) return;
+    // Toggle class langsung (bukan state) — pola sama dengan wd-ctrl, anti re-render
+    ed.classList.toggle('wd-gutter', e.clientX - ed.getBoundingClientRect().left <= GUTTER_W);
   }
 
   function onEditorClick(e) {
@@ -1120,22 +1179,56 @@ export default function NotesPage() {
                     copied ? <Check size={15} color="var(--ac)" strokeWidth={3} /> : <Copy size={15} />)}
                 </div>
 
-                <div
-                  ref={editorRef}
-                  contentEditable
-                  suppressContentEditableWarning
-                  onInput={() => queueSave({ content: editorRef.current.innerHTML })}
-                  onClick={onEditorClick}
-                  onKeyDown={onEditorKeyDown}
-                  onPaste={onEditorPaste}
-                  onDragStart={e => e.preventDefault()}
-                  onDrop={e => e.preventDefault()}
-                  className="wd-note-editor"
-                  style={{
-                    flex: 1, overflowY: 'auto', padding: '18px 22px', outline: 'none',
-                    fontSize: '14px', lineHeight: 1.7, color: 'var(--t1)',
-                  }}
-                />
+                <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex' }}>
+                  <div
+                    ref={editorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={() => queueSave({ content: editorRef.current.innerHTML })}
+                    onClick={onEditorClick}
+                    onKeyDown={onEditorKeyDown}
+                    onPaste={onEditorPaste}
+                    onMouseDown={onEditorMouseDown}
+                    onMouseMove={onEditorMouseMove}
+                    onDragStart={e => e.preventDefault()}
+                    onDrop={e => e.preventDefault()}
+                    className="wd-note-editor"
+                    style={{
+                      flex: 1, minWidth: 0, overflowY: 'auto', padding: '18px 22px', outline: 'none',
+                      fontSize: '14px', lineHeight: 1.7, color: 'var(--t1)',
+                    }}
+                  />
+                  {/* ── Tombol scroll ke atas / bawah (31 Agu 2026) — detail kecil ala
+                        tombol navigasi spreadsheet, pojok kanan bawah editor. Hanya
+                        arah vertikal (permintaan Nadir: samping tidak perlu). ── */}
+                  <div style={{
+                    position: 'absolute', right: '14px', bottom: '12px', zIndex: 4,
+                    display: 'flex', flexDirection: 'column',
+                    background: 'var(--cd)', border: '1px solid var(--br)',
+                    borderRadius: '9px', overflow: 'hidden', boxShadow: 'var(--shadow)',
+                  }}>
+                    {[
+                      ['Scroll ke paling atas', <ChevronUp key="u" size={14} />, () => editorRef.current?.scrollTo({ top: 0, behavior: 'smooth' })],
+                      ['Scroll ke paling bawah', <ChevronDown key="d" size={14} />, () => editorRef.current?.scrollTo({ top: editorRef.current.scrollHeight, behavior: 'smooth' })],
+                    ].map(([title, icon, onClick], i) => (
+                      <button
+                        key={title}
+                        onMouseDown={e => e.preventDefault()}   // jaga fokus & seleksi editor
+                        onClick={onClick}
+                        title={title}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          width: '26px', height: '23px', border: 'none', cursor: 'pointer',
+                          background: 'transparent', color: 'var(--t3)',
+                          borderTop: i === 1 ? '1px solid var(--br)' : 'none',
+                          transition: 'background 0.12s, color 0.12s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--hover)'; e.currentTarget.style.color = 'var(--t1)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--t3)'; }}
+                      >{icon}</button>
+                    ))}
+                  </div>
+                </div>
               </>
             ) : (
               <div style={{
