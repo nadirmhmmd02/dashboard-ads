@@ -40,6 +40,22 @@ function buildDateFilter(datePreset, since, until) {
   return { param: `date_preset=${datePreset}`, field: `date_preset(${datePreset})` };
 }
 
+// Ikuti paging.next Meta sampai habis. Akun punya 226 campaign (2 Sep 2026) — dengan limit=50 tanpa
+// paging, campaign lama (mis. yang jalan di Q1) TIDAK terbaca → Traffic/Leads/CPL/Top Campaigns/
+// badge pembanding understated. Hasil berbentuk {data, error} (bukan Response) supaya bisa langsung dipakai.
+async function fetchAllPages(url, maxPages = 20) {
+  const data = [];
+  let next = url, pages = 0;
+  while (next && pages < maxPages) {
+    const j = await (await fetch(next)).json();
+    if (j.error) return { data, error: j.error };
+    data.push(...(j.data || []));
+    next = j.paging?.next;
+    pages++;
+  }
+  return { data };
+}
+
 /* ─── Date helpers untuk periode pembanding (growth badge) ─── */
 function ymd(d) { return d.toISOString().slice(0, 10); }
 function addDays(dateStr, n) {
@@ -144,12 +160,12 @@ export async function GET(request) {
       const [summaryRes, dailyRes, campaignsRes, prevRes, prevCampaignsRes] = await Promise.all([
         fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/insights?fields=spend,impressions,reach,clicks,cpm,cpc,ctr,actions&${dateParam}&access_token=${ACCESS_TOKEN}`),
         fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/insights?fields=spend,impressions,reach,clicks,actions&${dateParam}&time_increment=1&access_token=${ACCESS_TOKEN}&limit=1000`),
-        fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/campaigns?fields=id,name,objective,status,insights.${dateField}{spend,impressions,reach,clicks,ctr,actions}&access_token=${ACCESS_TOKEN}&limit=50`),
+        fetchAllPages(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/campaigns?fields=id,name,objective,status,insights.${dateField}{spend,impressions,reach,clicks,ctr,actions}&access_token=${ACCESS_TOKEN}&limit=50`),
         fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/insights?fields=spend,impressions,reach,clicks,actions&${prevParam}&access_token=${ACCESS_TOKEN}`),
-        fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/campaigns?fields=id,name,objective,insights.${prevField}{spend,impressions,clicks,actions}&access_token=${ACCESS_TOKEN}&limit=50`),
+        fetchAllPages(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/campaigns?fields=id,name,objective,insights.${prevField}{spend,impressions,clicks,actions}&access_token=${ACCESS_TOKEN}&limit=50`),
       ]);
       const [summaryData, dailyData, campaignsData, prevData, prevCampaignsData] = await Promise.all([
-        summaryRes.json(), dailyRes.json(), campaignsRes.json(), prevRes.json(), prevCampaignsRes.json(),
+        summaryRes.json(), dailyRes.json(), campaignsRes, prevRes.json(), prevCampaignsRes, // campaigns sudah {data} dari fetchAllPages
       ]);
 
       return NextResponse.json({
@@ -219,11 +235,11 @@ export async function GET(request) {
     // Campaigns bisa memunculkan peringatan kalau iklan mati di Meta (mis. tagihan
     // belum dibayar / akun ditinjau). Kegagalan fetch akun TIDAK boleh mematikan tabel.
     const [campaignsRes, insightsRes, accountRes] = await Promise.all([
-      fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/campaigns?fields=id,name,objective,status,daily_budget,lifetime_budget,insights.${dateField}{spend,impressions,reach,clicks,cpm,cpc,ctr,actions}&access_token=${ACCESS_TOKEN}&limit=50`),
+      fetchAllPages(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/campaigns?fields=id,name,objective,status,daily_budget,lifetime_budget,insights.${dateField}{spend,impressions,reach,clicks,cpm,cpc,ctr,actions}&access_token=${ACCESS_TOKEN}&limit=50`),
       fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/insights?fields=spend,impressions,reach,clicks,cpm,cpc,ctr,actions&${dateParam}&access_token=${ACCESS_TOKEN}`),
       fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}?fields=account_status,disable_reason,name&access_token=${ACCESS_TOKEN}`),
     ]);
-    const [campaignsData, insightsData, accountData] = await Promise.all([campaignsRes.json(), insightsRes.json(), accountRes.json()]);
+    const [campaignsData, insightsData, accountData] = await Promise.all([campaignsRes, insightsRes.json(), accountRes.json()]); // campaignsRes sudah {data}
 
     return NextResponse.json({
       campaigns: campaignsData.data || [],
