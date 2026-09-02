@@ -392,15 +392,12 @@ export default function DashboardPage() {
       const totalSpend       = parseFloat(sum.spend || 0);
       const totalReach       = parseFloat(sum.reach || 0);
       const totalImpressions = parseFloat(sum.impressions || 0);
-      const curTraffic       = getActionValue(sum.actions, ['link_click']);
       const curLeadsAcc      = getActionValue(sum.actions, ['lead','onsite_conversion.lead_grouped']);
 
       // Periode sebelumnya (untuk growth badge) — pakai level akun biar ringan & konsisten
       const prevSpend       = parseFloat(prev.spend || 0);
       const prevReach       = parseFloat(prev.reach || 0);
       const prevImpressions = parseFloat(prev.impressions || 0);
-      const prevTraffic     = getActionValue(prev.actions, ['link_click']);
-      const prevLeads       = getActionValue(prev.actions, ['lead','onsite_conversion.lead_grouped']);
 
       const prevCampaigns  = json.prevCampaigns || [];
 
@@ -450,8 +447,8 @@ export default function DashboardPage() {
         pctSpend:       pctChange(totalSpend, prevSpend),
         pctReach:       pctChange(totalReach, prevReach),
         pctImpressions: pctChange(totalImpressions, prevImpressions),
-        pctTraffic:     pctChange(curTraffic, prevTraffic),
-        pctLeads:       pctChange(curLeadsAcc, prevLeads),
+        pctTraffic:     pctChange(trafficClicks, prevTrafficClicks), // apple-to-apple: link click campaign TRAFFIC saja di dua periode
+        pctLeads:       pctChange(convLeads, prevConvLeads),         // apple-to-apple: lead campaign CONVERSION saja di dua periode
         // % 4C vs periode sebelumnya (null kalau salah satu sisi tak ada data)
         pctCPM: calcCPM != null ? pctChange(calcCPM, prevCPM) : null,
         pctCPC: calcCPC != null ? pctChange(calcCPC, prevCPC) : null,

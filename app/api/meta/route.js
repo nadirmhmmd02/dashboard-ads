@@ -75,8 +75,33 @@ function presetToRange(preset) {
   }
 }
 
-// Periode sebelumnya dengan panjang sama, tepat sebelum periode sekarang
+// Periode pembanding (growth badge "vs prev period") — SELARAS KALENDER (aturan Nadir 2 Sep 2026):
+//  1. Bulan kalender PENUH (since tgl 1, until akhir bulan; 1 bulan atau lebih, mis. Q2 Mei–Agu / Last month)
+//     → jumlah bulan yang sama tepat sebelumnya (Q2 vs Q1, Agustus vs Juli).
+//  2. Bulan BERJALAN (since tgl 1, until belum akhir bulan — preset This month)
+//     → tanggal yang sama di bulan lalu (1–2 Sep vs 1–2 Agu); kalau bulan lalu lebih pendek, dipotong ke akhirnya.
+//  3. Selain itu (Today/Yesterday/Last N days/custom bukan bulan penuh)
+//     → periode sama panjang tepat sebelumnya (perilaku lama).
 function previousRange(since, until) {
+  const s = new Date(since + "T00:00:00Z");
+  const u = new Date(until + "T00:00:00Z");
+  if (s.getUTCDate() === 1 && u >= s) {
+    const months       = (u.getUTCFullYear() - s.getUTCFullYear()) * 12 + (u.getUTCMonth() - s.getUTCMonth()) + 1;
+    const lastOfUntil  = new Date(Date.UTC(u.getUTCFullYear(), u.getUTCMonth() + 1, 0)).getUTCDate();
+    const prevUntilD   = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), 0)); // hari terakhir sebelum since
+    if (u.getUTCDate() === lastOfUntil) {
+      // (1) N bulan penuh → N bulan sebelumnya
+      const prevSinceD = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth() - months, 1));
+      return { since: ymd(prevSinceD), until: ymd(prevUntilD) };
+    }
+    if (months === 1) {
+      // (2) bulan berjalan → tanggal sama bulan lalu
+      const prevSinceD = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth() - 1, 1));
+      const day        = Math.min(u.getUTCDate(), prevUntilD.getUTCDate());
+      return { since: ymd(prevSinceD), until: ymd(new Date(Date.UTC(prevSinceD.getUTCFullYear(), prevSinceD.getUTCMonth(), day))) };
+    }
+  }
+  // (3) fallback: panjang sama, tepat sebelum periode sekarang
   const len       = daysBetween(since, until);
   const prevUntil = addDays(since, -1);
   const prevSince = addDays(prevUntil, -(len - 1));
@@ -134,6 +159,7 @@ export async function GET(request) {
         campaigns:     campaignsData.data || [],
         prevCampaigns: prevCampaignsData.data || [],
         chartRange,
+        prevRange,
       });
     }
 

@@ -120,6 +120,7 @@ Kalkulasi:
 - Link clicks dari actions: `action_type === 'link_click'`
 - Chart harian: insights pakai `time_increment=1`
 - **Semua metrik (termasuk kolom Total Spend di Campaigns) IKUT rentang filter tanggal yang dipilih** — bukan lifetime.
+- **Badge "vs prev period" (per 2 Sep 2026, aturan Nadir):** periode pembanding SELARAS KALENDER via `previousRange()` di api/meta/route.js — (1) filter N bulan kalender penuh (Q2 Mei–Agu, Last month) → N bulan tepat sebelumnya (Q2 vs Q1, Agu vs Jul); (2) bulan berjalan (This month) → tanggal yang sama bulan lalu (1–2 Sep vs 1–2 Agu, dipotong kalau bulan lalu lebih pendek); (3) selain itu (Today/Yesterday/Last N days/custom bukan bulan penuh) → periode sama panjang tepat sebelumnya. Badge Traffic & Leads APPLE-TO-APPLE: Traffic = link click campaign TRAFFIC saja di dua periode (dari prevCampaigns), Leads = lead campaign CONVERSION saja — dulu badge pakai angka level akun (semua campaign) sehingga Q2 51.877 vs Q1 49.972 malah tampil ▼18%. Rumus sama di page.js & reportData.js (export) — jaga sinkron.
 
 Subtotal toggle per grup (Awareness/Traffic/Conversion) di tabel campaigns — jangan dirusak.
 
