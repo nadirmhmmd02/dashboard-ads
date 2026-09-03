@@ -11,6 +11,7 @@ import {
 import CountUp from './components/CountUp';
 import AreaChart from './components/AreaChart';
 import CompareModal from './components/CompareModal';
+import LeadsBreakdownModal from './components/LeadsBreakdownModal';
 import ExportMenu from './components/ExportMenu';
 import { useAuth } from './components/AuthContext';
 import { useDashboardFilter, DATE_PRESETS_DASHBOARD } from './components/DateFilterContext';
@@ -50,6 +51,27 @@ function getActionValue(actions, types) {
     if (a) return parseInt(a.value) || 0;
   }
   return 0;
+}
+
+/* ─── Leads = SEMUA mekanisme penangkapan lead (aturan Nadir 3 Sep 2026) ───
+   Dulu hanya form, sehingga iklan klik-ke-WhatsApp (dipakai sepanjang Q1 2026)
+   tidak ikut terhitung dan lead Q1 tampil 1 padahal aslinya 389.
+     LEAD_FORM = payung form (instant form Meta + form website via pixel)
+     LEAD_WA   = CTA klik-ke-WhatsApp
+   Rumus ini terduplikasi di page.js, campaigns, reportData, CompareModal,
+   CombineModal, CampaignModal & insightEngine — JAGA TETAP SINKRON. */
+const LEAD_FORM = ["lead", "onsite_conversion.lead_grouped"];
+const LEAD_WA   = ["onsite_conversion.messaging_conversation_started_7d"];
+function getLeads(actions) {
+  return (getActionValue(actions, LEAD_FORM) || 0) + (getActionValue(actions, LEAD_WA) || 0);
+}
+/* Rincian per sumber untuk popup di kartu KPI Leads. "lead" adalah payung form;
+   instant form dipisah lewat lead_grouped, sisanya dianggap form website (pixel). */
+function getLeadBreakdown(actions) {
+  const form    = getActionValue(actions, LEAD_FORM) || 0;
+  const instant = getActionValue(actions, ["onsite_conversion.lead_grouped"]) || 0;
+  const wa      = getActionValue(actions, LEAD_WA) || 0;
+  return { instant, web: Math.max(0, form - instant), wa, total: form + wa };
 }
 
 /* Preset → rentang tanggal nyata (dipakai untuk mengisi Periode A di Compare).
@@ -123,7 +145,7 @@ function stripCampPrefix(name) {
 function getCampaignResult(name, ins) {
   const type = getCampaignType(name);
   if (type === 'TRAFFIC')    return getActionValue(ins.actions, ['link_click']);
-  if (type === 'CONVERSION') return getActionValue(ins.actions, ['lead','onsite_conversion.lead_grouped']);
+  if (type === 'CONVERSION') return getLeads(ins.actions);
   const n = (name || '').toUpperCase();
   if (n.includes('AWR REACH')) return parseFloat(ins.reach || 0);
   return parseFloat(ins.impressions || 0); // AWARENESS default → impressions
@@ -175,7 +197,7 @@ function buildChartData(daily, range) {
       r.spend    .push(Math.round(parseFloat(d.spend || 0)));
       r.awareness.push(Math.round(parseFloat(d.impressions || 0)));
       r.traffic  .push(getActionValue(d.actions, ['link_click']));
-      r.leads    .push(getActionValue(d.actions, ['lead','onsite_conversion.lead_grouped']));
+      r.leads    .push(getLeads(d.actions));
       dates.push(d.date_start ? parseInt(d.date_start.slice(8, 10), 10) : i + 1);
     });
     return { data: r, dates, todayIdx: -1 };
@@ -202,7 +224,7 @@ function buildChartData(daily, range) {
     data.spend[idx]     = Math.round(parseFloat(d.spend || 0));
     data.awareness[idx] = Math.round(parseFloat(d.impressions || 0));
     data.traffic[idx]   = getActionValue(d.actions, ['link_click']);
-    data.leads[idx]     = getActionValue(d.actions, ['lead','onsite_conversion.lead_grouped']);
+    data.leads[idx]     = getLeads(d.actions);
   });
 
   const todayStr  = new Date().toISOString().slice(0, 10);
@@ -249,14 +271,19 @@ function Sparkline({ data, color, h = 30 }) {
 }
 
 /* ─── KPI Card ─── */
-function KpiCard({ label, display, value, icon: Icon, color, pct, spark, delay }) {
+function KpiCard({ label, display, value, icon: Icon, color, pct, spark, delay, onClick }) {
   const [hover, setHover] = useState(false);
   return (
     <div
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
       style={{
         ...CARD_BASE,
+        cursor: onClick ? 'pointer' : 'default',
         borderColor: hover ? 'var(--br-strong)' : BORDER,
         height: '100%', overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
@@ -274,6 +301,16 @@ function KpiCard({ label, display, value, icon: Icon, color, pct, spark, delay }
           <Icon size={17} color={color} />
         </div>
         <span style={{ ...TYPE.metricLabel }}>{label}</span>
+        {onClick && (
+          <ChevronRight
+            size={15}
+            style={{
+              marginLeft: 'auto', flexShrink: 0, color: 'var(--t3)',
+              opacity: hover ? 1 : 0, transform: hover ? 'translateX(0)' : 'translateX(-3px)',
+              transition: 'opacity 0.18s, transform 0.18s',
+            }}
+          />
+        )}
       </div>
 
       {/* value */}
@@ -305,6 +342,7 @@ export default function DashboardPage() {
   const [hoverSeg, setHoverSeg]         = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showCompare, setShowCompare]   = useState(false);
+  const [showLeadsInfo, setShowLeadsInfo] = useState(false);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
   const [summary, setSummary]           = useState(null);
@@ -392,7 +430,7 @@ export default function DashboardPage() {
       const totalSpend       = parseFloat(sum.spend || 0);
       const totalReach       = parseFloat(sum.reach || 0);
       const totalImpressions = parseFloat(sum.impressions || 0);
-      const curLeadsAcc      = getActionValue(sum.actions, ['lead','onsite_conversion.lead_grouped']);
+      const curLeadsAcc      = getLeads(sum.actions);
 
       // Periode sebelumnya (untuk growth badge) — pakai level akun biar ringan & konsisten
       const prevSpend       = parseFloat(prev.spend || 0);
@@ -412,7 +450,13 @@ export default function DashboardPage() {
       const trafficSpend    = trafficCamps.reduce((s,c) => s + parseFloat(c.insights?.data?.[0]?.spend||0), 0);
       const trafficClicks   = trafficCamps.reduce((s,c) => s + getActionValue(c.insights?.data?.[0]?.actions, ['link_click']), 0);
       const convSpend       = convCamps.reduce((s,c) => s + parseFloat(c.insights?.data?.[0]?.spend||0), 0);
-      const convLeads       = convCamps.reduce((s,c) => s + getActionValue(c.insights?.data?.[0]?.actions, ['lead','onsite_conversion.lead_grouped']), 0);
+      const convLeads       = convCamps.reduce((s,c) => s + getLeads(c.insights?.data?.[0]?.actions), 0);
+      // Rincian lead per sumber — dijumlah dari campaign CONVERSION yang SAMA dengan
+      // angka kartu KPI, supaya isi popup selalu pas dengan angka yang diklik.
+      const leadBreakdown   = convCamps.reduce((a,c) => {
+        const b = getLeadBreakdown(c.insights?.data?.[0]?.actions);
+        return { instant:a.instant+b.instant, web:a.web+b.web, wa:a.wa+b.wa, total:a.total+b.total };
+      }, { instant:0, web:0, wa:0, total:0 });
       const convImpressions = convCamps.reduce((s,c) => s + parseFloat(c.insights?.data?.[0]?.impressions||0), 0);
       const convClicks      = convCamps.reduce((s,c) => s + parseFloat(c.insights?.data?.[0]?.clicks||0), 0);
       const awareSpend      = awareCamps.reduce((s,c) => s + parseFloat(c.insights?.data?.[0]?.spend||0), 0);
@@ -431,7 +475,7 @@ export default function DashboardPage() {
       const prevTrafficSpend  = prevTrafficCamps.reduce((s,c) => s + parseFloat(c.insights?.data?.[0]?.spend||0), 0);
       const prevTrafficClicks = prevTrafficCamps.reduce((s,c) => s + getActionValue(c.insights?.data?.[0]?.actions, ['link_click']), 0);
       const prevConvSpend     = prevConvCamps.reduce((s,c) => s + parseFloat(c.insights?.data?.[0]?.spend||0), 0);
-      const prevConvLeads     = prevConvCamps.reduce((s,c) => s + getActionValue(c.insights?.data?.[0]?.actions, ['lead','onsite_conversion.lead_grouped']), 0);
+      const prevConvLeads     = prevConvCamps.reduce((s,c) => s + getLeads(c.insights?.data?.[0]?.actions), 0);
       const prevConvImpr      = prevConvCamps.reduce((s,c) => s + parseFloat(c.insights?.data?.[0]?.impressions||0), 0);
       const prevConvClicks    = prevConvCamps.reduce((s,c) => s + parseFloat(c.insights?.data?.[0]?.clicks||0), 0);
       const prevCPM = prevImpressions > 0   ? (prevSpend / prevImpressions) * 1000  : null;
@@ -443,6 +487,7 @@ export default function DashboardPage() {
         totalSpend, totalReach, totalImpressions,
         totalTraffic: trafficClicks,
         totalLeads:   convLeads || curLeadsAcc,
+        leadBreakdown,
         calcCPM, calcCPC, calcCPL, calcCTR,
         pctSpend:       pctChange(totalSpend, prevSpend),
         pctReach:       pctChange(totalReach, prevReach),
@@ -906,7 +951,8 @@ export default function DashboardPage() {
                 pct:summary.pctTraffic, spark:chartData.traffic },
               { label:'Leads', icon:User, color:GREEN,
                 value:summary.totalLeads, display:fmtNumFull(summary.totalLeads),
-                pct:summary.pctLeads, spark:chartData.leads },
+                pct:summary.pctLeads, spark:chartData.leads,
+                onClick:() => setShowLeadsInfo(true) },
             ];
             if (isMobile) return (
               // Carousel swipe: scroll-snap native (smooth di semua browser, tanpa library)
@@ -1133,6 +1179,15 @@ export default function DashboardPage() {
           />
         );
       })()}
+
+      {/* Popup rincian Leads — dibuka dari kartu KPI "Leads" */}
+      {showLeadsInfo && (
+        <LeadsBreakdownModal
+          breakdown={summary?.leadBreakdown}
+          periodLabel={filterLabel()}
+          onClose={() => setShowLeadsInfo(false)}
+        />
+      )}
     </div>
   );
 }

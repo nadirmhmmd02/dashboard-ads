@@ -1,0 +1,41 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "app/components/NotesWorkspace.js"
+        ],
+        "createdAt": "2026-08-31T06:33:55.719Z",
+        "reason": "Kode dipindah utuh dari app/notes/page.js: transisi height panel To Do adalah perilaku minimize ala Windows yang sudah shipped dan disetujui Nadir 19 Agu 2026 (terdokumentasi di CLAUDE.md)"
+      },
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "app/components/Sidebar.js"
+        ],
+        "createdAt": "2026-08-31T06:33:55.815Z",
+        "reason": "Animasi collapse sidebar (padding/gap/max-width) adalah desain lama yang sudah shipped sejak awal project; edit hari ini hanya menduplikasi style yang sama ke varian button Notes"
+      },
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "app/notes/page.js"
+        ],
+        "createdAt": "2026-08-31T06:41:31.830Z",
+        "reason": "Transisi height panel To Do = perilaku minimize ala Windows yang sudah shipped dan disetujui Nadir 19 Agu 2026 (terdokumentasi CLAUDE.md); file ter-flag hanya karena git checkout mengembalikannya ke versi asli"
+      },
+      {
+        "rule": "overused-font",
+        "value": "plus jakarta sans",
+        "createdAt": "2026-08-31T06:50:23.359Z",
+        "reason": "Font resmi Baba Rafi Ad Hub yang dipilih Nadir & shipped sejak redesain Jul 2026 (terdokumentasi CLAUDE.md: 'Font resmi: Plus Jakarta Sans via next/font'); larangan font ini hanya berlaku di project babarafi-website (brand publik), bukan dashboard internal ini"
+      }
+    ]
+  }
+}

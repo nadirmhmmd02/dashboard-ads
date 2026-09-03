@@ -79,6 +79,27 @@ function actionVal(actions, types) {
   }
   return 0;
 }
+
+/* ─── Leads = SEMUA mekanisme penangkapan lead (aturan Nadir 3 Sep 2026) ───
+   Dulu hanya form, sehingga iklan klik-ke-WhatsApp (dipakai sepanjang Q1 2026)
+   tidak ikut terhitung dan lead Q1 tampil 1 padahal aslinya 389.
+     LEAD_FORM = payung form (instant form Meta + form website via pixel)
+     LEAD_WA   = CTA klik-ke-WhatsApp
+   Rumus ini terduplikasi di page.js, campaigns, reportData, CompareModal,
+   CombineModal, CampaignModal & insightEngine — JAGA TETAP SINKRON. */
+const LEAD_FORM = ["lead", "onsite_conversion.lead_grouped"];
+const LEAD_WA   = ["onsite_conversion.messaging_conversation_started_7d"];
+function getLeads(actions) {
+  return (actionVal(actions, LEAD_FORM) || 0) + (actionVal(actions, LEAD_WA) || 0);
+}
+/* Rincian per sumber untuk popup di kartu KPI Leads. "lead" adalah payung form;
+   instant form dipisah lewat lead_grouped, sisanya dianggap form website (pixel). */
+function getLeadBreakdown(actions) {
+  const form    = actionVal(actions, LEAD_FORM) || 0;
+  const instant = actionVal(actions, ["onsite_conversion.lead_grouped"]) || 0;
+  const wa      = actionVal(actions, LEAD_WA) || 0;
+  return { instant, web: Math.max(0, form - instant), wa, total: form + wa };
+}
 function computeMetrics(json) {
   const s = json.summary || {};
   const campaigns = json.campaigns || [];
@@ -93,7 +114,7 @@ function computeMetrics(json) {
   const trafficSpend  = sum(traffic, i => parseFloat(i.spend || 0));
   const trafficClicks = sum(traffic, i => actionVal(i.actions, ['link_click']));
   const convSpend     = sum(conv, i => parseFloat(i.spend || 0));
-  const convLeads     = sum(conv, i => actionVal(i.actions, ['lead', 'onsite_conversion.lead_grouped']));
+  const convLeads     = sum(conv, i => getLeads(i.actions));
   const convImpr      = sum(conv, i => parseFloat(i.impressions || 0));
   const convClicks    = sum(conv, i => parseFloat(i.clicks || 0));
 

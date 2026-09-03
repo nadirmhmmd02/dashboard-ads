@@ -13,7 +13,14 @@ function getActionValue(actions, types) {
   }
   return null;
 }
-function getLeads(actions)      { return getActionValue(actions, ['lead', 'onsite_conversion.lead_grouped']); }
+/* Leads = form (instant form Meta + form website via pixel) + CTA klik-ke-WhatsApp.
+   Aturan Nadir 3 Sep 2026 — sinkron dgn page.js/reportData/CompareModal/insightEngine. */
+function getLeads(actions) {
+  const form = getActionValue(actions, ["lead", "onsite_conversion.lead_grouped"]);
+  const wa   = getActionValue(actions, ["onsite_conversion.messaging_conversation_started_7d"]);
+  if (form === null && wa === null) return null;   // benar-benar tak ada data → tetap tampil "—"
+  return (form || 0) + (wa || 0);
+}
 function getLinkClicks(actions) { return getActionValue(actions, ['link_click']); }
 
 function fmtNum(v) {

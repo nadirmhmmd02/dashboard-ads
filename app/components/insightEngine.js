@@ -22,6 +22,27 @@ function getActionValue(actions, types) {
   return 0;
 }
 
+/* ─── Leads = SEMUA mekanisme penangkapan lead (aturan Nadir 3 Sep 2026) ───
+   Dulu hanya form, sehingga iklan klik-ke-WhatsApp (dipakai sepanjang Q1 2026)
+   tidak ikut terhitung dan lead Q1 tampil 1 padahal aslinya 389.
+     LEAD_FORM = payung form (instant form Meta + form website via pixel)
+     LEAD_WA   = CTA klik-ke-WhatsApp
+   Rumus ini terduplikasi di page.js, campaigns, reportData, CompareModal,
+   CombineModal, CampaignModal & insightEngine — JAGA TETAP SINKRON. */
+const LEAD_FORM = ["lead", "onsite_conversion.lead_grouped"];
+const LEAD_WA   = ["onsite_conversion.messaging_conversation_started_7d"];
+function getLeads(actions) {
+  return (getActionValue(actions, LEAD_FORM) || 0) + (getActionValue(actions, LEAD_WA) || 0);
+}
+/* Rincian per sumber untuk popup di kartu KPI Leads. "lead" adalah payung form;
+   instant form dipisah lewat lead_grouped, sisanya dianggap form website (pixel). */
+function getLeadBreakdown(actions) {
+  const form    = getActionValue(actions, LEAD_FORM) || 0;
+  const instant = getActionValue(actions, ["onsite_conversion.lead_grouped"]) || 0;
+  const wa      = getActionValue(actions, LEAD_WA) || 0;
+  return { instant, web: Math.max(0, form - instant), wa, total: form + wa };
+}
+
 export function getCampaignType(name) {
   const n = name?.toUpperCase() || '';
   if (n.includes('TRAFFIC'))                           return 'TRAFFIC';
@@ -37,7 +58,7 @@ function stripCampPrefix(name) {
 function getCampaignResult(name, ins) {
   const type = getCampaignType(name);
   if (type === 'TRAFFIC')    return getActionValue(ins.actions, ['link_click']);
-  if (type === 'CONVERSION') return getActionValue(ins.actions, ['lead', 'onsite_conversion.lead_grouped']);
+  if (type === 'CONVERSION') return getLeads(ins.actions);
   const n = (name || '').toUpperCase();
   if (n.includes('AWR REACH')) return parseFloat(ins.reach || 0);
   return parseFloat(ins.impressions || 0);
@@ -67,13 +88,13 @@ export function buildAnalysis(json) {
   const reach       = parseFloat(sum.reach || 0);
   const impressions = parseFloat(sum.impressions || 0);
   const accClicks   = getActionValue(sum.actions, ['link_click']);
-  const accLeads    = getActionValue(sum.actions, ['lead', 'onsite_conversion.lead_grouped']);
+  const accLeads    = getLeads(sum.actions);
 
   const prevSpend       = parseFloat(prev.spend || 0);
   const prevReach       = parseFloat(prev.reach || 0);
   const prevImpressions = parseFloat(prev.impressions || 0);
   const prevClicks      = getActionValue(prev.actions, ['link_click']);
-  const prevLeads       = getActionValue(prev.actions, ['lead', 'onsite_conversion.lead_grouped']);
+  const prevLeads       = getLeads(prev.actions);
 
   const camps = campaigns
     .filter(c => parseFloat(c.insights?.data?.[0]?.spend || 0) > 0)
@@ -122,7 +143,7 @@ export function buildAnalysis(json) {
 
   /* Deret harian (untuk sparkline & momentum) */
   const dailySpend = daily.map(d => Math.round(parseFloat(d.spend || 0)));
-  const dailyLeads = daily.map(d => getActionValue(d.actions, ['lead', 'onsite_conversion.lead_grouped']));
+  const dailyLeads = daily.map(d => getLeads(d.actions));
 
   /* ── INSIGHTS ── */
   const insights = [];
@@ -255,7 +276,7 @@ export function buildAnalysis(json) {
   // 9. Hari sepi (spend jalan tapi 0 lead) — hanya relevan kalau ada conversion camp
   if (convCamps.length > 0 && leadDays.length >= 5) {
     const quiet = daily.filter(d => parseFloat(d.spend || 0) > 0 &&
-      getActionValue(d.actions, ['lead', 'onsite_conversion.lead_grouped']) === 0).length;
+      getLeads(d.actions) === 0).length;
     if (quiet >= 3) add({
       id: 'quiet-days', severity: 'warning', icon: 'CircleAlert',
       title: `${quiet} spending days produced zero leads`,

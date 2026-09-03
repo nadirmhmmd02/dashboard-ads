@@ -25,6 +25,27 @@ function getActionValue(actions, types) {
   }
   return 0;
 }
+
+/* ─── Leads = SEMUA mekanisme penangkapan lead (aturan Nadir 3 Sep 2026) ───
+   Dulu hanya form, sehingga iklan klik-ke-WhatsApp (dipakai sepanjang Q1 2026)
+   tidak ikut terhitung dan lead Q1 tampil 1 padahal aslinya 389.
+     LEAD_FORM = payung form (instant form Meta + form website via pixel)
+     LEAD_WA   = CTA klik-ke-WhatsApp
+   Rumus ini terduplikasi di page.js, campaigns, reportData, CompareModal,
+   CombineModal, CampaignModal & insightEngine — JAGA TETAP SINKRON. */
+const LEAD_FORM = ["lead", "onsite_conversion.lead_grouped"];
+const LEAD_WA   = ["onsite_conversion.messaging_conversation_started_7d"];
+function getLeads(actions) {
+  return (getActionValue(actions, LEAD_FORM) || 0) + (getActionValue(actions, LEAD_WA) || 0);
+}
+/* Rincian per sumber untuk popup di kartu KPI Leads. "lead" adalah payung form;
+   instant form dipisah lewat lead_grouped, sisanya dianggap form website (pixel). */
+function getLeadBreakdown(actions) {
+  const form    = getActionValue(actions, LEAD_FORM) || 0;
+  const instant = getActionValue(actions, ["onsite_conversion.lead_grouped"]) || 0;
+  const wa      = getActionValue(actions, LEAD_WA) || 0;
+  return { instant, web: Math.max(0, form - instant), wa, total: form + wa };
+}
 function getCampaignType(name) {
   const n = name?.toUpperCase() || '';
   if (n.includes('TRAFFIC'))                            return 'TRAFFIC';
@@ -56,7 +77,7 @@ function buildChartData(daily, range) {
       r.spend.push(Math.round(parseFloat(d.spend || 0)));
       r.awareness.push(Math.round(parseFloat(d.impressions || 0)));
       r.traffic.push(getActionValue(d.actions, ['link_click']));
-      r.leads.push(getActionValue(d.actions, ['lead', 'onsite_conversion.lead_grouped']));
+      r.leads.push(getLeads(d.actions));
       dates.push(d.date_start ? parseInt(d.date_start.slice(8, 10), 10) : i + 1);
     });
     return { data: r, dates };
@@ -73,7 +94,7 @@ function buildChartData(daily, range) {
     data.spend[idx]     = Math.round(parseFloat(d.spend || 0));
     data.awareness[idx] = Math.round(parseFloat(d.impressions || 0));
     data.traffic[idx]   = getActionValue(d.actions, ['link_click']);
-    data.leads[idx]     = getActionValue(d.actions, ['lead', 'onsite_conversion.lead_grouped']);
+    data.leads[idx]     = getLeads(d.actions);
   });
   return { data, dates };
 }
@@ -90,7 +111,7 @@ export function buildReportData(json) {
   const totalSpend       = parseFloat(sum.spend || 0);
   const totalReach       = parseFloat(sum.reach || 0);
   const totalImpressions = parseFloat(sum.impressions || 0);
-  const curLeadsAcc      = getActionValue(sum.actions, ['lead', 'onsite_conversion.lead_grouped']);
+  const curLeadsAcc      = getLeads(sum.actions);
 
   const prevSpend       = parseFloat(prev.spend || 0);
   const prevReach       = parseFloat(prev.reach || 0);
@@ -106,7 +127,7 @@ export function buildReportData(json) {
   const trafficSpend    = trafficCamps.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
   const trafficClicks   = trafficCamps.reduce((s, c) => s + getActionValue(c.insights?.data?.[0]?.actions, ['link_click']), 0);
   const convSpend       = convCamps.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
-  const convLeads       = convCamps.reduce((s, c) => s + getActionValue(c.insights?.data?.[0]?.actions, ['lead', 'onsite_conversion.lead_grouped']), 0);
+  const convLeads       = convCamps.reduce((s, c) => s + getLeads(c.insights?.data?.[0]?.actions), 0);
   const convImpressions = convCamps.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.impressions || 0), 0);
   const convClicks      = convCamps.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.clicks || 0), 0);
   const awareSpend      = awareCamps.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
@@ -122,7 +143,7 @@ export function buildReportData(json) {
   const prevTrafficSpend  = prevTrafficCamps.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
   const prevTrafficClicks = prevTrafficCamps.reduce((s, c) => s + getActionValue(c.insights?.data?.[0]?.actions, ['link_click']), 0);
   const prevConvSpend     = prevConvCamps.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.spend || 0), 0);
-  const prevConvLeads     = prevConvCamps.reduce((s, c) => s + getActionValue(c.insights?.data?.[0]?.actions, ['lead', 'onsite_conversion.lead_grouped']), 0);
+  const prevConvLeads     = prevConvCamps.reduce((s, c) => s + getLeads(c.insights?.data?.[0]?.actions), 0);
   const prevConvImpr      = prevConvCamps.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.impressions || 0), 0);
   const prevConvClicks    = prevConvCamps.reduce((s, c) => s + parseFloat(c.insights?.data?.[0]?.clicks || 0), 0);
   const prevCPM = prevImpressions > 0   ? (prevSpend / prevImpressions) * 1000  : null;
