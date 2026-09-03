@@ -134,12 +134,13 @@ export default function LeadsBreakdownModal({ breakdown, periodLabel, onClose })
                     </span>
                   </span>
                 </div>
-                {/* share bar */}
-                <div style={{ height: '4px', borderRadius: '3px', background: 'var(--sf)', marginTop: '7px', overflow: 'hidden' }}>
+                {/* share bar — pola sama dgn CombineModal/CampaignModal: tumbuh via
+                    transform scaleX (wdGrowX), BUKAN transisi width (bikin layout thrash) */}
+                <div style={{ height: '4px', borderRadius: '3px', background: 'var(--track)', marginTop: '7px', overflow: 'hidden' }}>
                   <div style={{
                     height: '100%', width: pct + '%', borderRadius: '3px',
-                    background: zero ? 'transparent' : GREEN,
-                    transition: 'width 0.5s cubic-bezier(0.4,0,0.2,1)',
+                    background: zero ? 'transparent' : GREEN, transformOrigin: 'left',
+                    animation: 'wdGrowX 0.6s cubic-bezier(0.4,0,0.2,1) ' + (0.2 + i * 0.08) + 's backwards',
                   }} />
                 </div>
               </div>
