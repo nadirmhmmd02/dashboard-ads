@@ -24,9 +24,9 @@ export default function LeadsBreakdownModal({ breakdown, periodLabel, onClose })
   const b     = breakdown || { instant: 0, web: 0, wa: 0, total: 0 };
   const total = b.total || 0;
   const rows  = [
-    { label: 'Instant Form', hint: 'Formulir langsung di Meta', icon: FileText,      value: b.instant || 0 },
-    { label: 'Website Form', hint: 'Formulir di website',       icon: Globe,         value: b.web     || 0 },
-    { label: 'WhatsApp',     hint: 'Iklan klik ke WhatsApp',    icon: MessageCircle, value: b.wa      || 0 },
+    { label: 'Instant Form', hint: 'Meta lead form',        icon: FileText,      value: b.instant || 0 },
+    { label: 'Website Form', hint: 'Form on our website',   icon: Globe,         value: b.web     || 0 },
+    { label: 'WhatsApp',     hint: 'Click-to-WhatsApp ads',  icon: MessageCircle, value: b.wa      || 0 },
   ];
 
   return (
@@ -73,12 +73,12 @@ export default function LeadsBreakdownModal({ breakdown, periodLabel, onClose })
               Leads Breakdown
             </span>
             <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>
-              {periodLabel || 'Periode terpilih'}
+              {periodLabel || 'Selected period'}
             </span>
           </span>
           <button
             onClick={close}
-            aria-label="Tutup"
+            aria-label="Close"
             style={{
               width: '30px', height: '30px', borderRadius: '9px', flexShrink: 0,
               border: '1px solid var(--br)', background: 'var(--cd)', color: 'var(--t2)',
